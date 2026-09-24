@@ -66,7 +66,7 @@ writeFileSync(
   `---
 import BaseLayout from '../layouts/BaseLayout.astro';
 ---
-<BaseLayout title="Alpine check">
+<BaseLayout page={{ title: 'Alpine check' }}>
   <div x-data="{ open: false }" class="p-4">
     <button type="button" x-on:click="open = !open" x-bind:aria-expanded="open" aria-controls="panel">Toggle</button>
     <p id="panel" x-show="open" x-cloak class="text-emerald-700">Panel</p>
@@ -84,6 +84,60 @@ expect(distFiles('.css').some((css) => css.includes('.text-emerald-700')), 'a ne
 
 const secretish = /alk_[A-Za-z0-9]{8,}|ghp_[A-Za-z0-9]{10,}/;
 expect(![...distFiles('.html'), ...distFiles('.js')].some((f) => secretish.test(f)), 'built output contains no credentials');
+
+// yatris doctor: a fresh site passes, and each acceptance failure is caught.
+const doctor = (args = '--no-build') => {
+  const result = spawnSync(`npx yatris doctor --stage=scaffold --json ${args}`, { cwd: site, shell: true, encoding: 'utf8', env });
+  const report = JSON.parse(result.stdout);
+  return { status: result.status, report, errors: report.findings.filter((f) => f.severity === 'error').map((f) => f.code) };
+};
+const write = (path, text) => writeFileSync(join(site, path), text);
+rmSync(join(site, 'src/pages/alpine-check.astro'));
+
+let result = doctor('');
+expect(result.status === 0 && result.report.ok, 'yatris doctor passes on a freshly scaffolded site (it builds first)');
+
+const navigation = read('src/navigation.ts');
+write('src/navigation.ts', navigation.replace("{ label: 'ホーム', href: '/' },", "{ label: 'ホーム', href: '/' },\n  { label: '無いページ', href: '/missing/' },"));
+result = doctor('');
+expect(result.status === 1 && result.errors.includes('build-failed'), 'an invalid navigation destination fails the build and doctor');
+expect(result.report.findings.some((f) => f.message.includes('無いページ → /missing/')), 'the failure names the bad destination');
+write('src/navigation.ts', navigation);
+
+write('src/pages/untitled.astro', '<html lang="ja"><head><meta charset="utf-8"></head><body></body></html>');
+sh('npm run build', site);
+expect(doctor().errors.includes('missing-title'), 'a page with no title fails the audit');
+rmSync(join(site, 'src/pages/untitled.astro'));
+
+write('src/pages/leak.astro', `---\nimport BaseLayout from '../layouts/BaseLayout.astro';\n---\n<BaseLayout page={{ title: 'leak' }}><p>alk_${'Zz9'.repeat(14)}</p></BaseLayout>`);
+sh('npm run build', site);
+expect(doctor().errors.includes('credential-leak'), 'a leaked Yatris key in the built output fails the audit');
+rmSync(join(site, 'src/pages/leak.astro'));
+
+const config = read('astro.config.mjs');
+const layout = read('src/layouts/BaseLayout.astro');
+write('astro.config.mjs', config.replace('yatris()', "yatris({ gtmContainerId: 'GTM-TEST123' })"));
+sh('npm run build', site);
+const gtmHome = read('dist/index.html');
+const gtmCount = (pattern) => (gtmHome.match(pattern) ?? []).length;
+expect(
+  gtmCount(/googletagmanager\.com\/gtm\.js/g) === 1 && gtmCount(/googletagmanager\.com\/ns\.html/g) === 1,
+  'a configured GTM container renders exactly one head and one body installation',
+);
+expect(/<body>\s*<noscript><iframe src="https:\/\/www\.googletagmanager\.com\/ns\.html/.test(gtmHome), 'the GTM fallback follows <body> immediately');
+expect(doctor().report.ok, 'doctor accepts the single integration-rendered GTM installation');
+write(
+  'src/layouts/BaseLayout.astro',
+  layout
+    .replace('<YatrisBodyStart />', '<YatrisBodyStart />\n    <YatrisBodyStart />')
+    .replace('<YatrisHead page={page} />', '<YatrisHead page={page} />\n    <YatrisHead page={page} />'),
+);
+sh('npm run build', site);
+expect(doctor().errors.includes('duplicate-gtm'), 'a duplicate GTM installation fails the audit');
+write('src/layouts/BaseLayout.astro', layout);
+write('astro.config.mjs', config);
+sh('npm run build', site);
+expect(doctor().report.ok, 'the restored site passes again');
 
 // The configuration matches what Astro's own installers produce.
 const configBefore = sha('astro.config.mjs');

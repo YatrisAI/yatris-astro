@@ -17,6 +17,10 @@
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },
+    "./head": {
+      "types": "./dist/head.d.ts",
+      "default": "./dist/head.js"
+    },
     "./navigation": {
       "types": "./dist/navigation.d.ts",
       "default": "./dist/navigation.js"
@@ -24,6 +28,11 @@
     "./platform": {
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
+    },
+    "./YatrisHead.astro": "./components/YatrisHead.astro",
+    "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
+    "./virtual": {
+      "types": "./components/virtual.d.ts"
     }
   },
   "bin": {
@@ -31,8 +40,17 @@
   },
   "files": [
     "dist",
+    "components",
     "platform.json"
   ],
+  "peerDependencies": {
+    "astro": "^7.3.5"
+  },
+  "peerDependenciesMeta": {
+    "astro": {
+      "optional": true
+    }
+  },
   "scripts": {
     "build": "node ../../scripts/stage-package.mjs . && tsc -p tsconfig.build.json"
   },

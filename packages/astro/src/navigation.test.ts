@@ -1,5 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { defineNavigation } from './navigation.js';
+import { defineNavigation, missingDestinations, registeredNavigation } from './navigation.js';
+
+describe('missingDestinations', () => {
+  const pages = ['', 'works/', 'works/example/', 'about.html'];
+
+  it('finds nothing missing when every internal page was built', () => {
+    const items = [
+      { label: 'ホーム', href: '/' },
+      { label: '実績', href: '/works/', children: [{ label: '事例', href: '/works/example/' }] },
+      { label: '会社概要', href: '/about' },
+      { label: '外部', href: 'https://example.com/' },
+      { label: 'アンカー', href: '/works/#top' },
+    ];
+
+    expect(missingDestinations(items, pages)).toEqual([]);
+  });
+
+  it('reports internal destinations that were not built, including nested ones', () => {
+    const items = [{ label: '実績', href: '/works/', children: [{ label: '無し', href: '/works/missing/' }] }, { label: 'News', href: '/news/' }];
+
+    expect(missingDestinations(items, pages).map((i) => i.href)).toEqual(['/works/missing/', '/news/']);
+  });
+});
+
+describe('navigation registry', () => {
+  it('remembers the navigation declared last', () => {
+    const items = defineNavigation([{ label: 'ホーム', href: '/' }]);
+    expect(registeredNavigation()).toBe(items);
+  });
+});
 
 describe('defineNavigation', () => {
   it('returns valid entries unchanged', () => {

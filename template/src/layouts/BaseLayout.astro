@@ -1,26 +1,29 @@
 ---
-// Minimal, unstyled document shell. Replace the markup freely during site
-// design; keep the global stylesheet import so Tailwind stays available.
+// Minimal, unstyled document shell. Replace the visible markup freely during
+// site design. Keep YatrisHead first in <head>, YatrisBodyStart first in
+// <body>, and the global stylesheet import so Tailwind stays available.
 import '../styles/global.css';
+import type { YatrisPageMeta } from '@yatris/astro';
+import YatrisHead from '@yatris/astro/YatrisHead.astro';
+import YatrisBodyStart from '@yatris/astro/YatrisBodyStart.astro';
 import navigation from '../navigation';
 
 interface Props {
-  title: string;
+  page: YatrisPageMeta;
 }
 
-const { title } = Astro.props;
+const { page } = Astro.props;
 ---
 
 <!doctype html>
 <html lang="ja">
   <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{title}</title>
+    <YatrisHead page={page} />
     <!-- No favicon until site design provides one; this avoids a 404 request. -->
     <link rel="icon" href="data:," />
   </head>
   <body>
+    <YatrisBodyStart />
     <a href="#main" class="sr-only focus:not-sr-only">本文へスキップ</a>
     <header>
       <nav aria-label="メインメニュー">

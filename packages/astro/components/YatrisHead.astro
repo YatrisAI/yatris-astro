@@ -1,0 +1,28 @@
+---
+// Document-level infrastructure for <head>: charset, viewport, title,
+// description, canonical, robots, social metadata, structured data, Search
+// Console verification and Google Tag Manager. Place it first in <head>; add
+// any other head content after it.
+import config from 'virtual:yatris/config';
+import { headTags, type YatrisPageMeta } from '@yatris/astro/head';
+
+interface Props {
+  page: YatrisPageMeta;
+}
+
+const tags = headTags(Astro.props.page, { site: Astro.site, pathname: Astro.url.pathname, config });
+---
+
+{
+  tags.map((t) =>
+    t.tag === 'title' ? (
+      <title>{t.text}</title>
+    ) : t.tag === 'meta' ? (
+      <meta {...t.attrs} />
+    ) : t.tag === 'link' ? (
+      <link {...t.attrs} />
+    ) : (
+      <script is:inline {...t.attrs} set:html={t.html} />
+    ),
+  )
+}
