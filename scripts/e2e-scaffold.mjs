@@ -50,7 +50,8 @@ sh(`npm install --offline --no-audit --no-fund "${tarball('create-yatris')}" "${
 
 // Generate, install and build exactly as a user would, with @yatris/astro
 // pointed at the packed tarball because it is not published yet.
-sh(`npm exec --offline -- create-yatris "${site}" --yes --yatris-astro "file:${tarball('@yatris/astro')}"`, runnerDir);
+// Not --offline: npm passes that on to the nested `npm install`.
+sh(`npm exec -- create-yatris "${site}" --yes --yatris-astro "file:${tarball('@yatris/astro')}"`, runnerDir);
 expect(existsSync(join(site, 'dist/index.html')), 'create-yatris installed dependencies and built the new site');
 expect(existsSync(join(site, 'package-lock.json')), 'the new site has a lockfile');
 expect(existsSync(join(site, '.git')), 'the new site is a Git repository (Tailwind then ignores .astro/)');
