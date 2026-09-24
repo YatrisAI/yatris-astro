@@ -1,0 +1,38 @@
+{
+  "name": "@yatris/astro",
+  "version": "0.0.0",
+  "description": "Yatris Astro integration, build contract and the yatris CLI for Yatris-managed websites.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YatrisAI/yatris-astro.git",
+    "directory": "packages/astro"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform.d.ts",
+      "default": "./dist/platform.js"
+    }
+  },
+  "bin": {
+    "yatris": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "platform.json"
+  ],
+  "scripts": {
+    "build": "node ../../scripts/stage-package.mjs . && tsc -p tsconfig.build.json"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
