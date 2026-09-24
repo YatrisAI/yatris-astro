@@ -1,0 +1,44 @@
+---
+// Minimal, unstyled document shell. Replace the markup freely during site
+// design; keep the global stylesheet import so Tailwind stays available.
+import '../styles/global.css';
+import navigation from '../navigation';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <!-- No favicon until site design provides one; this avoids a 404 request. -->
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <a href="#main" class="sr-only focus:not-sr-only">本文へスキップ</a>
+    <header>
+      <nav aria-label="メインメニュー">
+        <ul>
+          {
+            navigation.map((item) => (
+              <li>
+                <a href={item.href} aria-current={Astro.url.pathname === item.href ? 'page' : undefined}>
+                  {item.label}
+                </a>
+              </li>
+            ))
+          }
+        </ul>
+      </nav>
+    </header>
+    <main id="main">
+      <slot />
+    </main>
+  </body>
+</html>

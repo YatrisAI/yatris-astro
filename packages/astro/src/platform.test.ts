@@ -25,7 +25,7 @@ describe('platform manifest', () => {
   it('pins the house frontend stack to exact versions', () => {
     const { dependencies } = readPlatformManifest(manifestUrl);
 
-    for (const name of ['astro', 'tailwindcss', '@tailwindcss/vite', 'alpinejs', '@astrojs/alpinejs']) {
+    for (const name of ['astro', 'tailwindcss', '@tailwindcss/vite', 'alpinejs', '@astrojs/alpinejs', '@types/alpinejs']) {
       expect(dependencies[name], name).toMatch(/^\d+\.\d+\.\d+$/);
     }
   });

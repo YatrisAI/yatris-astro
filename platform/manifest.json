@@ -15,7 +15,8 @@
     "tailwindcss": "4.3.3",
     "@tailwindcss/vite": "4.3.3",
     "alpinejs": "3.17.4",
-    "@astrojs/alpinejs": "1.0.0"
+    "@astrojs/alpinejs": "1.0.0",
+    "@types/alpinejs": "3.13.11"
   },
   "migrations": []
 }

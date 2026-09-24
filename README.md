@@ -32,6 +32,12 @@ npm run check   # build, unit tests, then pack-and-install smoke test
 `npm run smoke` packs both packages as npm would publish them, installs the
 tarballs offline into a throwaway project, and runs their entry points.
 
+`npm run e2e` (after a build; needs network) runs the packed `create-yatris`
+to generate a site, lets it install and build, then checks the output: Tailwind
+and Alpine work, nothing loads from a CDN, no credentials leak, and Astro's own
+`astro add tailwind alpinejs` finds nothing left to configure. Set
+`E2E_KEEP=1` to keep the generated site in `.e2e/site` for inspection.
+
 Nothing is published yet (YatrisAI/YatrisCMS#258).
 
 ## Branches
