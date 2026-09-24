@@ -10,8 +10,12 @@ process.exitCode = await run(process.argv.slice(2), {
   err: (line) => console.error(line),
   exec: (command, args, cwd) =>
     new Promise((resolve) => {
-      // npm is a .cmd shim on Windows, which only a shell can start.
-      const child = spawn(command, args, { cwd, stdio: 'inherit', shell: process.platform === 'win32' });
+      // npm is a .cmd shim on Windows, which only a shell can start. Our
+      // arguments are fixed words, so joining them for the shell is safe.
+      const child =
+        process.platform === 'win32'
+          ? spawn([command, ...args].join(' '), { cwd, stdio: 'inherit', shell: true })
+          : spawn(command, args, { cwd, stdio: 'inherit' });
       child.on('close', (code) => resolve(code ?? 1));
       child.on('error', () => resolve(1));
     }),

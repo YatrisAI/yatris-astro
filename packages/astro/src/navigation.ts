@@ -15,7 +15,38 @@ export interface NavigationItem {
  */
 export function defineNavigation(items: NavigationItem[]): NavigationItem[] {
   items.forEach((item, index) => check(item, `navigation[${index}]`));
+  // Recorded for the integration's end-of-build check that every internal
+  // destination was actually built (the build renders pages in-process).
+  (globalThis as Record<symbol, unknown>)[NAVIGATION_REGISTRY] = items;
   return items;
+}
+
+export const NAVIGATION_REGISTRY = Symbol.for('yatris.navigation');
+
+/** The navigation most recently declared in this process, if any. */
+export function registeredNavigation(): NavigationItem[] | undefined {
+  return (globalThis as Record<symbol, unknown>)[NAVIGATION_REGISTRY] as NavigationItem[] | undefined;
+}
+
+/**
+ * Internal destinations that do not match a built page. `pages` are Astro's
+ * built pathnames (`''` for the home page, `works/` for `/works/`).
+ */
+export function missingDestinations(items: NavigationItem[], pages: string[]): NavigationItem[] {
+  const built = new Set(pages.map(normalize));
+  const missing: NavigationItem[] = [];
+  const visit = (item: NavigationItem) => {
+    if (item.href.startsWith('/') && !built.has(normalize(new URL(item.href, 'https://x.invalid').pathname))) {
+      missing.push(item);
+    }
+    item.children?.forEach(visit);
+  };
+  items.forEach(visit);
+  return missing;
+}
+
+function normalize(path: string): string {
+  return decodeURI(path).replace(/^\/+|\/+$/g, '').replace(/\/index(\.html)?$|^index(\.html)?$|\.html$/, '');
 }
 
 function check(item: NavigationItem, at: string): void {

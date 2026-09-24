@@ -15,6 +15,11 @@ entirely the site's own.
 - **Images** committed to the repository live in `src/assets/images/`.
 - **Layouts and shared components** live in `src/layouts/` and
   `src/components/`. There is no mandatory Yatris UI component library.
+- **Document metadata**: every page's `<head>` starts with `YatrisHead`
+  (`@yatris/astro/YatrisHead.astro`), given a `page` object with at least a
+  `title`; every `<body>` starts with `YatrisBodyStart`. They own the title,
+  description, canonical URL, social metadata and Google Tag Manager. Never
+  hand-write Google tags (`gtag`, GTM snippets); GTM is configured in Yatris.
 - **Styling** uses Tailwind CSS 4 (`src/styles/global.css`, CSS-first
   `@theme`; there is no `tailwind.config.*`). Follow the
   `tailwindcss-development` skill.
@@ -31,9 +36,11 @@ Before you finish, run:
 ```sh
 npm ci
 npm run build
+npm run doctor
 ```
 
-Both must succeed.
+All must succeed. `npm run doctor` rebuilds the site, then checks the
+repository contract, lints `src/` and audits the build output; fix every ✖.
 
 ## Boundaries
 

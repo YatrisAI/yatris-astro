@@ -40,6 +40,11 @@ for (const pkg of packed) {
     expect(files.includes(required), `${pkg.name} tarball contains ${required}`);
   }
   expect(!files.some((f) => f.endsWith('.test.js') || f.startsWith('src/')), `${pkg.name} tarball ships no sources or tests`);
+  if (pkg.name === '@yatris/astro') {
+    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro']) {
+      expect(files.includes(component), `@yatris/astro tarball contains ${component}`);
+    }
+  }
   if (pkg.name === 'create-yatris') {
     expect(files.includes('template/README.md'), 'create-yatris tarball contains the template');
     expect(files.includes('skills/README.md'), 'create-yatris tarball contains the skill pack');

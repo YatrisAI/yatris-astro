@@ -1,0 +1,10 @@
+---
+// Integrations that must follow the opening <body> tag immediately, such as
+// Google Tag Manager's <noscript> fallback. Renders nothing when unconfigured.
+import config from 'virtual:yatris/config';
+import { gtmNoscript } from '@yatris/astro/head';
+
+const html = config.gtmContainerId ? gtmNoscript(config.gtmContainerId) : '';
+---
+
+{html && <Fragment set:html={html} />}
