@@ -1,0 +1,21 @@
+{
+  "manifestVersion": 1,
+  "platformVersion": "0.0.0",
+  "channel": "stable",
+  "status": "unreleased",
+  "node": ">=22.12.0",
+  "packages": {
+    "@yatris/astro": "0.0.0",
+    "create-yatris": "0.0.0"
+  },
+  "template": "0.0.0",
+  "skills": "0.0.0",
+  "dependencies": {
+    "astro": "7.3.5",
+    "tailwindcss": "4.3.3",
+    "@tailwindcss/vite": "4.3.3",
+    "alpinejs": "3.17.4",
+    "@astrojs/alpinejs": "1.0.0"
+  },
+  "migrations": []
+}
