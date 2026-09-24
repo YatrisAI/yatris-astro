@@ -13,6 +13,7 @@
     "build": "npm run build --workspaces",
     "test": "vitest run",
     "smoke": "node scripts/smoke-pack.mjs",
+    "e2e": "node scripts/e2e-scaffold.mjs",
     "check": "npm run build && npm test && npm run smoke",
     "changeset": "changeset",
     "version-packages": "changeset version"

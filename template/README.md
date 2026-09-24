@@ -1,9 +1,11 @@
-# Managed-site template
+# Yatris-managed website
 
-Source of the neutral Astro project that `create-yatris` generates. It is
-copied into the `create-yatris` package at build time; edit it here, never in
-`packages/create-yatris/template/`.
+Created with `create-yatris`. Built with Astro, Tailwind CSS 4 and Alpine.js 3.
 
-The template itself (Astro, Tailwind CSS 4, Alpine.js 3, typed
-`src/navigation.ts`, agent instructions) arrives in Slice 2
-(YatrisAI/YatrisCMS#261).
+```sh
+npm ci          # install the locked dependencies
+npm run dev     # local development server
+npm run build   # production build into dist/
+```
+
+Agent and developer conventions are in [AGENTS.md](AGENTS.md).

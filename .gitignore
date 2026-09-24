@@ -11,3 +11,4 @@ packages/create-yatris/template/
 packages/create-yatris/skills/
 .smoke/
 packages/*/LICENSE
+.e2e/

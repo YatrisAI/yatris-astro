@@ -1,8 +1,20 @@
 # Canonical skill pack
 
 Single source of the first-party agent skills that generated sites receive in
-both `.agents/skills/` (Codex) and `.claude/skills/` (Claude). It is copied
-into the `create-yatris` package at build time; edit it here only.
+both `.agents/skills/` (Codex) and `.claude/skills/` (Claude). Each
+subdirectory is one skill. `create-yatris` copies them into both locations
+byte-for-byte; edit them here only.
 
-The first skills (`tailwindcss-development`, `alpinejs-development`) arrive in
-Slice 2 (YatrisAI/YatrisCMS#261).
+Frontmatter stays within the portable Agent Skills subset (`name`,
+`description`).
+
+## Attribution
+
+These skills are written by Yatris. Their rules were informed by reviewing:
+
+- `tailwindcss-development`: Laravel Boost's Tailwind CSS 4 skill
+  (https://github.com/laravel/boost, MIT).
+- `alpinejs-development`: the Mindrally Alpine.js skill
+  (https://github.com/Mindrally/skills).
+
+No text is copied; Laravel- and Livewire-specific guidance is excluded.

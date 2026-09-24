@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/*
+ * Site design tokens go here during site design, for example:
+ *
+ * @theme {
+ *   --color-brand-500: oklch(0.6 0.15 250);
+ *   --font-sans: "Noto Sans JP", sans-serif;
+ * }
+ */
+
+/* Hide Alpine-controlled elements until Alpine has initialised them. */
+[x-cloak] {
+  display: none !important;
+}
