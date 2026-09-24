@@ -1,4 +1,5 @@
 import { resolveConfig, type YatrisOptions } from './config.js';
+import { loadDeliveryEnv } from './env.js';
 import { missingDestinations, registeredNavigation } from './navigation.js';
 
 export type { YatrisOptions } from './config.js';
@@ -16,7 +17,11 @@ interface Logger {
 export interface YatrisIntegration {
   name: '@yatris/astro';
   hooks: {
-    'astro:config:setup': (options: { updateConfig: (config: Record<string, unknown>) => unknown }) => void;
+    'astro:config:setup': (options: {
+      config?: { root: URL };
+      command?: 'dev' | 'build' | 'preview' | 'sync';
+      updateConfig: (config: Record<string, unknown>) => unknown;
+    }) => Promise<void>;
     'astro:build:done': (options: { pages: { pathname: string }[]; logger: Logger }) => void;
   };
 }
@@ -32,7 +37,8 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
   return {
     name: '@yatris/astro',
     hooks: {
-      'astro:config:setup': ({ updateConfig }) => {
+      'astro:config:setup': async ({ config: astroConfig, command, updateConfig }) => {
+        if (astroConfig) await loadDeliveryEnv(astroConfig.root, command === 'dev' ? 'development' : 'production');
         updateConfig({
           vite: {
             plugins: [

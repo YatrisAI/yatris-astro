@@ -2,7 +2,7 @@
 // a site, lets it install dependencies (from the npm registry) and build, then
 // checks the result. Run after `npm run build`. Needs network for the site's
 // own dependencies (Astro, Tailwind, Alpine).
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
@@ -138,6 +138,97 @@ write('src/layouts/BaseLayout.astro', layout);
 write('astro.config.mjs', config);
 sh('npm run build', site);
 expect(doctor().report.ok, 'the restored site passes again');
+
+// Delivery API loader, against a local stand-in for the Delivery API. The
+// settings come from the site's ignored .env file, as they would locally.
+const port = 4600 + Math.floor(Math.random() * 300);
+const key = `alk_${'e2eKey'.repeat(7)}`;
+const fixture = join(work, 'delivery.json');
+const setItems = (value) => writeFileSync(fixture, JSON.stringify(value));
+const work_ = (n, payload = { title: `実績 ${n}`, client: `顧客 ${n}` }) => ({
+  canonical_id: `w-${n}`,
+  type: 'works',
+  version: 1,
+  published_at: '2026-09-01T10:00:00+09:00',
+  updated_at: `2026-09-01T10:${String(n % 60).padStart(2, '0')}:00+09:00`,
+  payload,
+});
+setItems({ items: Array.from({ length: 150 }, (_, i) => work_(i + 1)) });
+const server = spawn(process.execPath, [join(root, 'scripts/fake-delivery.mjs'), String(port), fixture, key], { stdio: 'ignore' });
+process.on('exit', () => server.kill());
+await new Promise((resolve) => setTimeout(resolve, 500));
+
+write('.env', `YATRIS_DELIVERY_ENDPOINT=http://127.0.0.1:${port}/api/v1/delivery/7\nYATRIS_DELIVERY_API_KEY=${key}\n`);
+mkdirSync(join(site, 'src/pages/works'), { recursive: true });
+const workSchema = `const schema = z.object({ title: z.string(), client: z.string() });`;
+write(
+  'src/pages/works/index.astro',
+  `---
+import { z } from 'astro/zod';
+import { getYatrisList } from '@yatris/astro/delivery';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+${workSchema}
+const works = await getYatrisList('works', { schema });
+---
+<BaseLayout page={{ title: '実績紹介' }}>
+  <ul>{works.map((w) => <li><a href={\`/works/\${w.canonicalId}/\`}>{w.data.title}</a></li>)}</ul>
+</BaseLayout>
+`,
+);
+write(
+  'src/pages/works/[id].astro',
+  `---
+import { z } from 'astro/zod';
+import { getYatrisList } from '@yatris/astro/delivery';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+export async function getStaticPaths() {
+  // getStaticPaths cannot see other frontmatter variables, so the schema lives here.
+  ${workSchema}
+  const works = await getYatrisList('works', { schema });
+  return works.map((work) => ({ params: { id: work.canonicalId }, props: { work } }));
+}
+const { work } = Astro.props;
+---
+<BaseLayout page={{ title: work.data.title }}><h1>{work.data.title}</h1><p>{work.data.client}</p></BaseLayout>
+`,
+);
+write(
+  'src/pages/news.astro',
+  `---
+import { getYatrisList } from '@yatris/astro/delivery';
+import BaseLayout from '../layouts/BaseLayout.astro';
+const news = await getYatrisList('news', { allowEmpty: true });
+---
+<BaseLayout page={{ title: 'お知らせ' }}>
+  {news.length === 0 ? <p>お知らせはまだありません。</p> : <ul>{news.map((n) => <li>{n.canonicalId}</li>)}</ul>}
+</BaseLayout>
+`,
+);
+
+sh('npm run build', site);
+expect(read('dist/works/index.html').split('href="/works/w-').length - 1 === 150, 'the list page renders all 150 published items across two API pages');
+expect(existsSync(join(site, 'dist/works/w-150/index.html')) && read('dist/works/w-150/index.html').includes('顧客 150'), 'getStaticPaths builds a detail page per item');
+expect(read('dist/news/index.html').includes('お知らせはまだありません。'), 'an empty list that is allowed to be empty renders its empty state');
+expect(doctor().report.ok, 'doctor passes the content site and finds no key in the build output');
+expect(!distFiles('.html').concat(distFiles('.js')).some((f) => f.includes(key)), 'the Delivery key never reaches the built output');
+
+const failedBuild = (label) => {
+  const r = spawnSync('npm run build', { cwd: site, shell: true, encoding: 'utf8', env });
+  return { failed: r.status !== 0, output: `${r.stdout}\n${r.stderr}`, label };
+};
+setItems({ malformed: true });
+let build = failedBuild();
+expect(build.failed && build.output.includes('malformed Delivery response'), 'a malformed Delivery envelope fails the build');
+setItems({ items: [work_(1), work_(2, { title: '実績 2' })] });
+build = failedBuild();
+expect(
+  build.failed && build.output.includes('Content Type "works", item w-2: content does not match the declared schema'),
+  'an item that does not match the declared schema fails the build, naming the item',
+);
+expect(!build.output.includes(key), 'build failures never print the Delivery key');
+
+server.kill();
+for (const path of ['src/pages/works', 'src/pages/news.astro', '.env']) rmSync(join(site, path), { recursive: true });
 
 // The configuration matches what Astro's own installers produce.
 const configBefore = sha('astro.config.mjs');

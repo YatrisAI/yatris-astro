@@ -39,9 +39,9 @@ describe('integration', () => {
     expect(() => yatris({ gtmContainerId: 'UA-12345' })).toThrow('GTM-XXXXXXX');
   });
 
-  it('serves its settings to the components through a virtual module', () => {
+  it('serves its settings to the components through a virtual module', async () => {
     let plugin: { resolveId: (id: string) => unknown; load: (id: string) => unknown } | undefined;
-    yatris({ gtmContainerId: 'GTM-ABC1234' }).hooks['astro:config:setup']({
+    await yatris({ gtmContainerId: 'GTM-ABC1234' }).hooks['astro:config:setup']({
       updateConfig: (config) => {
         plugin = (config as { vite: { plugins: (typeof plugin)[] } }).vite.plugins[0];
         return config;
