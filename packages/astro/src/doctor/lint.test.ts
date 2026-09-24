@@ -19,6 +19,12 @@ describe('lintSource', () => {
     );
   });
 
+  it('fails direct Delivery API calls that bypass the loader', () => {
+    expect(codes("await fetch(`${import.meta.env.YATRIS_DELIVERY_ENDPOINT}/items`)")).toContain('error:direct-delivery');
+    expect(codes("fetch('https://api.yatris.jp/api/v1/delivery/7/items')")).toContain('error:direct-delivery');
+    expect(codes("import { getYatrisList } from '@yatris/astro/delivery';")).toEqual([]);
+  });
+
   it('fails CDN scripts', () => {
     expect(codes('<script src="https://unpkg.com/alpinejs" defer></script>')).toContain('error:cdn-script');
   });

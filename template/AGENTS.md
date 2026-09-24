@@ -48,6 +48,11 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   etc.) belongs in Yatris CMS Content Types, not in hardcoded arrays, JSON
   files or duplicated pages. If such content has no Content Type yet, stop and
   say so instead of hardcoding it.
+- Read published CMS content at build time only, with `getYatrisList`,
+  `getYatrisSingleton` or `getYatrisItem` from `@yatris/astro/delivery`
+  (pass a `schema` from `astro/zod`, and `allowEmpty: true` plus an empty
+  state where no items is expected). Never call the Delivery API directly or
+  from browser code.
 - Never invent customer facts, testimonials, logos, results or other factual
   claims to fill a design.
 - Never commit credentials. Yatris Delivery keys exist only in ignored `.env`

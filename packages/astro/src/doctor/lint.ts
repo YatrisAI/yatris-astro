@@ -14,6 +14,12 @@ const RULES: { code: string; severity: Finding['severity']; pattern: RegExp; mes
     message: 'a PUBLIC_ environment variable exposes a Yatris credential to the browser',
   },
   {
+    code: 'direct-delivery',
+    severity: 'error',
+    pattern: /\/api\/v1\/delivery\b|YATRIS_DELIVERY_(?:ENDPOINT|API_KEY)/,
+    message: 'reads the Delivery API directly; use getYatrisList/getYatrisSingleton/getYatrisItem from @yatris/astro/delivery',
+  },
+  {
     code: 'cdn-script',
     severity: 'error',
     pattern: /<script\b[^>]*\bsrc=["']?(?:https?:)?\/\/(?:cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|esm\.sh|cdn\.skypack\.dev|ga\.jspm\.io)/i,
