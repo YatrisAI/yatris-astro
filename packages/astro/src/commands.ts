@@ -130,7 +130,7 @@ async function runConnect(argv: string[], env: CliEnvironment): Promise<CliResul
 
     return {
       code: 0,
-      stdout: `Paired with Yatris Website ${identity.website.id} (${identity.website.name}).\nWrote ${written.join(', ')}.\nSign in to the Yatris MCP server from your agent client (for example: codex mcp login yatris, or /mcp in Claude Code).`,
+      stdout: `Paired with Yatris Website ${identity.website.id} (${identity.website.name}).\nWrote ${written.join(', ')}.\nSign in to the Yatris MCP from your agent client: in Claude Code, open claude here, approve the yatris server, then run claude mcp login yatris; in Codex, trust this project, then run codex mcp login yatris.`,
       stderr: '',
     };
   } catch (error) {
