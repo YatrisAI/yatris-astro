@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { mcpDescriptor, mcpFiles } from '@yatris/astro/mcp';
+import { lockFor, managedArtifacts, writePlatformLock } from '@yatris/astro/platform-lock';
 import { emptyLock, LOCK_PATH } from '@yatris/astro/schema';
 import type { PlatformManifest } from '@yatris/astro/platform';
 
@@ -70,6 +71,11 @@ export function createProject(options: CreateOptions, sources: Sources): string 
     mkdirSync(dirname(join(target, path)), { recursive: true });
     writeFileSync(join(target, path), contents);
   }
+
+  // The platform lock: this release, and the digest of every managed
+  // artifact as written, so `yatris update` can tell a local edit (#272)
+  const artifacts = managedArtifacts({ skillsDir: sources.skillsDir, agentsTemplate: join(sources.templateDir, 'AGENTS.md') }, sources.manifest.mcp.url);
+  writePlatformLock(target, lockFor(sources.manifest, artifacts));
 
   return target;
 }

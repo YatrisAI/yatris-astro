@@ -7,8 +7,8 @@ dist/
 .DS_Store
 coverage/
 packages/*/platform.json
-packages/create-yatris/template/
-packages/create-yatris/skills/
+packages/*/template/
+packages/*/skills/
 .smoke/
 packages/*/LICENSE
 .e2e/

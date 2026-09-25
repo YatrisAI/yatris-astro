@@ -4,8 +4,9 @@
 // own dependencies (Astro, Tailwind, Alpine).
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const root = resolve(import.meta.dirname, '..');
 const work = resolve(root, '.e2e');
@@ -241,6 +242,74 @@ const configBefore = sha('astro.config.mjs');
 const added = sh('npx astro add tailwind alpinejs --yes', site, { both: true });
 expect(added.includes('Configuration up-to-date'), '`astro add tailwind alpinejs` finds nothing to configure');
 expect(sha('astro.config.mjs') === configBefore, '`astro add` leaves astro.config.mjs unchanged');
+
+// Release matrix (#272): update this real site from the packed release to a
+// "next" release built from it, through a local release source, exercising
+// conflict, rollback and success against real npm, Astro and git.
+const { extractTarball } = await import(pathToFileURL(join(root, 'packages/astro/dist/update/tarball.js')).href);
+const source = join(work, 'releases');
+mkdirSync(source, { recursive: true });
+const nextPackage = extractTarball(tarball('@yatris/astro'), join(work, 'next'));
+const bump = (path, change) => writeFileSync(join(nextPackage, path), JSON.stringify(change(JSON.parse(readFileSync(join(nextPackage, path), 'utf8'))), null, 2));
+bump('package.json', (pkg) => ({ ...pkg, version: '0.0.1' }));
+bump('platform.json', (m) => ({ ...m, platformVersion: '0.0.1', status: 'released', packages: { ...m.packages, '@yatris/astro': '0.0.1' } }));
+const skillFile = 'skills/alpinejs-development/SKILL.md';
+writeFileSync(join(nextPackage, skillFile), `${readFileSync(join(nextPackage, skillFile), 'utf8')}\n<!-- e2e: changed in platform 0.0.1 -->\n`);
+sh(`npm pack "${nextPackage}" --pack-destination "${source}"`, work);
+cpSync(tarball('@yatris/astro'), join(source, 'yatris-astro-0.0.0.tgz'));
+
+const updateEnv = { ...env, YATRIS_UPDATE_SOURCE: source };
+const git = (args) => sh(`git -c user.name=e2e -c user.email=e2e@example.invalid ${args}`, site);
+const update = (args = '') => {
+  const r = spawnSync(`npm run yatris:update --silent -- ${args}`, { cwd: site, shell: true, encoding: 'utf8', env: updateEnv });
+  return { status: r.status, output: `${r.stdout}\n${r.stderr}` };
+};
+const siteSkills = ['.agents/skills/alpinejs-development/SKILL.md', '.claude/skills/alpinejs-development/SKILL.md'];
+const installedYatris = () => JSON.parse(read('node_modules/@yatris/astro/package.json')).version;
+
+write('src/pages/custom.astro', `---\nimport BaseLayout from '../layouts/BaseLayout.astro';\n---\n<BaseLayout page={{ title: '独自ページ' }}><p>site-owned</p></BaseLayout>\n`);
+for (const location of ['.agents/skills', '.claude/skills']) {
+  mkdirSync(join(site, location, 'site-voice'), { recursive: true });
+  write(`${location}/site-voice/SKILL.md`, '# site voice\n');
+}
+git('add -A');
+git('commit -q -m "site work"');
+
+const check = spawnSync('npm run yatris:update:check --silent', { cwd: site, shell: true, encoding: 'utf8', env: updateEnv });
+expect(check.status === 0 && check.stdout.includes('Update available: Yatris platform 0.0.0 → 0.0.1'), 'yatris:update:check finds the newer stable release');
+let run = update('--dry-run');
+expect(run.status === 0 && run.output.includes('refresh .claude/skills/alpinejs-development/SKILL.md') && git('status --porcelain').trim() === '', '--dry-run lists the managed-file refresh and writes nothing');
+
+const lockBefore = read('.yatris/platform.lock.json');
+write(siteSkills[1], `${read(siteSkills[1])}\nOur own rule.\n`);
+git('commit -q -am "customise a managed skill"');
+run = update('--yes --to 0.0.1');
+expect(run.status === 1 && run.output.includes('customised') && read(siteSkills[1]).includes('Our own rule.'), 'a locally edited managed skill stops the update instead of being overwritten');
+expect(read('.yatris/platform.lock.json') === lockBefore && installedYatris() === '0.0.0' && git('status --porcelain').trim() === '', 'the stopped update changed nothing (its proposal is in the ignored conflicts folder)');
+git('revert --no-edit HEAD');
+
+const pkgText = read('package.json');
+const pkgLock = read('package-lock.json');
+write('package.json', pkgText.replace('"scripts": {', '"scripts": {\n    "test": "node -e \\"process.exit(1)\\"",'));
+git('commit -q -am "a failing test script"');
+const touched = ['package.json', 'package-lock.json', '.yatris/platform.lock.json', ...siteSkills].map((p) => [p, read(p)]);
+run = update('--yes --to 0.0.1');
+expect(run.status === 1 && run.output.includes('rolled back') && run.output.includes('npm run test'), 'a failing verification rolls the update back and names the failing command');
+expect(touched.every(([p, text]) => read(p) === text) && installedYatris() === '0.0.0', 'the rollback restored every file it touched and the previous dependencies');
+expect(git('status --porcelain').trim() === '' && read('src/pages/custom.astro').includes('site-owned'), 'nothing else changed: the working tree is clean');
+
+write('package.json', pkgText);
+git('commit -q -am "remove the failing test"');
+const head = git('rev-parse HEAD').trim();
+run = update('--yes --to 0.0.1');
+expect(run.status === 0 && run.output.includes('verification passed'), 'the update applies and passes verification (doctor, which builds)');
+expect(installedYatris() === '0.0.1' && JSON.parse(read('.yatris/platform.lock.json')).platformVersion === '0.0.1', 'the platform package and lock advanced together');
+expect(siteSkills.every((p) => read(p).includes('changed in platform 0.0.1')), 'the managed skill was refreshed in both agent locations');
+expect(read('src/pages/custom.astro').includes('site-owned') && read('.agents/skills/site-voice/SKILL.md') === '# site voice\n', 'site pages and custom skills survive the update');
+const changed = git('status --porcelain').split('\n').filter(Boolean).map((l) => l.slice(3)).sort();
+expect(JSON.stringify(changed) === JSON.stringify(['.agents/skills/alpinejs-development/SKILL.md', '.claude/skills/alpinejs-development/SKILL.md', '.yatris/platform.lock.json', 'package-lock.json', 'package.json']), `the update left a reviewable diff of exactly the managed files (${changed.join(', ')})`);
+expect(git('rev-parse HEAD').trim() === head, 'the updater made no commit');
+expect(pkgLock !== read('package-lock.json'), 'the lockfile records the new release');
 
 if (!process.env.E2E_KEEP) rmSync(work, { recursive: true, force: true });
 console.log('e2e: all checks passed');

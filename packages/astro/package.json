@@ -37,6 +37,10 @@
       "types": "./dist/navigation.d.ts",
       "default": "./dist/navigation.js"
     },
+    "./platform-lock": {
+      "types": "./dist/platform-lock.d.ts",
+      "default": "./dist/platform-lock.js"
+    },
     "./platform": {
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
@@ -61,7 +65,9 @@
   "files": [
     "dist",
     "components",
-    "platform.json"
+    "platform.json",
+    "template",
+    "skills"
   ],
   "peerDependencies": {
     "astro": "^7.3.5"
@@ -72,7 +78,7 @@
     }
   },
   "scripts": {
-    "build": "node ../../scripts/stage-package.mjs . && tsc -p tsconfig.build.json"
+    "build": "node ../../scripts/stage-package.mjs . --with-assets && tsc -p tsconfig.build.json"
   },
   "publishConfig": {
     "access": "public"
