@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { MCP_FILES, mcpDescriptor, mcpFiles } from '../mcp.js';
 import { readPlatformManifest } from '../platform.js';
 import { doctor, formatReport } from './doctor.js';
 import { SKILL_LOCATIONS } from './structure.js';
@@ -32,6 +33,10 @@ function scaffold(): string {
   }
   mkdirSync(join(dir, '.yatris'));
   writeFileSync(join(dir, '.yatris/project.json'), JSON.stringify({ contractVersion: 1, websiteId: null }));
+  mkdirSync(join(dir, '.codex'));
+  for (const [path, contents] of Object.entries(mcpFiles(mcpDescriptor(manifest.mcp.url)))) {
+    writeFileSync(join(dir, path), contents);
+  }
   mkdirSync(join(dir, 'dist'));
   writeFileSync(join(dir, 'dist/index.html'), BUILT);
   return dir;
@@ -97,6 +102,24 @@ describe('yatris doctor --stage=scaffold', () => {
     writeFileSync(join(site, 'tailwind.config.js'), 'export default {}');
 
     expect(await errorCodes()).toEqual(expect.arrayContaining(['missing-yatris', 'legacy-tailwind-config']));
+  });
+
+  it('fails an MCP adapter that drifted from the descriptor', async () => {
+    writeFileSync(join(site, MCP_FILES.codex), '[mcp_servers.yatris]\nurl = "https://elsewhere.example/mcp"\n');
+    expect(await errorCodes()).toContain('mcp-adapter-drift');
+  });
+
+  it('fails a committed MCP credential', async () => {
+    const claude = JSON.parse(mcpFiles(mcpDescriptor(manifest.mcp.url))[MCP_FILES.claude]);
+    claude.mcpServers.yatris.headers = { Authorization: 'Bearer 12|abcdef' };
+    writeFileSync(join(site, MCP_FILES.claude), JSON.stringify(claude));
+
+    expect(await errorCodes()).toEqual(expect.arrayContaining(['mcp-credential', 'mcp-adapter-drift']));
+  });
+
+  it('fails a missing MCP descriptor', async () => {
+    rmSync(join(site, MCP_FILES.descriptor));
+    expect((await run()).findings).toContainEqual(expect.objectContaining({ code: 'missing-path', file: MCP_FILES.descriptor }));
   });
 
   it('lints src/ for hand-written Google tags', async () => {
