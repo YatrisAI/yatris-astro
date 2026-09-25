@@ -16,7 +16,10 @@ import { newestStable, type UpdateSource } from './source.js';
 import { isMajorChange, isStable, nodeSatisfies } from './versions.js';
 
 const repo = fileURLToPath(new URL('../../../../', import.meta.url));
-const current = readPlatformManifest(new URL('platform/manifest.json', `file:///${repo.replaceAll('\\', '/')}`));
+// The repository's manifest, pinned to a fixed test version so these cases
+// do not change with each release: the site is on 0.0.0, the next release 0.1.0
+const repoManifest = readPlatformManifest(new URL('platform/manifest.json', `file:///${repo.replaceAll('\\', '/')}`));
+const current: PlatformManifest = { ...repoManifest, platformVersion: '0.0.0', packages: { ...repoManifest.packages, '@yatris/astro': '0.0.0' } };
 const CUSTOM_PAGE = '---\n---\n<h1>お客様のページ</h1>\n';
 const CUSTOM_SKILL = '# our own skill\n';
 
