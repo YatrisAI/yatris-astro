@@ -49,7 +49,8 @@ afterEach(() => {
 describe('create-yatris CLI', () => {
   it('prints the initializer and platform versions', async () => {
     expect(await run(['--version'], env())).toBe(0);
-    expect(out).toEqual(['create-yatris 0.0.0 (Yatris platform 0.0.0)']);
+    const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(out).toEqual([`create-yatris ${version} (Yatris platform ${version})`]);
   });
 
   it('prints help', async () => {
