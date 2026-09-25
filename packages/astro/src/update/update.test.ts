@@ -269,14 +269,14 @@ describe('yatris update', () => {
     const source: UpdateSource = {
       allowUnreleased: false,
       versions: async () => ['0.0.0', '0.1.0', '0.2.0', '0.3.0-beta.1'],
-      approved: async (version) => version !== '0.2.0',
+      rejection: async (version) => (version === '0.2.0' ? 'it has no npm provenance' : null),
       fetch: async (version) => ({ packageDir: `/tmp/${version}/package`, installSpec: `@yatris/astro@${version}` }),
     };
     const delegate = async (_dir: string, argv: string[]) => (handed.push(argv), 0);
 
     await runUpdate(['--dry-run'], env(fakeExec().fn, { source, delegate, log: (line) => logged.push(line) }));
     expect(handed).toEqual([['--dry-run', '--resolved', '/tmp/0.1.0/package', '--install-spec', '@yatris/astro@0.1.0']]);
-    expect(logged).toContain('Skipping 0.2.0: published, but not an approved Yatris platform release.');
+    expect(logged).toContain('Skipping 0.2.0 (it has no npm provenance): published, but not an approved Yatris platform release.');
 
     expect((await runUpdate(['--to', '0.2.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('not an approved Yatris platform release');
     expect((await runUpdate(['--to', '0.4.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('not published');

@@ -1,0 +1,47 @@
+name: Release
+
+# The only way a Yatris platform release is made (YatrisAI/YatrisCMS#272).
+# It runs on main, and only after a reviewer approves the `npm-release`
+# environment (which also holds the npm credential). It runs the whole
+# compatibility matrix, then marks the release and publishes both packages
+# with npm provenance. `yatris update` and Yatris's update PRs accept a
+# version only when its provenance names exactly this workflow on main
+# (packages/astro/src/update/provenance.ts), so a released marker put into a
+# package any other way is ignored.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: npm-release
+    permissions:
+      contents: read
+      # npm provenance: the Sigstore-signed statement of which workflow built the tarball
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.12.0
+          registry-url: https://registry.npmjs.org
+      - run: npm ci
+      # Marks the manifest and package released in this workspace only; the
+      # repository itself always says unreleased
+      - run: node scripts/mark-released.mjs
+      - run: npm run check
+      - run: npm run e2e
+      - run: npm publish --provenance --access public --workspace packages/astro
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm publish --provenance --access public --workspace packages/create-yatris
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

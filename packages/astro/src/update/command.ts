@@ -103,8 +103,9 @@ async function bootstrap(argv: string[], values: Values, current: string, env: U
   if (!versions.includes(version)) return failure(`Yatris platform ${version} is not published.`);
   // Decision 11.2: the stable channel only (a local mirror may test others)
   if (!isStable(version) && !source.allowUnreleased) return failure(`${version} is a prerelease; managed sites take stable Yatris platform releases only.`);
-  if (values.to && compareVersions(version, current) > 0 && !(await source.approved(version))) {
-    return failure(`${version} is published but is not an approved Yatris platform release.`);
+  if (values.to && compareVersions(version, current) > 0) {
+    const rejection = await source.rejection(version);
+    if (rejection !== null) return failure(`${version} is published but is not an approved Yatris platform release: ${rejection}.`);
   }
   if (compareVersions(version, current) < 0) return failure(`this site is on ${current}; the updater does not downgrade to ${version}.`);
   if (compareVersions(version, current) === 0) return { code: 0, stdout: `This site is already on Yatris platform ${current}.`, stderr: '' };
