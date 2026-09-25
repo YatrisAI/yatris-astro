@@ -21,6 +21,12 @@ export interface YatrisPageMeta {
 export interface YatrisRuntimeConfig {
   gtmContainerId: string | null;
   searchConsoleVerification: string | null;
+  /**
+   * The site's consent policy from Yatris (YatrisCMS#271). `required` starts
+   * Google's Consent Mode denied until the site's consent UI calls
+   * `updateConsent()`; null means no policy (and then no GTM from Yatris).
+   */
+  consentMode?: 'not_required' | 'required' | null;
 }
 
 export interface HeadContext {
@@ -82,10 +88,25 @@ export function headTags(page: YatrisPageMeta, ctx: HeadContext): HeadTag[] {
   }
 
   if (ctx.config.gtmContainerId) {
+    // The consent default must be on the dataLayer before GTM starts
+    if (ctx.config.consentMode === 'required') {
+      tags.push({ tag: 'script', attrs: {}, html: consentDefaultSnippet() });
+    }
     tags.push({ tag: 'script', attrs: {}, html: gtmHeadSnippet(ctx.config.gtmContainerId) });
   }
 
   return tags;
+}
+
+/**
+ * Google Consent Mode's default for a site whose policy requires consent:
+ * everything denied until the visitor decides.
+ */
+export function consentDefaultSnippet(): string {
+  return (
+    'window.dataLayer=window.dataLayer||[];(function(){dataLayer.push(arguments);})' +
+    "('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});"
+  );
 }
 
 /** Google Tag Manager's head snippet for one container. */

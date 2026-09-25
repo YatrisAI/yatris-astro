@@ -50,7 +50,7 @@ describe('integration', () => {
 
     const id = plugin!.resolveId('virtual:yatris/config') as string;
     expect(plugin!.load(id)).toBe(
-      'export default {"gtmContainerId":"GTM-ABC1234","searchConsoleVerification":null};',
+      'export default {"gtmContainerId":"GTM-ABC1234","searchConsoleVerification":null,"consentMode":null};',
     );
   });
 });

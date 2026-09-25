@@ -19,7 +19,13 @@ entirely the site's own.
   (`@yatris/astro/YatrisHead.astro`), given a `page` object with at least a
   `title`; every `<body>` starts with `YatrisBodyStart`. They own the title,
   description, canonical URL, social metadata and Google Tag Manager. Never
-  hand-write Google tags (`gtag`, GTM snippets); GTM is configured in Yatris.
+  hand-write Google tags (`gtag`, GTM snippets); GTM, Search Console and the
+  consent policy are configured in Yatris and read by the production build.
+- **Measurement events and consent**: send events with
+  `trackEvent('snake_case_name', { ... })` and record a visitor's consent
+  choice with `updateConsent({ analytics, ads })`, both from
+  `@yatris/astro/measurement`. The consent UI itself is part of the site
+  design.
 - **Styling** uses Tailwind CSS 4 (`src/styles/global.css`, CSS-first
   `@theme`; there is no `tailwind.config.*`). Follow the
   `tailwindcss-development` skill.
