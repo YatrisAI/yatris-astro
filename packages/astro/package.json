@@ -29,6 +29,10 @@
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"
     },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
     "./navigation": {
       "types": "./dist/navigation.d.ts",
       "default": "./dist/navigation.js"

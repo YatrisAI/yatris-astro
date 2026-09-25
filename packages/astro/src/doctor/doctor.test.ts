@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MCP_FILES, mcpDescriptor, mcpFiles } from '../mcp.js';
 import { readPlatformManifest } from '../platform.js';
+import { emptyLock, LOCK_PATH } from '../schema.js';
 import { doctor, formatReport } from './doctor.js';
 import { SKILL_LOCATIONS } from './structure.js';
 
@@ -33,6 +34,7 @@ function scaffold(): string {
   }
   mkdirSync(join(dir, '.yatris'));
   writeFileSync(join(dir, '.yatris/project.json'), JSON.stringify({ contractVersion: 1, websiteId: null }));
+  writeFileSync(join(dir, LOCK_PATH), JSON.stringify(emptyLock()));
   mkdirSync(join(dir, '.codex'));
   for (const [path, contents] of Object.entries(mcpFiles(mcpDescriptor(manifest.mcp.url)))) {
     writeFileSync(join(dir, path), contents);
