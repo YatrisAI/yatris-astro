@@ -27,9 +27,12 @@ Creates a new Yatris-managed Astro website: Astro, Tailwind CSS 4, Alpine.js 3,
 agent instructions and skills. No design, CMS or credentials are required.
 
 Options:
-  --connect <code>  Pair the new site with its Yatris Website using a single-use
-                    setup code from the dashboard. Optional: pair later with
-                    \`npx yatris connect <code>\` (required before content design)
+  --pair        Pair the new site with its Yatris Website: asks for the
+                single-use setup code from the dashboard, so the code never
+                appears in shell history. Optional now; required before
+                content design (pair later with \`npx yatris connect\`)
+  --connect <code>  Non-interactive pairing, for automation only: the code
+                    ends up in shell history
   --no-install  Write the files only; skip npm install and the first build
   --no-git      Do not initialise a Git repository
   --yes         Never prompt (fails if the directory is missing)
@@ -52,6 +55,7 @@ export async function run(argv: string[], env: Environment): Promise<number> {
         version: { type: 'boolean', short: 'v', default: false },
         help: { type: 'boolean', short: 'h', default: false },
         connect: { type: 'string' },
+        pair: { type: 'boolean', default: false },
         // Test hook: install @yatris/astro from a local tarball.
         'yatris-astro': { type: 'string' },
       },
@@ -99,10 +103,18 @@ export async function run(argv: string[], env: Environment): Promise<number> {
 
   // Pairing (YatrisCMS#270): identity and MCP configuration only, never a
   // secret. A code that fails leaves an unpaired but complete project.
-  if (values.connect !== undefined) {
+  let setupCode = values.connect;
+  if (values.pair && setupCode === undefined) {
+    if (!env.prompt) {
+      env.err('create-yatris: --pair needs an interactive terminal. The project was created unpaired; pair it later with `npx yatris connect`.');
+      return 1;
+    }
+    setupCode = (await env.prompt('Yatris setup code: ')).trim();
+  }
+  if (setupCode !== undefined) {
     try {
       const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
-      const identity = await exchangeSetupCode(values.connect, {
+      const identity = await exchangeSetupCode(setupCode, {
         apiBase: env.yatrisUrl ?? process.env.YATRIS_URL ?? apiBaseFrom(manifest.mcp.url),
         client: { name: 'create-yatris', version },
         fetch: env.fetch,

@@ -72,6 +72,22 @@ describe('pairing', () => {
     expect(existsSync(join(root, '.mcp.json'))).toBe(true);
     expect((await run(['connect'], { cwd: root })).code).toBe(1);
   });
+
+  it('asks for the code when none is given, keeping it out of shell history', async () => {
+    const asked: string[] = [];
+    const result = await run(['connect'], {
+      cwd: root,
+      fetch: answering(identity),
+      yatrisUrl: 'https://app.yatris.jp',
+      prompt: async (question) => {
+        asked.push(question);
+        return 'ABCD-EFGH';
+      },
+    });
+
+    expect(asked).toEqual(['Yatris setup code: ']);
+    expect(result.code).toBe(0);
+  });
 });
 
 describe('MCP availability', () => {

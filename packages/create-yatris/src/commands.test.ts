@@ -142,6 +142,33 @@ describe('create-yatris CLI', () => {
     expect(out.join('\n')).toContain('Paired with Yatris Website 42');
   });
 
+  it('asks for the setup code with --pair, so it never enters shell history', async () => {
+    const target = join(work, 'site');
+    const asked: string[] = [];
+    const sent: unknown[] = [];
+    const fetch = (async (_url: string, init?: RequestInit) => {
+      sent.push(JSON.parse(String(init?.body)));
+      return new Response(JSON.stringify(identity), { status: 200 });
+    }) as typeof globalThis.fetch;
+    const prompt = async (question: string) => {
+      asked.push(question);
+      return '  WXYZ-2345 ';
+    };
+
+    const argv = [target, '--pair', '--no-install'];
+    expect(await run(argv, env({ fetch, prompt }))).toBe(0);
+
+    expect(argv.join(' ')).not.toContain('WXYZ');
+    expect(asked).toEqual(['Yatris setup code: ']);
+    expect(sent[0]).toMatchObject({ code: 'WXYZ-2345' });
+    expect(JSON.parse(readFileSync(join(target, '.yatris/project.json'), 'utf8')).websiteId).toBe(42);
+  });
+
+  it('refuses --pair without an interactive terminal', async () => {
+    expect(await run([join(work, 'site'), '--pair', '--no-install'], env({ prompt: undefined }))).toBe(1);
+    expect(err[0]).toContain('interactive terminal');
+  });
+
   it('reports a refused setup code and leaves an unpaired project', async () => {
     const target = join(work, 'site');
     const fetch = (async () => new Response(JSON.stringify({ error: 'invalid_code', message: 'expired' }), { status: 422 })) as typeof globalThis.fetch;

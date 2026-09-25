@@ -22,6 +22,8 @@ export interface CliEnvironment {
   fetch?: typeof fetch;
   /** Overrides the Yatris origin (YATRIS_URL); defaults to the manifest's MCP origin. */
   yatrisUrl?: string;
+  /** Asks a question on an interactive terminal; undefined when not interactive. */
+  prompt?: (question: string) => Promise<string>;
 }
 
 const HELP = `Usage: yatris <command>
@@ -38,10 +40,12 @@ Commands:
   schema verify [--manifest=<file>]
              Check the lock and generated files, and that they match the
              manifest's revision when one is given. Writes nothing.
-  connect <setup-code> [--force]
-             Pair this repository with its Yatris Website using a single-use
-             setup code from the dashboard (接続・診断). Writes the site
-             identity and the MCP configuration; never a key or token.
+  connect [--force]
+             Pair this repository with its Yatris Website. Asks for the
+             single-use setup code from the dashboard (接続・診断), so it never
+             appears in shell history. Writes the site identity and the MCP
+             configuration; never a key or token. (\`connect <code>\` also
+             works, for automation.)
 
 Options:
   --version  Print the package and Yatris platform versions
@@ -83,8 +87,8 @@ async function runConnect(argv: string[], env: CliEnvironment): Promise<CliResul
     return { code: 1, stdout: '', stderr: `yatris connect: ${(error as Error).message}` };
   }
 
-  const code = parsed.positionals[0];
-  if (!code) return { code: 1, stdout: '', stderr: 'yatris connect: a setup code is required (issue one in the Yatris dashboard, 接続・診断).' };
+  const code = parsed.positionals[0] ?? (env.prompt ? (await env.prompt('Yatris setup code: ')).trim() : undefined);
+  if (!code) return { code: 1, stdout: '', stderr: 'yatris connect: a setup code is required (issue one in the Yatris dashboard, 接続・診断, and run this in an interactive terminal).' };
 
   try {
     const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
