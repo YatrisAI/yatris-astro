@@ -18,5 +18,8 @@
     "@astrojs/alpinejs": "1.0.0",
     "@types/alpinejs": "3.13.11"
   },
-  "migrations": []
+  "migrations": [],
+  "mcp": {
+    "url": "https://app.yatris.jp/mcp/yatris"
+  }
 }

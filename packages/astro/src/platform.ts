@@ -17,6 +17,8 @@ export interface PlatformManifest {
   skills: string;
   dependencies: Record<string, string>;
   migrations: string[];
+  /** The Yatris product MCP every generated site's agents connect to. */
+  mcp: { url: string };
 }
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -63,7 +65,16 @@ export function parsePlatformManifest(value: unknown): PlatformManifest {
     skills: semver(m.skills, 'skills'),
     dependencies: versionMap(m.dependencies, 'dependencies'),
     migrations: m.migrations as string[],
+    mcp: { url: mcpUrl(record(m.mcp, 'mcp').url) },
   };
+}
+
+function mcpUrl(value: unknown): string {
+  const url = string(value, 'mcp.url');
+  if (!/^https:\/\/[^/]+\/.+/.test(url)) {
+    throw new Error(`Platform mcp.url must be an https URL, got ${url}`);
+  }
+  return url;
 }
 
 function record(value: unknown, field: string): Record<string, unknown> {

@@ -60,6 +60,16 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
 - Only change files under `src/` unless your task explicitly names another
   path.
 
+## Yatris MCP
+
+Live Yatris state (this Website, its Content Types and their fields) and
+Yatris actions (content drafts) are available only through the Yatris MCP
+server configured in `.mcp.json` (Claude Code) and `.codex/config.toml`
+(Codex). Sign in once from your client: `claude mcp login yatris` or
+`codex mcp login yatris`, then allow this Website. Never put a token or
+header in those files, never call Yatris APIs another way, and if the MCP
+is unavailable, say so rather than guessing live state.
+
 ## Development
 
 When starting the dev server, use background mode:

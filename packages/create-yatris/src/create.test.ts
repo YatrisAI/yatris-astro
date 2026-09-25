@@ -33,6 +33,9 @@ describe('createProject', () => {
       expect.arrayContaining([
         '.gitattributes',
         '.gitignore',
+        '.codex/config.toml',
+        '.mcp.json',
+        '.yatris/mcp.json',
         '.yatris/project.json',
         'AGENTS.md',
         'CLAUDE.md',

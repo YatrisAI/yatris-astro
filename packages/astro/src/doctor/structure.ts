@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { looksLikeCredential, MCP_FILES, mcpFiles, type McpDescriptor } from '../mcp.js';
 import type { PlatformManifest } from '../platform.js';
 import { findCredentials, type Finding } from './findings.js';
 
@@ -92,6 +93,57 @@ export function checkStructure(root: string, manifest: PlatformManifest): Findin
     } catch {
       error('project-json', 'is not valid JSON', '.yatris/project.json');
     }
+  }
+
+  findings.push(...checkMcpConfig(root, manifest));
+
+  return findings;
+}
+
+/**
+ * The committed Yatris MCP configuration: the descriptor exists, both
+ * adapters are exactly what it generates, and none of it holds a credential.
+ */
+function checkMcpConfig(root: string, manifest: PlatformManifest): Finding[] {
+  const findings: Finding[] = [];
+  const descriptorPath = join(root, MCP_FILES.descriptor);
+
+  for (const path of Object.values(MCP_FILES)) {
+    const full = join(root, path);
+    if (existsSync(full) && looksLikeCredential(readFileSync(full, 'utf8'))) {
+      findings.push({ severity: 'error', code: 'mcp-credential', message: 'MCP configuration must hold only the server URL; sign in from the agent instead', file: path });
+    }
+  }
+
+  if (!existsSync(descriptorPath)) {
+    findings.push({ severity: 'error', code: 'missing-path', message: 'required path is missing', file: MCP_FILES.descriptor });
+    return findings;
+  }
+
+  let descriptor: McpDescriptor;
+  try {
+    descriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'));
+  } catch {
+    findings.push({ severity: 'error', code: 'mcp-descriptor', message: 'is not valid JSON', file: MCP_FILES.descriptor });
+    return findings;
+  }
+
+  const expected = mcpFiles(descriptor);
+  for (const path of [MCP_FILES.claude, MCP_FILES.codex]) {
+    const full = join(root, path);
+    const actual = existsSync(full) ? readFileSync(full, 'utf8').replace(/\r\n/g, '\n') : null;
+    if (actual !== expected[path]) {
+      findings.push({ severity: 'error', code: 'mcp-adapter-drift', message: `does not match ${MCP_FILES.descriptor}; regenerate it`, file: path });
+    }
+  }
+
+  if (descriptor.server?.url !== manifest.mcp.url) {
+    findings.push({
+      severity: 'warning',
+      code: 'mcp-url',
+      message: `points at ${String(descriptor.server?.url)}, not the platform's ${manifest.mcp.url}`,
+      file: MCP_FILES.descriptor,
+    });
   }
 
   return findings;
