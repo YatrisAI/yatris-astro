@@ -1,9 +1,18 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { looksLikeCredential } from '@yatris/astro/mcp';
 import { type Environment, run } from './commands.js';
+
+const identity = {
+  contractVersion: 1,
+  website: { id: 42, name: 'client.example.jp', url: 'https://client.example.jp', timezone: 'Asia/Tokyo', status: 'preparing' },
+  mcp: { contractVersion: 1, server: { name: 'yatris', transport: 'streamable-http', url: 'https://app.yatris.jp/mcp/yatris' } },
+  delivery: { endpoint: 'https://app.yatris.jp/api/v1/delivery/42', credentials: 'deferred' },
+  schema: { mode: 'immediate', revision: null },
+};
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
 
@@ -112,10 +121,34 @@ describe('create-yatris CLI', () => {
     expect(existsSync(join(work, 'nope'))).toBe(false);
   });
 
-  it('refuses pairing until it exists', async () => {
-    expect(await run([join(work, 'site'), '--connect', 'ABCD-EFGH'], env())).toBe(1);
-    expect(err[0]).toContain('--connect');
-    expect(existsSync(join(work, 'site'))).toBe(false);
+  it('pairs the new site with --connect, writing no secret', async () => {
+    const target = join(work, 'site');
+    const requests: { url: string; body: unknown }[] = [];
+    const fetch = (async (url: string, init?: RequestInit) => {
+      requests.push({ url: String(url), body: JSON.parse(String(init?.body)) });
+      return new Response(JSON.stringify(identity), { status: 200 });
+    }) as typeof globalThis.fetch;
+
+    expect(await run([target, '--connect', 'ABCD-EFGH', '--no-install'], env({ fetch }))).toBe(0);
+
+    expect(requests[0].url).toBe('https://app.yatris.jp/api/v1/setup/exchange');
+    expect(requests[0].body).toMatchObject({ code: 'ABCD-EFGH', client: { name: 'create-yatris' } });
+    const project = JSON.parse(readFileSync(join(target, '.yatris/project.json'), 'utf8'));
+    expect(project.websiteId).toBe(42);
+    expect(readFileSync(join(target, '.mcp.json'), 'utf8')).toContain('https://app.yatris.jp/mcp/yatris');
+    for (const path of ['.yatris/project.json', '.yatris/mcp.json', '.mcp.json', '.codex/config.toml', '.yatris/schema.lock.json']) {
+      expect(looksLikeCredential(readFileSync(join(target, path), 'utf8'))).toBe(false);
+    }
+    expect(out.join('\n')).toContain('Paired with Yatris Website 42');
+  });
+
+  it('reports a refused setup code and leaves an unpaired project', async () => {
+    const target = join(work, 'site');
+    const fetch = (async () => new Response(JSON.stringify({ error: 'invalid_code', message: 'expired' }), { status: 422 })) as typeof globalThis.fetch;
+
+    expect(await run([target, '--connect', 'ABCD-EFGH', '--no-install'], env({ fetch }))).toBe(1);
+    expect(err[0]).toContain('expired');
+    expect(JSON.parse(readFileSync(join(target, '.yatris/project.json'), 'utf8')).websiteId).toBeNull();
   });
 
   it('rejects unknown options', async () => {

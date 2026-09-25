@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
+import { apiBaseFrom, exchangeSetupCode, pairProject } from '@yatris/astro/pairing';
 import { readPlatformManifest } from '@yatris/astro/platform';
 import { createProject } from './create.js';
 
@@ -14,6 +15,10 @@ export interface Environment {
   manifestUrl?: URL;
   templateDir?: string;
   skillsDir?: string;
+  /** Network access for --connect; defaults to the global fetch. */
+  fetch?: typeof fetch;
+  /** Overrides the Yatris origin (YATRIS_URL); defaults to the manifest's MCP origin. */
+  yatrisUrl?: string;
 }
 
 const HELP = `Usage: npm create yatris@latest <directory> [-- options]
@@ -22,6 +27,9 @@ Creates a new Yatris-managed Astro website: Astro, Tailwind CSS 4, Alpine.js 3,
 agent instructions and skills. No design, CMS or credentials are required.
 
 Options:
+  --connect <code>  Pair the new site with its Yatris Website using a single-use
+                    setup code from the dashboard. Optional: pair later with
+                    \`npx yatris connect <code>\` (required before content design)
   --no-install  Write the files only; skip npm install and the first build
   --no-git      Do not initialise a Git repository
   --yes         Never prompt (fails if the directory is missing)
@@ -64,11 +72,6 @@ export async function run(argv: string[], env: Environment): Promise<number> {
     env.out(HELP);
     return 0;
   }
-  if (values.connect !== undefined) {
-    env.err('create-yatris: pairing with a Yatris Website (--connect) is not available yet.');
-    return 1;
-  }
-
   let directory = positionals[0];
   if (directory === undefined && !values.yes && env.prompt) {
     directory = (await env.prompt('Project directory: ')).trim();
@@ -93,6 +96,24 @@ export async function run(argv: string[], env: Environment): Promise<number> {
     return 1;
   }
   env.out(`Created ${target} on Yatris platform ${manifest.platformVersion}.`);
+
+  // Pairing (YatrisCMS#270): identity and MCP configuration only, never a
+  // secret. A code that fails leaves an unpaired but complete project.
+  if (values.connect !== undefined) {
+    try {
+      const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+      const identity = await exchangeSetupCode(values.connect, {
+        apiBase: env.yatrisUrl ?? process.env.YATRIS_URL ?? apiBaseFrom(manifest.mcp.url),
+        client: { name: 'create-yatris', version },
+        fetch: env.fetch,
+      });
+      pairProject(target, identity);
+      env.out(`Paired with Yatris Website ${identity.website.id} (${identity.website.name}).`);
+    } catch (error) {
+      env.err(`create-yatris: pairing failed: ${(error as Error).message} The project was created unpaired; pair it later with \`npx yatris connect <code>\`.`);
+      return 1;
+    }
+  }
 
   // Tailwind's source scanning honours .gitignore only inside a Git
   // repository. Without one it watches .astro/, and the dev server reloads
