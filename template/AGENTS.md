@@ -67,6 +67,10 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   files or deployment secret stores, and never reach browser-side code.
 - Only change files under `src/` unless your task explicitly names another
   path.
+- The built-in skills, this block of `AGENTS.md` and the MCP configuration
+  are managed by Yatris platform updates. Do not edit them: put
+  site-specific guidance below the end marker or in a skill of your own.
+  Run `npm run yatris:update` only when asked.
 
 ## Yatris MCP
 

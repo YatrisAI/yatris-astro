@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MCP_FILES, mcpDescriptor, mcpFiles } from '../mcp.js';
 import { readPlatformManifest } from '../platform.js';
+import { lockFor, managedArtifacts, PLATFORM_LOCK_PATH, writePlatformLock } from '../platform-lock.js';
 import { emptyLock, LOCK_PATH } from '../schema.js';
 import { doctor, formatReport } from './doctor.js';
 import { SKILL_LOCATIONS } from './structure.js';
@@ -39,6 +40,7 @@ function scaffold(): string {
   for (const [path, contents] of Object.entries(mcpFiles(mcpDescriptor(manifest.mcp.url)))) {
     writeFileSync(join(dir, path), contents);
   }
+  writePlatformLock(dir, lockFor(manifest, managedArtifacts({ skillsDir: join(root, 'skills'), agentsTemplate: join(root, 'template/AGENTS.md') }, manifest.mcp.url)));
   mkdirSync(join(dir, 'dist'));
   writeFileSync(join(dir, 'dist/index.html'), BUILT);
   return dir;
@@ -56,6 +58,23 @@ afterEach(() => {
 });
 
 describe('yatris doctor --stage=scaffold', () => {
+  it('checks the platform lock: present, on the installed release, no unfinished update', async () => {
+    const skill = join(site, '.claude/skills/alpinejs-development/SKILL.md');
+    writeFileSync(skill, 'edited');
+    writeFileSync(join(site, '.agents/skills/alpinejs-development/SKILL.md'), 'edited');
+    const warnings = (await run()).findings.filter((f) => f.severity === 'warning').map((f) => f.code);
+    expect(warnings).toContain('managed-customised');
+
+    mkdirSync(join(site, '.yatris/update-transaction'));
+    expect(await errorCodes()).toContain('update-incomplete');
+
+    writePlatformLock(site, { ...lockFor(manifest, {}), platformVersion: '9.9.9' });
+    expect(await errorCodes()).toContain('platform-lock-mismatch');
+
+    rmSync(join(site, PLATFORM_LOCK_PATH));
+    expect(await errorCodes()).toContain('platform-lock');
+  });
+
   it('passes a freshly scaffolded site', async () => {
     const report = await run();
 

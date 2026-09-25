@@ -40,6 +40,30 @@ and Alpine work, nothing loads from a CDN, no credentials leak, and Astro's own
 
 Nothing is published yet (YatrisAI/YatrisCMS#258).
 
+## Platform releases
+
+A platform release is made only by `.github/workflows/release.yml`, run on
+`main` after a reviewer approves the `npm-release` environment. It runs the
+compatibility matrix (`npm run check`, then the end-to-end create-and-update
+run against the pinned versions), marks the release (`scripts/mark-released.mjs`
+sets `yatrisPlatform.status` and the manifest `status` to `released` in its
+own workspace; the repository always says `unreleased`), and publishes both
+packages with npm provenance.
+
+`yatris update` and Yatris's update PRs take the newest stable version whose
+marker says `released` **and** whose npm provenance attestation names exactly
+that workflow on `main`, for the exact tarball the registry serves, with the
+signatures verified by `npm audit signatures`. A marker set any other way, a
+version published by hand, or one built by another workflow or branch is
+skipped. npm dist-tags such as `latest` are never read.
+
+Owner setup before the first release (YatrisAI/YatrisCMS#258): the
+`npm-release` environment with required reviewers, limited to `main`, holding
+`NPM_TOKEN`; and a ruleset on `main`. Stronger still, on npmjs.com: trusted
+publishing for this workflow with token publishing disallowed, so nothing can
+publish outside it at all (the workflow then needs npm 11.5.1 or later and no
+token). The updater's provenance check holds either way.
+
 ## Branches
 
 - All work happens on `development`.

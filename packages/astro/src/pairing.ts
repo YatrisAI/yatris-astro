@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { looksLikeCredential, mcpFiles, type McpDescriptor } from './mcp.js';
+import { PLATFORM_LOCK_PATH, recordManaged } from './platform-lock.js';
 import { emptyLock, LOCK_PATH, readLock } from './schema.js';
 
 /**
@@ -125,5 +126,9 @@ export function pairProject(root: string, identity: SiteIdentity, options: { for
     writeFileSync(join(root, path), contents);
   }
 
-  return Object.keys(files);
+  // The MCP files are managed: record what pairing wrote, so the next
+  // platform update does not take the new URL for a local customisation
+  const relocked = recordManaged(root, mcpFiles(identity.mcp));
+
+  return [...Object.keys(files), ...(relocked ? [PLATFORM_LOCK_PATH] : [])];
 }
