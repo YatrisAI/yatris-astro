@@ -130,7 +130,8 @@ export async function run(argv: string[], env: Environment): Promise<number> {
   // Tailwind's source scanning honours .gitignore only inside a Git
   // repository. Without one it watches .astro/, and the dev server reloads
   // in a loop whenever Astro writes there.
-  if (values.git && (await env.exec('git', ['init', '--quiet'], target)) !== 0) {
+  // Managed repositories use main, whatever the local Git default is (#273)
+  if (values.git && (await env.exec('git', ['init', '--quiet', '--initial-branch=main'], target)) !== 0) {
     env.err('create-yatris: warning: `git init` failed. Initialise a Git repository before running `npm run dev`.');
   }
 
