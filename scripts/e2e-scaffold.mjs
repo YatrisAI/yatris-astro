@@ -251,7 +251,7 @@ const source = join(work, 'releases');
 mkdirSync(source, { recursive: true });
 const nextPackage = extractTarball(tarball('@yatris/astro'), join(work, 'next'));
 const bump = (path, change) => writeFileSync(join(nextPackage, path), JSON.stringify(change(JSON.parse(readFileSync(join(nextPackage, path), 'utf8'))), null, 2));
-bump('package.json', (pkg) => ({ ...pkg, version: '0.0.1' }));
+bump('package.json', (pkg) => ({ ...pkg, version: '0.0.1', yatrisPlatform: { status: 'released' } }));
 bump('platform.json', (m) => ({ ...m, platformVersion: '0.0.1', status: 'released', packages: { ...m.packages, '@yatris/astro': '0.0.1' } }));
 const skillFile = 'skills/alpinejs-development/SKILL.md';
 writeFileSync(join(nextPackage, skillFile), `${readFileSync(join(nextPackage, skillFile), 'utf8')}\n<!-- e2e: changed in platform 0.0.1 -->\n`);

@@ -262,22 +262,27 @@ describe('yatris update', () => {
     expect(exec.commands.filter((c) => !c.startsWith('git'))).toEqual([]);
   });
 
-  it('bootstraps: finds the newest stable release and hands over to its own CLI', async () => {
+  it('bootstraps: finds the newest approved stable release (not npm’s newest) and hands over to its own CLI', async () => {
     const handed: string[][] = [];
+    const logged: string[] = [];
+    // 0.2.0 is published but not approved; 0.3.0-beta.1 is a prerelease
     const source: UpdateSource = {
       allowUnreleased: false,
-      versions: async () => ['0.0.0', '0.1.0', '0.2.0-beta.1'],
+      versions: async () => ['0.0.0', '0.1.0', '0.2.0', '0.3.0-beta.1'],
+      approved: async (version) => version !== '0.2.0',
       fetch: async (version) => ({ packageDir: `/tmp/${version}/package`, installSpec: `@yatris/astro@${version}` }),
     };
     const delegate = async (_dir: string, argv: string[]) => (handed.push(argv), 0);
 
-    await runUpdate(['--dry-run'], env(fakeExec().fn, { source, delegate }));
+    await runUpdate(['--dry-run'], env(fakeExec().fn, { source, delegate, log: (line) => logged.push(line) }));
     expect(handed).toEqual([['--dry-run', '--resolved', '/tmp/0.1.0/package', '--install-spec', '@yatris/astro@0.1.0']]);
+    expect(logged).toContain('Skipping 0.2.0: published, but not an approved Yatris platform release.');
 
-    expect((await runUpdate(['--to', '0.2.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('not published');
-    expect((await runUpdate(['--to', '0.2.0-beta.1'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('stable Yatris platform releases only');
+    expect((await runUpdate(['--to', '0.2.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('not an approved Yatris platform release');
+    expect((await runUpdate(['--to', '0.4.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('not published');
+    expect((await runUpdate(['--to', '0.3.0-beta.1'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('stable Yatris platform releases only');
     writePlatformLock(site, { ...readPlatformLock(site)!, platformVersion: '0.1.0' });
-    expect((await runUpdate([], env(fakeExec().fn, { source, delegate }))).stdout).toContain('newest stable');
+    expect((await runUpdate([], env(fakeExec().fn, { source, delegate }))).stdout).toContain('no newer approved Yatris platform release');
     expect((await runUpdate(['--to', '0.0.0'], env(fakeExec().fn, { source, delegate }))).stderr).toContain('does not downgrade');
     expect(newestStable(['1.0.0', '1.1.0-rc.1'])).toBe('1.0.0');
     expect(isStable('1.1.0-rc.1')).toBe(false);

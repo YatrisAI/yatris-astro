@@ -9,7 +9,7 @@ import { AGENTS_BLOCK, artifactFile, PLATFORM_LOCK_PATH, readPlatformLock } from
 import { applyUpdate, formatFailure, pendingTransaction, rollback, TRANSACTION_DIR } from './apply.js';
 import { tail, type Exec } from './exec.js';
 import { acceptConflicts, CONFLICT_TEXT, formatPlan, planUpdate, type Conflict, type UpdatePlan } from './plan.js';
-import { directorySource, newestStable, registrySource, type UpdateSource } from './source.js';
+import { directorySource, newestApproved, registrySource, type UpdateSource } from './source.js';
 import { compareVersions, isStable, nodeSatisfies } from './versions.js';
 
 export const CONFLICTS_DIR = '.yatris/update-conflicts';
@@ -95,13 +95,19 @@ async function bootstrap(argv: string[], values: Values, current: string, env: U
   const source = env.source ?? (process.env.YATRIS_UPDATE_SOURCE ? directorySource(process.env.YATRIS_UPDATE_SOURCE) : registrySource(env.exec, env.cwd));
   const versions = await source.versions();
 
-  const version = values.to ?? newestStable(versions);
-  if (version === null) return { code: 0, stdout: `No stable Yatris platform release is published yet; this site is on ${current}.`, stderr: '' };
+  // Decisions 11.1–11.2: the newest *approved* stable release, never npm's `latest` tag
+  const newest = values.to ? null : await newestApproved(source, versions, current);
+  for (const skipped of newest?.skipped ?? []) env.log(`Skipping ${skipped}: published, but not an approved Yatris platform release.`);
+  const version = values.to ?? newest?.version ?? null;
+  if (version === null) return { code: 0, stdout: `This site is on ${current}; there is no newer approved Yatris platform release.`, stderr: '' };
   if (!versions.includes(version)) return failure(`Yatris platform ${version} is not published.`);
   // Decision 11.2: the stable channel only (a local mirror may test others)
   if (!isStable(version) && !source.allowUnreleased) return failure(`${version} is a prerelease; managed sites take stable Yatris platform releases only.`);
+  if (values.to && compareVersions(version, current) > 0 && !(await source.approved(version))) {
+    return failure(`${version} is published but is not an approved Yatris platform release.`);
+  }
   if (compareVersions(version, current) < 0) return failure(`this site is on ${current}; the updater does not downgrade to ${version}.`);
-  if (compareVersions(version, current) === 0) return { code: 0, stdout: `This site is on the ${values.to ? 'requested' : 'newest stable'} Yatris platform release, ${current}.`, stderr: '' };
+  if (compareVersions(version, current) === 0) return { code: 0, stdout: `This site is already on Yatris platform ${current}.`, stderr: '' };
 
   const dir = mkdtempSync(join(tmpdir(), 'yatris-update-'));
   try {
@@ -128,7 +134,7 @@ function delegate(cwd: string) {
 async function target(values: Values, current: string, env: UpdateEnvironment): Promise<Result> {
   const packageDir = values.resolved as string;
   const manifest = readPlatformManifest(pathToFileURL(join(packageDir, 'platform.json')));
-  if (manifest.status !== 'released' && !values.unreleased) return failure(`Yatris platform ${manifest.platformVersion} is not marked released.`);
+  if (manifest.status !== 'released' && !values.unreleased) return failure(`Yatris platform ${manifest.platformVersion} is not an approved release (its manifest is not marked released).`);
   if (!nodeSatisfies(manifest.node)) return failure(`Yatris platform ${manifest.platformVersion} needs Node ${manifest.node}; this is ${process.versions.node}.`);
 
   const lock = readPlatformLock(env.cwd)!;

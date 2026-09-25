@@ -40,6 +40,17 @@ and Alpine work, nothing loads from a CDN, no credentials leak, and Astro's own
 
 Nothing is published yet (YatrisAI/YatrisCMS#258).
 
+## Platform releases
+
+A platform release is an `@yatris/astro` version whose `yatrisPlatform.status`
+(in `packages/astro/package.json`) and `platform/manifest.json` `status` are
+both `released`; a unit test keeps the two identical. Publishing alone does not
+make a release: `yatris update` and Yatris's automatic update PRs pick the
+newest *approved* stable version, skip published versions that are not
+approved, and never read npm dist-tags such as `latest`. Flip the status only
+in a release pull request whose CI — unit tests, the pack smoke test and the
+end-to-end create-and-update run against the pinned matrix — has passed.
+
 ## Branches
 
 - All work happens on `development`.
