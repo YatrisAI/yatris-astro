@@ -7,6 +7,8 @@
  * events queue on `window.dataLayer`, which GTM drains when it starts.
  */
 
+import { CONSENT_STORAGE_KEY, GTM_CONSENT_LOADER } from './head.js';
+
 type Primitive = string | number | boolean;
 
 /** A consent decision from the site's own consent UI. */
@@ -20,6 +22,7 @@ export interface ConsentChoice {
 interface MeasurementWindow {
   dataLayer?: unknown[];
   AutoLogicriHM?: { consent(granted: boolean): void };
+  [GTM_CONSENT_LOADER]?: (choice: ConsentChoice) => void;
 }
 
 const EVENT_NAME = /^[a-z][a-z0-9_]{0,39}$/;
@@ -45,13 +48,37 @@ export function trackEvent(name: string, params: Record<string, Primitive> = {})
 }
 
 /**
- * Records the visitor's consent decision: Google's Consent Mode update, and
- * the Yatris heatmap's own switch. With the site's policy set to
- * `consent required`, measurement starts denied until this is called.
+ * The decision an earlier `updateConsent()` stored, or null when the visitor
+ * has not decided yet (show the consent UI then).
+ */
+export function storedConsent(): ConsentChoice | null {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(CONSENT_STORAGE_KEY) ?? 'null') as Partial<ConsentChoice> | null;
+    return value && typeof value.analytics === 'boolean' && typeof value.ads === 'boolean' ? { analytics: value.analytics, ads: value.ads } : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Records the visitor's consent decision: it is stored for later page views,
+ * sent to Google's Consent Mode and to the Yatris heatmap's own switch.
+ *
+ * When the site's policy requires consent (Google's basic consent mode), GTM
+ * is not on the page at all until this is called with `analytics: true`; this
+ * call then loads it. Withdrawing consent later stops GTM from loading on the
+ * next page view and sends a denied update to the one already running.
  */
 export function updateConsent(choice: ConsentChoice): void {
   const w = target();
   if (w === null) return;
+
+  try {
+    window.localStorage.setItem(CONSENT_STORAGE_KEY, JSON.stringify({ analytics: choice.analytics, ads: choice.ads }));
+  } catch {
+    // Storage blocked: the decision holds for this page view only
+  }
+  w[GTM_CONSENT_LOADER]?.(choice);
 
   const granted = (yes: boolean) => (yes ? 'granted' : 'denied');
   // Consent Mode reads the arguments object gtag() would push

@@ -22,9 +22,10 @@ export interface YatrisRuntimeConfig {
   gtmContainerId: string | null;
   searchConsoleVerification: string | null;
   /**
-   * The site's consent policy from Yatris (YatrisCMS#271). `required` starts
-   * Google's Consent Mode denied until the site's consent UI calls
-   * `updateConsent()`; null means no policy (and then no GTM from Yatris).
+   * The site's consent policy from Yatris (YatrisCMS#271). `required` uses
+   * Google's basic consent mode: GTM is not loaded until the site's consent
+   * UI calls `updateConsent()` with analytics granted. Null means no policy
+   * (and then no GTM from Yatris).
    */
   consentMode?: 'not_required' | 'required' | null;
 }
@@ -88,24 +89,37 @@ export function headTags(page: YatrisPageMeta, ctx: HeadContext): HeadTag[] {
   }
 
   if (ctx.config.gtmContainerId) {
-    // The consent default must be on the dataLayer before GTM starts
-    if (ctx.config.consentMode === 'required') {
-      tags.push({ tag: 'script', attrs: {}, html: consentDefaultSnippet() });
-    }
-    tags.push({ tag: 'script', attrs: {}, html: gtmHeadSnippet(ctx.config.gtmContainerId) });
+    const gtm = gtmHeadSnippet(ctx.config.gtmContainerId);
+    tags.push({ tag: 'script', attrs: {}, html: ctx.config.consentMode === 'required' ? gtmAfterConsentSnippet(gtm) : gtm });
   }
 
   return tags;
 }
 
+/** Where `updateConsent()` keeps the visitor's decision between page views. */
+export const CONSENT_STORAGE_KEY = 'yatris:consent';
+
+/** The loader a consent-required page exposes to `updateConsent()`. */
+export const GTM_CONSENT_LOADER = '__yatrisGtmLoad';
+
 /**
- * Google Consent Mode's default for a site whose policy requires consent:
- * everything denied until the visitor decides.
+ * Google's basic consent mode for a site whose policy requires consent: GTM is
+ * not requested at all until the visitor grants analytics, so nothing (not
+ * even a cookieless ping) reaches Google before consent. The page loads GTM
+ * straight away only when an earlier visit already granted it; otherwise
+ * `updateConsent()` loads it on the grant. The Consent Mode default carries
+ * the visitor's actual choice, so an ads refusal still reaches the tags.
  */
-export function consentDefaultSnippet(): string {
+export function gtmAfterConsentSnippet(gtm: string): string {
   return (
-    'window.dataLayer=window.dataLayer||[];(function(){dataLayer.push(arguments);})' +
-    "('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied',wait_for_update:500});"
+    '(function(w,k){w.dataLayer=w.dataLayer||[];var done=false;' +
+    'function g(){w.dataLayer.push(arguments);}' +
+    `w.${GTM_CONSENT_LOADER}=function(c){if(done||!c||c.analytics!==true)return;done=true;` +
+    "var s=function(v){return v===true?'granted':'denied';};" +
+    "g('consent','default',{analytics_storage:'granted',ad_storage:s(c.ads),ad_user_data:s(c.ads),ad_personalization:s(c.ads)});" +
+    `${gtm}};` +
+    `try{w.${GTM_CONSENT_LOADER}(JSON.parse(w.localStorage.getItem(k)||'null'));}catch(e){}` +
+    `})(window,${JSON.stringify(CONSENT_STORAGE_KEY)});`
   );
 }
 

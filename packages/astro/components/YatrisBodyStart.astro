@@ -1,10 +1,12 @@
 ---
 // Integrations that must follow the opening <body> tag immediately, such as
-// Google Tag Manager's <noscript> fallback. Renders nothing when unconfigured.
+// Google Tag Manager's <noscript> fallback. Renders nothing when unconfigured,
+// and nothing when the site requires consent: a script-less visitor can never
+// give it, so the fallback would measure them without consent.
 import config from 'virtual:yatris/config';
 import { gtmNoscript } from '@yatris/astro/head';
 
-const html = config.gtmContainerId ? gtmNoscript(config.gtmContainerId) : '';
+const html = config.gtmContainerId && config.consentMode !== 'required' ? gtmNoscript(config.gtmContainerId) : '';
 ---
 
 {html && <Fragment set:html={html} />}

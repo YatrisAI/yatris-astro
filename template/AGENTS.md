@@ -25,7 +25,9 @@ entirely the site's own.
   `trackEvent('snake_case_name', { ... })` and record a visitor's consent
   choice with `updateConsent({ analytics, ads })`, both from
   `@yatris/astro/measurement`. The consent UI itself is part of the site
-  design.
+  design: show it while `storedConsent()` is null. When the site requires
+  consent, GTM is not loaded at all until `updateConsent` grants analytics,
+  so never load it any other way.
 - **Styling** uses Tailwind CSS 4 (`src/styles/global.css`, CSS-first
   `@theme`; there is no `tailwind.config.*`). Follow the
   `tailwindcss-development` skill.

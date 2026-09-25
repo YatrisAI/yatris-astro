@@ -1,3 +1,4 @@
+import { GTM_CONSENT_LOADER } from '../head.js';
 import { findCredentials, type Finding, type Stage } from './findings.js';
 
 const CDN_SCRIPT = /<script\b[^>]*\bsrc=["']?(?:https?:)?\/\/(?:cdn\.jsdelivr\.net|unpkg\.com|cdnjs\.cloudflare\.com|esm\.sh|cdn\.skypack\.dev|ga\.jspm\.io)[^"'\s>]*/gi;
@@ -40,8 +41,12 @@ export function auditHtml(file: string, rawHtml: string, stage: Stage): Finding[
 
   const gtmLoaders = count(html, /googletagmanager\.com\/gtm\.js/g);
   const gtmNoscripts = count(html, /googletagmanager\.com\/ns\.html/g);
+  // A consent-required site loads GTM only after consent, with no fallback
+  const afterConsent = html.includes(GTM_CONSENT_LOADER);
   if (gtmLoaders > 1 || gtmNoscripts > 1) {
     add('error', 'duplicate-gtm', `Google Tag Manager is installed more than once (${gtmLoaders} loaders, ${gtmNoscripts} noscript fallbacks)`);
+  } else if (afterConsent) {
+    if (gtmNoscripts > 0) add('error', 'gtm-before-consent', 'the site requires consent, but a GTM noscript fallback loads GTM without it; remove it');
   } else if (gtmLoaders !== gtmNoscripts) {
     add('warning', 'partial-gtm', 'Google Tag Manager head and body snippets do not pair up; use YatrisHead and YatrisBodyStart');
   }
