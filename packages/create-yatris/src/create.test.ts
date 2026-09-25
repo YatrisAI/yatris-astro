@@ -36,6 +36,7 @@ describe('createProject', () => {
         '.codex/config.toml',
         '.mcp.json',
         '.yatris/mcp.json',
+        '.yatris/schema.lock.json',
         '.yatris/project.json',
         'AGENTS.md',
         'CLAUDE.md',

@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { mcpDescriptor, mcpFiles } from '@yatris/astro/mcp';
+import { emptyLock, LOCK_PATH } from '@yatris/astro/schema';
 import type { PlatformManifest } from '@yatris/astro/platform';
 
 /** Where generated skills are discovered: Codex first, then Claude. */
@@ -58,6 +59,10 @@ export function createProject(options: CreateOptions, sources: Sources): string 
     environment: 'production',
     templateVersion: sources.manifest.template,
   });
+
+  // An explicit empty schema contract (#265): "no schema designed yet",
+  // distinguishable from a lock that could not be written or fetched
+  writeJson(join(target, LOCK_PATH), emptyLock());
 
   // The Yatris MCP: one descriptor and the Claude Code / Codex adapters
   // derived from it, holding only the URL (people sign in from their client)

@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { looksLikeCredential, MCP_FILES, mcpFiles, type McpDescriptor } from '../mcp.js';
 import type { PlatformManifest } from '../platform.js';
+import { verifySchema } from '../schema.js';
 import { findCredentials, type Finding } from './findings.js';
 
 const REQUIRED_PATHS = [
@@ -96,6 +97,9 @@ export function checkStructure(root: string, manifest: PlatformManifest): Findin
   }
 
   findings.push(...checkMcpConfig(root, manifest));
+  // The schema contract, offline: the lock exists and every generated file
+  // is exactly what Yatris generated for the locked revision (#265)
+  findings.push(...verifySchema(root));
 
   return findings;
 }
