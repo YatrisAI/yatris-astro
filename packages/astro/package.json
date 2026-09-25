@@ -41,6 +41,10 @@
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
     },
+    "./measurement": {
+      "types": "./dist/measurement.d.ts",
+      "default": "./dist/measurement.js"
+    },
     "./pairing": {
       "types": "./dist/pairing.d.ts",
       "default": "./dist/pairing.js"
