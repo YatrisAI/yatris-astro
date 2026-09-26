@@ -3,7 +3,7 @@
   "platformVersion": "0.1.0",
   "channel": "stable",
   "status": "unreleased",
-  "node": ">=22.12.0",
+  "node": ">=22.19.0",
   "packages": {
     "@yatris/astro": "0.1.0",
     "create-yatris": "0.1.0"
