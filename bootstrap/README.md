@@ -18,7 +18,12 @@ and they carry no `released` marker. A unit test keeps it that way
 (`packages/astro/src/update/bootstrap.test.ts`).
 
 Nothing here is part of the build, the tests' packages or the release. Run
-these commands only when you decide to, from this directory of a checkout.
+these commands only when you decide to.
+
+**Run every block from the repository root** (the directory that contains
+`bootstrap/`). Each block that works inside a placeholder does so in a
+subshell, `( cd … && … )`, so your shell is back at the root afterwards and
+the blocks can run in sequence. The `&&` chains stop at the first failure.
 
 ## 0. Before you start
 
@@ -40,15 +45,15 @@ the `@yatris` scope, which `@yatris/astro` needs.
 ## 2. Review exactly what would be published
 
 ```sh
-cd bootstrap/yatris-astro
-npm pack --dry-run
-node -e "import('./index.js').catch((e) => { console.log('fails as intended:', e.message); })"
-npm publish --tag bootstrap --dry-run
+( cd bootstrap/yatris-astro &&
+  npm pack --dry-run &&
+  node -e "import('./index.js').catch((e) => { console.log('fails as intended:', e.message); })" &&
+  npm publish --tag bootstrap --dry-run )
 
-cd ../create-yatris
-npm pack --dry-run
-node cli.js; echo "exit code $?"
-npm publish --tag bootstrap --dry-run
+( cd bootstrap/create-yatris &&
+  npm pack --dry-run &&
+  { node cli.js; echo "exit code $? (1 is intended)"; } &&
+  npm publish --tag bootstrap --dry-run )
 ```
 
 Each `npm pack --dry-run` should list exactly `package.json`, `README.md` and
@@ -59,11 +64,8 @@ and `+ <package>@0.0.0-bootstrap.0`.
 ## 3. Publish the placeholders under `bootstrap`
 
 ```sh
-cd bootstrap/yatris-astro
-npm publish --tag bootstrap --access public
-
-cd ../create-yatris
-npm publish --tag bootstrap --access public
+( cd bootstrap/yatris-astro && npm publish --tag bootstrap --access public )
+( cd bootstrap/create-yatris && npm publish --tag bootstrap --access public )
 ```
 
 **Always pass `--tag bootstrap`.** Without it npm publishes to `latest`: a dry
@@ -88,13 +90,35 @@ nothing can use it by accident.
 
 ## 4. Trust the release workflow, then disallow tokens
 
+First inspect what is already configured (read-only). Both should list no
+trust configuration yet:
+
 ```sh
-npm trust github @yatris/astro --file release.yml --repo YatrisAI/yatris-astro --env npm-release --allow-publish --dry-run
-npm trust github @yatris/astro --file release.yml --repo YatrisAI/yatris-astro --env npm-release --allow-publish
-npm trust github create-yatris --file release.yml --repo YatrisAI/yatris-astro --env npm-release --allow-publish
 npm trust list @yatris/astro
 npm trust list create-yatris
 ```
+
+Do not treat `npm trust github … --dry-run` as a safe preview: npm warns that
+`--dry-run` is not honoured by some commands that change registry state, so
+this guide never relies on it. The commands below change registry settings.
+Without `--yes`, npm asks you to confirm each one.
+
+```sh
+npm trust github @yatris/astro --file release.yml --repo YatrisAI/yatris-astro --env npm-release --allow-publish
+npm trust github create-yatris --file release.yml --repo YatrisAI/yatris-astro --env npm-release --allow-publish
+```
+
+Then check the result:
+
+```sh
+npm trust list @yatris/astro
+npm trust list create-yatris
+```
+
+Each should show exactly one GitHub Actions configuration: repository
+`YatrisAI/yatris-astro`, workflow `release.yml`, environment `npm-release`,
+publish allowed. If one is wrong, remove it with
+`npm trust revoke <package> --id=<id from npm trust list>` and add it again.
 
 Then, on npmjs.com, for **each** package: **Settings → Publishing access →
 Require two-factor authentication and disallow tokens**. Trusted publishing
