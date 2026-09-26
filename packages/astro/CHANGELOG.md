@@ -1,5 +1,11 @@
 # @yatris/astro
 
+## 0.1.1
+
+### Patch Changes
+
+- aff24da: Require Node.js 22.19.0 or later. The pinned Astro stack depends on undici 8, which needs it; sites built on 22.12–22.18 got an npm engine warning (found on the reference site's Cloudflare Pages build). `yatris update` checks the platform's `node` requirement before updating.
+
 ## 0.1.0
 
 ### Minor Changes
