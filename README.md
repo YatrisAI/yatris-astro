@@ -57,12 +57,26 @@ signatures verified by `npm audit signatures`. A marker set any other way, a
 version published by hand, or one built by another workflow or branch is
 skipped. npm dist-tags such as `latest` are never read.
 
-Owner setup before the first release (YatrisAI/YatrisCMS#258): the
-`npm-release` environment with required reviewers, limited to `main`, holding
-`NPM_TOKEN`; and a ruleset on `main`. Stronger still, on npmjs.com: trusted
-publishing for this workflow with token publishing disallowed, so nothing can
-publish outside it at all (the workflow then needs npm 11.5.1 or later and no
-token). The updater's provenance check holds either way.
+Publishing uses npm trusted publishing (OIDC), so no npm token is stored in
+GitHub. npm can only trust a workflow for a package that already exists, so
+each package needs a one-time bootstrap before the first release:
+
+1. On npmjs.com, with two-factor authentication: create the `yatris`
+   organisation (owning `@yatris`), and publish a placeholder of
+   `@yatris/astro` and `create-yatris` by hand, for example
+   `0.0.0-bootstrap.0`. A placeholder has no provenance and is a prerelease,
+   so `yatris update` never selects it.
+2. For each package, add a trusted publisher: GitHub Actions, repository
+   `YatrisAI/yatris-astro`, workflow `release.yml`, environment
+   `npm-release`. Then set publishing access to "Require two-factor
+   authentication and disallow tokens".
+3. Run the Release workflow on `main` and approve the `npm-release`
+   environment. The first real release then becomes `latest`.
+
+The alternative is a short-lived, package-scoped publish token that exists
+only for the first run: add `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` to the
+two publish steps, then configure trusted publishing, revoke the token and
+remove the secret. The updater's provenance check holds either way.
 
 ## Branches
 
