@@ -22,7 +22,7 @@ programme map, decisions and delivery order live in
 
 ## Development
 
-Requires Node.js 22.12 or later.
+Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).
 
 ```sh
 npm ci
