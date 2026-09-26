@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { run } from './commands.js';
 import yatris from './index.js';
@@ -10,7 +11,8 @@ describe('yatris CLI', () => {
     const result = await run(['--version'], env);
 
     expect(result.code).toBe(0);
-    expect(result.stdout).toBe('@yatris/astro 0.0.0 (Yatris platform 0.0.0)');
+    const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(result.stdout).toBe(`@yatris/astro ${version} (Yatris platform ${version})`);
   });
 
   it('prints help with no arguments', async () => {

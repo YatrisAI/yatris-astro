@@ -2,10 +2,14 @@ name: Release
 
 # The only way a Yatris platform release is made (YatrisAI/YatrisCMS#272).
 # It runs on main, and only after a reviewer approves the `npm-release`
-# environment (which also holds the npm credential). It runs the whole
-# compatibility matrix, then marks the release and publishes both packages
-# with npm provenance. `yatris update` and Yatris's update PRs accept a
-# version only when its provenance names exactly this workflow on main
+# environment. It runs the whole compatibility matrix, then marks the release
+# and publishes both packages through npm trusted publishing: GitHub's OIDC
+# identity for this workflow and environment, not a stored token, with
+# provenance generated automatically. (npm can only trust a workflow for a
+# package that already exists, so the very first publish of each package is
+# a one-time bootstrap; see the README's Platform releases section.)
+# `yatris update` and Yatris's update PRs accept a version only when its
+# provenance names exactly this workflow on main
 # (packages/astro/src/update/provenance.ts), so a released marker put into a
 # package any other way is ignored.
 on:
@@ -31,8 +35,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22.12.0
+          # Trusted publishing needs Node 22.14.0+ and npm 11.5.1+
+          node-version: 22.14.0
           registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@11.20.0
       - run: npm ci
       # Marks the manifest and package released in this workspace only; the
       # repository itself always says unreleased
@@ -40,8 +46,4 @@ jobs:
       - run: npm run check
       - run: npm run e2e
       - run: npm publish --provenance --access public --workspace packages/astro
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - run: npm publish --provenance --access public --workspace packages/create-yatris
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
