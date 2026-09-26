@@ -11,7 +11,9 @@
     "build": "astro build",
     "preview": "astro preview",
     "astro": "astro",
-    "doctor": "yatris doctor --stage=scaffold"
+    "doctor": "yatris doctor --stage=scaffold",
+    "yatris:update": "yatris update",
+    "yatris:update:check": "yatris update --check"
   },
   "dependencies": {},
   "allowScripts": {

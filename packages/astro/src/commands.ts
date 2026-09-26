@@ -6,6 +6,8 @@ import { STAGES, type Stage } from './doctor/findings.js';
 import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
 import { readLock, readManifest, syncSchema, verifySchema } from './schema.js';
+import { runUpdate, type UpdateEnvironment } from './update/command.js';
+import { exec, type Exec } from './update/exec.js';
 
 export interface CliResult {
   code: number;
@@ -24,6 +26,12 @@ export interface CliEnvironment {
   yatrisUrl?: string;
   /** Asks a question on an interactive terminal; undefined when not interactive. */
   prompt?: (question: string) => Promise<string>;
+  /** Runs npm and git for `yatris update`. */
+  exec?: Exec;
+  /** Progress lines while a long command runs; defaults to the console. */
+  log?: (line: string) => void;
+  /** Release source and hand-over for `yatris update` (tests). */
+  update?: Pick<UpdateEnvironment, 'source' | 'delegate'>;
 }
 
 const HELP = `Usage: yatris <command>
@@ -46,6 +54,16 @@ Commands:
              appears in shell history. Writes the site identity and the MCP
              configuration; never a key or token. (\`connect <code>\` also
              works, for automation.)
+  update [--check | --dry-run] [--to <version>] [--yes] [--major]
+         [--allow-dirty] [--rollback]
+             Move this site to a newer Yatris platform release (stable
+             releases on npm). --check only reports what is available;
+             --dry-run shows every package and managed-file change and any
+             conflict, writing nothing. Without a terminal, pass --yes and
+             --to <version> (and --major for a major Astro or platform
+             change). Locally edited managed files stop the update. A failed
+             update restores only the files it touched; it never commits.
+             Run it as \`npm run yatris:update\`.
 
 Options:
   --version  Print the package and Yatris platform versions
@@ -74,6 +92,16 @@ export async function run(argv: string[], env: CliEnvironment = { cwd: process.c
 
   if (first === 'connect') {
     return runConnect(rest, env);
+  }
+
+  if (first === 'update') {
+    return runUpdate(rest, {
+      cwd: env.cwd,
+      exec: env.exec ?? exec,
+      log: env.log ?? ((line) => console.log(line)),
+      prompt: env.prompt,
+      ...env.update,
+    });
   }
 
   return { code: 1, stdout: '', stderr: `yatris: unknown command "${first}"\n\n${HELP}` };

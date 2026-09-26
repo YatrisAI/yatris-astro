@@ -3,6 +3,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { looksLikeCredential, MCP_FILES, mcpFiles, type McpDescriptor } from '../mcp.js';
 import type { PlatformManifest } from '../platform.js';
+import { digest, PLATFORM_LOCK_PATH, readArtifact, readPlatformLock } from '../platform-lock.js';
 import { verifySchema } from '../schema.js';
 import { findCredentials, type Finding } from './findings.js';
 
@@ -96,10 +97,56 @@ export function checkStructure(root: string, manifest: PlatformManifest): Findin
     }
   }
 
+  findings.push(...checkPlatformLock(root, manifest));
   findings.push(...checkMcpConfig(root, manifest));
   // The schema contract, offline: the lock exists and every generated file
   // is exactly what Yatris generated for the locked revision (#265)
   findings.push(...verifySchema(root));
+
+  return findings;
+}
+
+/**
+ * The platform lock (spec §5.4, #272): present, on the release installed,
+ * and not left half-way by an update. Customised managed files are shown
+ * early, because the next update will stop on them.
+ */
+function checkPlatformLock(root: string, manifest: PlatformManifest): Finding[] {
+  const findings: Finding[] = [];
+
+  // While the updater verifies its own transaction, that transaction is expected
+  if (existsSync(join(root, '.yatris/update-transaction')) && process.env.YATRIS_UPDATE_VERIFYING !== '1') {
+    findings.push({ severity: 'error', code: 'update-incomplete', message: 'an update did not finish; run `npm run yatris:update -- --rollback`', file: '.yatris/update-transaction' });
+  }
+
+  let lock;
+  try {
+    lock = readPlatformLock(root);
+  } catch (error) {
+    return [...findings, { severity: 'error', code: 'platform-lock', message: (error as Error).message, file: PLATFORM_LOCK_PATH }];
+  }
+  if (lock === null) {
+    return [...findings, { severity: 'error', code: 'platform-lock', message: 'is missing, so `yatris update` cannot tell which files it manages', file: PLATFORM_LOCK_PATH }];
+  }
+
+  if (lock.platformVersion !== manifest.platformVersion) {
+    findings.push({
+      severity: 'error',
+      code: 'platform-lock-mismatch',
+      message: `records Yatris platform ${lock.platformVersion}, but the installed @yatris/astro is platform ${manifest.platformVersion}; update with \`npm run yatris:update\` rather than installing packages by hand`,
+      file: PLATFORM_LOCK_PATH,
+    });
+  }
+
+  const customised = Object.entries(lock.managed)
+    .filter(([key, recorded]) => {
+      const current = readArtifact(root, key);
+      return current !== null && digest(current) !== recorded;
+    })
+    .map(([key]) => key);
+  if (customised.length > 0) {
+    findings.push({ severity: 'warning', code: 'managed-customised', message: `managed files edited in this repository; the next platform update stops on them: ${customised.join(', ')}` });
+  }
 
   return findings;
 }
