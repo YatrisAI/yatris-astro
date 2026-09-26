@@ -15,6 +15,15 @@ describe('platform manifest', () => {
     expect(manifest.channel).toBe('stable');
   });
 
+  it('declares the release approval where the registry shows it, identical to the manifest', () => {
+    const manifest = readPlatformManifest(manifestUrl);
+    const pkg = JSON.parse(readFileSync(new URL('packages/astro/package.json', root), 'utf8'));
+
+    // The updater selects releases by this field; it must never disagree with the manifest
+    expect(pkg.yatrisPlatform).toEqual({ status: manifest.status });
+    expect(manifest.platformVersion).toBe(pkg.version);
+  });
+
   it('pins the same versions the workspace packages declare', () => {
     const manifest = readPlatformManifest(manifestUrl);
 

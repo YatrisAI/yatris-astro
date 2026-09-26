@@ -9,6 +9,11 @@ node_modules/
 # logs
 npm-debug.log*
 
+# yatris update: an unfinished transaction's backups, and proposed
+# replacements for customised managed files
+.yatris/update-transaction/
+.yatris/update-conflicts/
+
 # environment variables and local credentials (never commit Yatris keys)
 .env
 .env.*

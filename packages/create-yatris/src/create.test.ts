@@ -4,6 +4,7 @@ import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { readPlatformManifest } from '@yatris/astro/platform';
+import { AGENTS_BLOCK, digest, readArtifact, readPlatformLock } from '@yatris/astro/platform-lock';
 import { createProject, packageName, SKILL_LOCATIONS } from './create.js';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
@@ -85,6 +86,21 @@ describe('createProject', () => {
         expect(readFileSync(join(target, location, file))).toEqual(readFileSync(join(sources.skillsDir, file)));
       }
     }
+  });
+
+  it('records the platform release and every managed artifact as written', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const lock = readPlatformLock(target)!;
+
+    expect(lock.platformVersion).toBe(manifest.platformVersion);
+    expect(lock.dependencies).toEqual(manifest.dependencies);
+    expect(Object.keys(lock.managed)).toEqual(
+      expect.arrayContaining(['.agents/skills/alpinejs-development/SKILL.md', '.claude/skills/tailwindcss-development/SKILL.md', AGENTS_BLOCK, '.mcp.json', '.codex/config.toml', '.yatris/mcp.json']),
+    );
+    // Nothing the scaffold wrote counts as customised, and site files are not managed
+    for (const [key, recorded] of Object.entries(lock.managed)) expect(digest(readArtifact(target, key)!)).toBe(recorded);
+    expect(Object.keys(lock.managed).some((key) => key.startsWith('src/'))).toBe(false);
+    expect(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).scripts).toMatchObject({ 'yatris:update': 'yatris update', 'yatris:update:check': 'yatris update --check' });
   });
 
   it('writes an unpaired, credential-free project identity', () => {

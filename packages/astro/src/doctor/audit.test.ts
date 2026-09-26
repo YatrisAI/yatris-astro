@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { auditHtml } from './audit.js';
-import { gtmHeadSnippet, gtmNoscript } from '../head.js';
+import { gtmAfterConsentSnippet, gtmHeadSnippet, gtmNoscript } from '../head.js';
 
 const KEY = `alk_${'a1B2c3D4e5'.repeat(4)}`;
 
@@ -53,6 +53,13 @@ describe('auditHtml', () => {
 
     expect(codes(page({ head: `<title>t</title>${gtm}`, body: gtmNoscript('GTM-ABC1234') }))).not.toContain('error:duplicate-gtm');
     expect(codes(page({ head: `<title>t</title>${gtm}` }))).toContain('warning:partial-gtm');
+  });
+
+  it('expects no noscript fallback when GTM waits for consent', () => {
+    const gtm = `<script>${gtmAfterConsentSnippet(gtmHeadSnippet('GTM-ABC1234'))}</script>`;
+
+    expect(codes(page({ head: `<title>t</title>${gtm}` })).filter((c) => c.includes('gtm'))).toEqual([]);
+    expect(codes(page({ head: `<title>t</title>${gtm}`, body: gtmNoscript('GTM-ABC1234') }))).toContain('error:gtm-before-consent');
   });
 
   it('fails a direct gtag.js install', () => {

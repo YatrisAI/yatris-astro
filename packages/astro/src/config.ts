@@ -18,5 +18,6 @@ export function resolveConfig(options: YatrisOptions = {}): YatrisRuntimeConfig 
   return {
     gtmContainerId: gtm,
     searchConsoleVerification: options.searchConsoleVerification?.trim() || null,
+    consentMode: null,
   };
 }

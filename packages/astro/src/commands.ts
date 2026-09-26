@@ -3,8 +3,11 @@ import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { doctor, formatReport } from './doctor/doctor.js';
 import { STAGES, type Stage } from './doctor/findings.js';
+import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
 import { readLock, readManifest, syncSchema, verifySchema } from './schema.js';
+import { runUpdate, type UpdateEnvironment } from './update/command.js';
+import { exec, type Exec } from './update/exec.js';
 
 export interface CliResult {
   code: number;
@@ -17,6 +20,18 @@ export interface CliEnvironment {
   manifestUrl?: URL;
   /** Runs the site's production build; defaults to `npm run build` in `cwd`. */
   build?: () => Promise<{ code: number; output: string }>;
+  /** Network access for `yatris connect`; defaults to the global fetch. */
+  fetch?: typeof fetch;
+  /** Overrides the Yatris origin (YATRIS_URL); defaults to the manifest's MCP origin. */
+  yatrisUrl?: string;
+  /** Asks a question on an interactive terminal; undefined when not interactive. */
+  prompt?: (question: string) => Promise<string>;
+  /** Runs npm and git for `yatris update`. */
+  exec?: Exec;
+  /** Progress lines while a long command runs; defaults to the console. */
+  log?: (line: string) => void;
+  /** Release source and hand-over for `yatris update` (tests). */
+  update?: Pick<UpdateEnvironment, 'source' | 'delegate'>;
 }
 
 const HELP = `Usage: yatris <command>
@@ -33,6 +48,22 @@ Commands:
   schema verify [--manifest=<file>]
              Check the lock and generated files, and that they match the
              manifest's revision when one is given. Writes nothing.
+  connect [--force]
+             Pair this repository with its Yatris Website. Asks for the
+             single-use setup code from the dashboard (接続・診断), so it never
+             appears in shell history. Writes the site identity and the MCP
+             configuration; never a key or token. (\`connect <code>\` also
+             works, for automation.)
+  update [--check | --dry-run] [--to <version>] [--yes] [--major]
+         [--allow-dirty] [--rollback]
+             Move this site to a newer Yatris platform release (stable
+             releases on npm). --check only reports what is available;
+             --dry-run shows every package and managed-file change and any
+             conflict, writing nothing. Without a terminal, pass --yes and
+             --to <version> (and --major for a major Astro or platform
+             change). Locally edited managed files stop the update. A failed
+             update restores only the files it touched; it never commits.
+             Run it as \`npm run yatris:update\`.
 
 Options:
   --version  Print the package and Yatris platform versions
@@ -59,7 +90,52 @@ export async function run(argv: string[], env: CliEnvironment = { cwd: process.c
     return runSchema(rest, env);
   }
 
+  if (first === 'connect') {
+    return runConnect(rest, env);
+  }
+
+  if (first === 'update') {
+    return runUpdate(rest, {
+      cwd: env.cwd,
+      exec: env.exec ?? exec,
+      log: env.log ?? ((line) => console.log(line)),
+      prompt: env.prompt,
+      ...env.update,
+    });
+  }
+
   return { code: 1, stdout: '', stderr: `yatris: unknown command "${first}"\n\n${HELP}` };
+}
+
+async function runConnect(argv: string[], env: CliEnvironment): Promise<CliResult> {
+  let parsed;
+  try {
+    parsed = parseArgs({ args: argv, allowPositionals: true, options: { force: { type: 'boolean', default: false } } });
+  } catch (error) {
+    return { code: 1, stdout: '', stderr: `yatris connect: ${(error as Error).message}` };
+  }
+
+  const code = parsed.positionals[0] ?? (env.prompt ? (await env.prompt('Yatris setup code: ')).trim() : undefined);
+  if (!code) return { code: 1, stdout: '', stderr: 'yatris connect: a setup code is required (issue one in the Yatris dashboard, 接続・診断, and run this in an interactive terminal).' };
+
+  try {
+    const { version } = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    const manifest = readPlatformManifest(env.manifestUrl);
+    const identity = await exchangeSetupCode(code, {
+      apiBase: env.yatrisUrl ?? process.env.YATRIS_URL ?? apiBaseFrom(manifest.mcp.url),
+      client: { name: '@yatris/astro', version },
+      fetch: env.fetch,
+    });
+    const written = pairProject(env.cwd, identity, { force: parsed.values.force });
+
+    return {
+      code: 0,
+      stdout: `Paired with Yatris Website ${identity.website.id} (${identity.website.name}).\nWrote ${written.join(', ')}.\nSign in to the Yatris MCP from your agent client: in Claude Code, open claude here, approve the yatris server, then run claude mcp login yatris; in Codex, trust this project, then run codex mcp login yatris.`,
+      stderr: '',
+    };
+  } catch (error) {
+    return { code: 1, stdout: '', stderr: `yatris connect: ${(error as Error).message}` };
+  }
 }
 
 function runSchema(argv: string[], env: CliEnvironment): CliResult {
