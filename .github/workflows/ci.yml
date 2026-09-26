@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [development]
+    branches: [development, 'slice/**']
+  # Every PR, including slice PRs stacked on another branch
   pull_request:
-    branches: [main]
 
 jobs:
   check:

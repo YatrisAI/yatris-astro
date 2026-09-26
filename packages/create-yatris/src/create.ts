@@ -1,6 +1,8 @@
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join, resolve } from 'node:path';
 import { mcpDescriptor, mcpFiles } from '@yatris/astro/mcp';
+import { lockFor, managedArtifacts, writePlatformLock } from '@yatris/astro/platform-lock';
+import { emptyLock, LOCK_PATH } from '@yatris/astro/schema';
 import type { PlatformManifest } from '@yatris/astro/platform';
 
 /** Where generated skills are discovered: Codex first, then Claude. */
@@ -59,12 +61,21 @@ export function createProject(options: CreateOptions, sources: Sources): string 
     templateVersion: sources.manifest.template,
   });
 
+  // An explicit empty schema contract (#265): "no schema designed yet",
+  // distinguishable from a lock that could not be written or fetched
+  writeJson(join(target, LOCK_PATH), emptyLock());
+
   // The Yatris MCP: one descriptor and the Claude Code / Codex adapters
   // derived from it, holding only the URL (people sign in from their client)
   for (const [path, contents] of Object.entries(mcpFiles(mcpDescriptor(sources.manifest.mcp.url)))) {
     mkdirSync(dirname(join(target, path)), { recursive: true });
     writeFileSync(join(target, path), contents);
   }
+
+  // The platform lock: this release, and the digest of every managed
+  // artifact as written, so `yatris update` can tell a local edit (#272)
+  const artifacts = managedArtifacts({ skillsDir: sources.skillsDir, agentsTemplate: join(sources.templateDir, 'AGENTS.md') }, sources.manifest.mcp.url);
+  writePlatformLock(target, lockFor(sources.manifest, artifacts));
 
   return target;
 }

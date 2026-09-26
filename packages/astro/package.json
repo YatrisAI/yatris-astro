@@ -1,6 +1,6 @@
 {
   "name": "@yatris/astro",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Yatris Astro integration, build contract and the yatris CLI for Yatris-managed websites.",
   "license": "MIT",
   "type": "module",
@@ -29,13 +29,29 @@
       "types": "./dist/mcp.d.ts",
       "default": "./dist/mcp.js"
     },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    },
     "./navigation": {
       "types": "./dist/navigation.d.ts",
       "default": "./dist/navigation.js"
     },
+    "./platform-lock": {
+      "types": "./dist/platform-lock.d.ts",
+      "default": "./dist/platform-lock.js"
+    },
     "./platform": {
       "types": "./dist/platform.d.ts",
       "default": "./dist/platform.js"
+    },
+    "./measurement": {
+      "types": "./dist/measurement.d.ts",
+      "default": "./dist/measurement.js"
+    },
+    "./pairing": {
+      "types": "./dist/pairing.d.ts",
+      "default": "./dist/pairing.js"
     },
     "./YatrisHead.astro": "./components/YatrisHead.astro",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
@@ -46,10 +62,15 @@
   "bin": {
     "yatris": "./dist/cli.js"
   },
+  "yatrisPlatform": {
+    "status": "unreleased"
+  },
   "files": [
     "dist",
     "components",
-    "platform.json"
+    "platform.json",
+    "template",
+    "skills"
   ],
   "peerDependencies": {
     "astro": "^7.3.5"
@@ -60,7 +81,7 @@
     }
   },
   "scripts": {
-    "build": "node ../../scripts/stage-package.mjs . && tsc -p tsconfig.build.json"
+    "build": "node ../../scripts/stage-package.mjs . --with-assets && tsc -p tsconfig.build.json"
   },
   "publishConfig": {
     "access": "public"

@@ -40,6 +40,44 @@ and Alpine work, nothing loads from a CDN, no credentials leak, and Astro's own
 
 Nothing is published yet (YatrisAI/YatrisCMS#258).
 
+## Platform releases
+
+A platform release is made only by `.github/workflows/release.yml`, run on
+`main` after a reviewer approves the `npm-release` environment. It runs the
+compatibility matrix (`npm run check`, then the end-to-end create-and-update
+run against the pinned versions), marks the release (`scripts/mark-released.mjs`
+sets `yatrisPlatform.status` and the manifest `status` to `released` in its
+own workspace; the repository always says `unreleased`), and publishes both
+packages with npm provenance.
+
+`yatris update` and Yatris's update PRs take the newest stable version whose
+marker says `released` **and** whose npm provenance attestation names exactly
+that workflow on `main`, for the exact tarball the registry serves, with the
+signatures verified by `npm audit signatures`. A marker set any other way, a
+version published by hand, or one built by another workflow or branch is
+skipped. npm dist-tags such as `latest` are never read.
+
+Publishing uses npm trusted publishing (OIDC), so no npm token is stored in
+GitHub. npm can only trust a workflow for a package that already exists, so
+each package needs a one-time bootstrap before the first release:
+
+1. On npmjs.com, with two-factor authentication: create the `yatris`
+   organisation (owning `@yatris`), and publish a placeholder of
+   `@yatris/astro` and `create-yatris` by hand, for example
+   `0.0.0-bootstrap.0`. A placeholder has no provenance and is a prerelease,
+   so `yatris update` never selects it.
+2. For each package, add a trusted publisher: GitHub Actions, repository
+   `YatrisAI/yatris-astro`, workflow `release.yml`, environment
+   `npm-release`. Then set publishing access to "Require two-factor
+   authentication and disallow tokens".
+3. Run the Release workflow on `main` and approve the `npm-release`
+   environment. The first real release then becomes `latest`.
+
+The alternative is a short-lived, package-scoped publish token that exists
+only for the first run: add `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}` to the
+two publish steps, then configure trusted publishing, revoke the token and
+remove the secret. The updater's provenance check holds either way.
+
 ## Branches
 
 - All work happens on `development`.

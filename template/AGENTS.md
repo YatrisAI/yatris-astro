@@ -19,7 +19,15 @@ entirely the site's own.
   (`@yatris/astro/YatrisHead.astro`), given a `page` object with at least a
   `title`; every `<body>` starts with `YatrisBodyStart`. They own the title,
   description, canonical URL, social metadata and Google Tag Manager. Never
-  hand-write Google tags (`gtag`, GTM snippets); GTM is configured in Yatris.
+  hand-write Google tags (`gtag`, GTM snippets); GTM, Search Console and the
+  consent policy are configured in Yatris and read by the production build.
+- **Measurement events and consent**: send events with
+  `trackEvent('snake_case_name', { ... })` and record a visitor's consent
+  choice with `updateConsent({ analytics, ads })`, both from
+  `@yatris/astro/measurement`. The consent UI itself is part of the site
+  design: show it while `storedConsent()` is null. When the site requires
+  consent, GTM is not loaded at all until `updateConsent` grants analytics,
+  so never load it any other way.
 - **Styling** uses Tailwind CSS 4 (`src/styles/global.css`, CSS-first
   `@theme`; there is no `tailwind.config.*`). Follow the
   `tailwindcss-development` skill.
@@ -59,14 +67,22 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   files or deployment secret stores, and never reach browser-side code.
 - Only change files under `src/` unless your task explicitly names another
   path.
+- The built-in skills, this block of `AGENTS.md` and the MCP configuration
+  are managed by Yatris platform updates. Do not edit them: put
+  site-specific guidance below the end marker or in a skill of your own.
+  Run `npm run yatris:update` only when asked.
 
 ## Yatris MCP
 
 Live Yatris state (this Website, its Content Types and their fields) and
 Yatris actions (content drafts) are available only through the Yatris MCP
 server configured in `.mcp.json` (Claude Code) and `.codex/config.toml`
-(Codex). Sign in once from your client: `claude mcp login yatris` or
-`codex mcp login yatris`, then allow this Website. Never put a token or
+(Codex). Sign in once from your client. Claude Code: open `claude` in this
+repository, trust it and approve the `yatris` server from `.mcp.json`, then
+run `claude mcp login yatris`. Codex: trust this project (Codex reads
+`.codex/config.toml` only in trusted projects), then run
+`codex mcp login yatris`. On the Yatris page that opens, allow this
+Website. Never put a token or
 header in those files, never call Yatris APIs another way, and if the MCP
 is unavailable, say so rather than guessing live state.
 

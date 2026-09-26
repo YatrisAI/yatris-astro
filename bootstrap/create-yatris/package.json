@@ -1,0 +1,21 @@
+{
+  "name": "create-yatris",
+  "version": "0.0.0-bootstrap.0",
+  "description": "NONFUNCTIONAL PLACEHOLDER. Reserves the package so npm trusted publishing can be configured for the Yatris release workflow. It creates nothing; use a real Yatris platform release.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YatrisAI/yatris-astro.git",
+    "directory": "bootstrap/create-yatris"
+  },
+  "bin": {
+    "create-yatris": "cli.js"
+  },
+  "files": [
+    "cli.js",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
