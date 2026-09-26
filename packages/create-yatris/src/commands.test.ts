@@ -63,7 +63,7 @@ describe('create-yatris CLI', () => {
     expect(await run([target], env())).toBe(0);
     expect(existsSync(join(target, 'astro.config.mjs'))).toBe(true);
     expect(execs.map((e) => [e.command, ...e.args].join(' '))).toEqual([
-      'git init --quiet',
+      'git init --quiet --initial-branch=main',
       'npm install --no-audit --no-fund',
       'npm run build',
     ]);

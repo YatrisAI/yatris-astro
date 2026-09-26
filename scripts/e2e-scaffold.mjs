@@ -56,6 +56,7 @@ sh(`npm exec -- create-yatris "${site}" --yes --yatris-astro "file:${tarball('@y
 expect(existsSync(join(site, 'dist/index.html')), 'create-yatris installed dependencies and built the new site');
 expect(existsSync(join(site, 'package-lock.json')), 'the new site has a lockfile');
 expect(existsSync(join(site, '.git')), 'the new site is a Git repository (Tailwind then ignores .astro/)');
+expect(sh('git symbolic-ref --short HEAD', site).trim() === 'main', 'the new repository starts on main, whatever the local Git default is');
 expect(
   JSON.parse(read('.mcp.json')).mcpServers.yatris.url === JSON.parse(read('.yatris/mcp.json')).server.url &&
     read('.codex/config.toml').includes(`url = "${JSON.parse(read('.yatris/mcp.json')).server.url}"`),
