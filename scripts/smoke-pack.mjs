@@ -44,6 +44,8 @@ for (const pkg of packed) {
     for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro']) {
       expect(files.includes(component), `@yatris/astro tarball contains ${component}`);
     }
+    // `yatris update` seeds a missing .env.example from the release's own template
+    expect(files.includes('template/.env.example'), '@yatris/astro tarball contains the template .env.example');
   }
   if (pkg.name === 'create-yatris') {
     expect(files.includes('template/README.md'), 'create-yatris tarball contains the template');

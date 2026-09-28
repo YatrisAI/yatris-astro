@@ -60,7 +60,16 @@ export function pendingTransaction(root: string): Transaction | null {
 export async function applyUpdate(root: string, plan: UpdatePlan, manifest: PlatformManifest, installSpec: string, io: Io): Promise<ApplyResult> {
   if (plan.conflicts.length > 0) throw new Error('an update with unresolved conflicts cannot be applied');
 
-  const paths = [...new Set(['package.json', 'package-lock.json', PLATFORM_LOCK_PATH, ...plan.files.map((f) => artifactFile(f.key))])];
+  const paths = [
+    ...new Set([
+      'package.json',
+      'package-lock.json',
+      PLATFORM_LOCK_PATH,
+      ...plan.files.map((f) => artifactFile(f.key)),
+      ...plan.seeded.map((f) => f.key),
+      ...(plan.ignoreRules.length ? ['.gitignore'] : []),
+    ]),
+  ];
   begin(root, { version: 1, from: plan.from, to: plan.to, startedAt: new Date().toISOString(), files: paths.map((path) => ({ path, existed: existsSync(join(root, path)) })), installed: false });
 
   const fail = async (failure: Failure): Promise<ApplyResult> => ({ ok: false, failure, restored: await rollback(root, io) });
@@ -81,6 +90,12 @@ export async function applyUpdate(root: string, plan: UpdatePlan, manifest: Plat
 
     // 3. Versioned configuration: the update scripts
     addUpdateScripts(root);
+
+    // 3a. Site files seeded once (YatrisCMS#329): never over an existing one
+    for (const file of plan.seeded) {
+      if (file.text !== null && !existsSync(join(root, file.key))) writeFileSync(join(root, file.key), file.text);
+    }
+    appendIgnoreRules(root, plan.ignoreRules);
 
     // 4. The platform lock advances only inside the transaction
     const lock: PlatformLock = {
@@ -202,6 +217,15 @@ function addUpdateScripts(root: string): void {
   if (missing.length === 0) return;
   pkg.scripts = { ...pkg.scripts, ...Object.fromEntries(missing) };
   writeFileSync(path, `${JSON.stringify(pkg, null, 2)}\n`);
+}
+
+/** Appends the planned rules to `.gitignore` (creating it if needed), leaving the site's own lines as they are. */
+function appendIgnoreRules(root: string, rules: string[]): void {
+  if (rules.length === 0) return;
+  const path = join(root, '.gitignore');
+  const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
+  const separator = current === '' ? '' : current.endsWith('\n') ? '\n' : '\n\n';
+  writeFileSync(path, `${current}${separator}# Added by yatris update: commit .env.example, never .env (local keys)\n${rules.join('\n')}\n`);
 }
 
 /** The site's own checks: its doctor (which builds), else the build; then its tests. */

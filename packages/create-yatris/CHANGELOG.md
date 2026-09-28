@@ -1,5 +1,18 @@
 # create-yatris
 
+## 0.4.0
+
+### Minor Changes
+
+- 66bf88e: Generated zod schemas keep image `variants` (YatrisCMS#329). `src/generated/yatris-zod.ts` now declares the resized copies Delivery serves on a library image (`variants: { width, height, url, webp_url }[]`, optional), which the previous schema let zod strip, so a page can build `srcset` from them without re-declaring the image fields. `.yatris/schema.lock.json` records the zod generator version it was synced with (`zodGenerator`), and `yatris schema verify --manifest` checks the file against that version: a lock synced by 0.3.0 has no version, counts as version 1 and keeps verifying, as do the build-time schema check and `yatris doctor`. Such a site gets the warning `schema-zod-outdated` until it runs `yatris schema sync --manifest <file>` again, which regenerates the file with `variants` and records version 2.
+
+### Patch Changes
+
+- 66bf88e: `yatris update` adds `.env.example` to a site that has none (YatrisCMS#329), from the release's template, so existing sites get the file the managed AGENTS.md block points agents at. It never replaces an existing `.env.example` and does not record it in `.yatris/platform.lock.json`: the file is the site's own once it exists. When Git would ignore the new file (an older `.gitignore` ignoring `.env.*` without `!.env.example`) or would not ignore `.env`, the update appends the missing rule to `.gitignore`. `--dry-run` lists both.
+- Updated dependencies [66bf88e]
+- Updated dependencies [66bf88e]
+  - @yatris/astro@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

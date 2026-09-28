@@ -8,7 +8,7 @@ import { readPlatformManifest } from '../platform.js';
 import { AGENTS_BLOCK, artifactFile, PLATFORM_LOCK_PATH, readPlatformLock } from '../platform-lock.js';
 import { applyUpdate, formatFailure, pendingTransaction, rollback, TRANSACTION_DIR } from './apply.js';
 import { tail, type Exec } from './exec.js';
-import { acceptConflicts, CONFLICT_TEXT, formatPlan, planUpdate, type Conflict, type UpdatePlan } from './plan.js';
+import { acceptConflicts, CONFLICT_TEXT, formatPlan, planIgnoreRules, planUpdate, type Conflict, type UpdatePlan } from './plan.js';
 import { directorySource, newestApproved, registrySource, type UpdateSource } from './source.js';
 import { compareVersions, isStable, nodeSatisfies } from './versions.js';
 
@@ -149,6 +149,8 @@ async function target(values: Values, current: string, env: UpdateEnvironment): 
     lines.push('Run `npm run yatris:update -- --dry-run` to see which files it would change.');
     return { code: 0, stdout: lines.join('\n'), stderr: '' };
   }
+
+  plan = { ...plan, ignoreRules: await planIgnoreRules(env.cwd, plan, env.exec) };
 
   if (values['dry-run']) {
     env.log(formatPlan(plan));
