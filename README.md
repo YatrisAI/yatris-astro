@@ -20,6 +20,19 @@ programme map, decisions and delivery order live in
 `platform/manifest.json`, `template/` and `skills/` are the single sources;
 `scripts/stage-package.mjs` copies them into each package at build time.
 
+## Reading content
+
+A site reads published content at build time with `getYatrisList`,
+`getYatrisSingleton` and `getYatrisItem` from `@yatris/astro/delivery`. Each
+item carries `position`: its 1-based place in an Ordered Content Type, or
+`null` for every other structure (and from servers that predate Ordered
+types). `getYatrisList` orders its result as follows:
+
+- `sort` given: that order. `sort: 'position'` fails the build if any item
+  has no position.
+- No `sort`, every item has a position: lowest position first, ties by ID.
+- Otherwise: most recently updated first.
+
 ## Development
 
 Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).

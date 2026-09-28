@@ -60,7 +60,9 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   `getYatrisSingleton` or `getYatrisItem` from `@yatris/astro/delivery`
   (pass a `schema` from `astro/zod`, and `allowEmpty: true` plus an empty
   state where no items is expected). Never call the Delivery API directly or
-  from browser code.
+  from browser code. `getYatrisList` returns an Ordered Content Type in the
+  editor's order (by `position`) and anything else most recently updated
+  first; do not re-sort an Ordered list.
 - Never invent customer facts, testimonials, logos, results or other factual
   claims to fill a design.
 - Never commit credentials. Yatris Delivery keys exist only in ignored `.env`

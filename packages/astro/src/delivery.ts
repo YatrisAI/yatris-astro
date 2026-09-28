@@ -2,7 +2,13 @@
  * Build-time client for the Yatris Content Delivery API. It serves published
  * content only, fetches every page, and fails the build loudly rather than
  * rendering a partial or malformed site. Never import it into browser code.
+ *
+ * In a preview build (see `./preview.ts`) it also reads the preview's draft
+ * items from Yatris; each one replaces the published item with the same
+ * canonical ID, or is added when there is none.
  */
+
+import { fetchPreviewOverlay, previewBuild, type PreviewBuild } from './preview.js';
 
 /** One published content item. `data` is the item's field values. */
 export interface DeliveryItem<T = Record<string, unknown>> {
@@ -11,6 +17,12 @@ export interface DeliveryItem<T = Record<string, unknown>> {
   version: number;
   publishedAt: string;
   updatedAt: string | null;
+  /**
+   * The item's 1-based place in an Ordered Content Type, as the editor
+   * arranged it; null for every other structure (and from servers that
+   * predate Ordered Content Types).
+   */
+  position: number | null;
   data: T;
 }
 
@@ -19,14 +31,19 @@ export interface Parser<T> {
   parse(value: unknown): T;
 }
 
-export type DeliverySort = 'updated_at' | '-updated_at' | 'published_at' | '-published_at';
+export type DeliverySort = 'position' | 'updated_at' | '-updated_at' | 'published_at' | '-published_at';
 
 export interface ListOptions<T> {
   /** Validates and types each item's data; a failure fails the build. */
   schema?: Parser<T>;
   /** Whether zero published items is expected. Otherwise an empty result fails the build. */
   allowEmpty?: boolean;
-  /** Order of the returned items. Defaults to most recently updated first. */
+  /**
+   * Order of the returned items. By default an Ordered Content Type (every
+   * item has a `position`) comes back in the editor's order, lowest position
+   * first; anything else comes back most recently updated first. `position`
+   * fails the build if any item has no position.
+   */
   sort?: DeliverySort;
 }
 
@@ -39,6 +56,8 @@ export interface DeliveryConfig {
   /** Retries after a network error or 5xx response. */
   retries?: number;
   retryDelayMs?: number;
+  /** Whether this is a preview build; defaults to reading the environment. */
+  preview?: PreviewBuild;
 }
 
 export class YatrisDeliveryError extends Error {
@@ -72,6 +91,16 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     );
   }
   const base = parseEndpoint(endpoint);
+  const preview = config.preview ?? previewBuild();
+
+  // The preview's draft items by canonical ID, fetched once per build
+  let overlay: Promise<Map<string, unknown>> | undefined;
+  const drafts = () =>
+    (overlay ??= preview.active
+      ? fetchPreviewOverlay(preview, doFetch).then(indexOverlay, (error: Error) => {
+          throw new YatrisDeliveryError(error.message);
+        })
+      : Promise.resolve(new Map()));
 
   async function get(path: string, context: string): Promise<{ status: number; body: unknown }> {
     const url = `${base}${path}`;
@@ -137,12 +166,19 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     if (items.length !== total) {
       throw new YatrisDeliveryError(`${context}: received ${items.length} of ${total} items; content changed during the build, so retry it`);
     }
+    for (const [id, raw] of await drafts()) {
+      if (!isRecord(raw) || raw.type !== type) continue;
+      const draft = parseItem<T>(raw, `${context} (preview)`, options.schema);
+      const at = items.findIndex((item) => item.canonicalId === id);
+      if (at === -1) items.push(draft);
+      else items[at] = draft;
+    }
     if (items.length === 0 && !options.allowEmpty) {
       throw new YatrisDeliveryError(
         `${context} has no published items, or does not exist. Pass { allowEmpty: true } where an empty list is expected and render an empty state.`,
       );
     }
-    return sortItems(items, options.sort ?? '-updated_at');
+    return sortItems(items, options.sort ?? defaultSort(items), context);
   }
 
   return {
@@ -159,6 +195,8 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     },
     async item<T>(canonicalId: string, options: { schema?: Parser<T> } = {}) {
       const context = `item ${canonicalId}`;
+      const draft = (await drafts()).get(canonicalId);
+      if (draft !== undefined) return parseItem(draft, `${context} (preview)`, options.schema);
       const { status, body } = await get(`/items/${encodeURIComponent(canonicalId)}`, context);
       if (status === 404) return null;
       if (!isRecord(body) || !('data' in body)) {
@@ -229,6 +267,7 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
     typeof raw.version !== 'number' ||
     typeof raw.published_at !== 'string' ||
     !(raw.updated_at === null || typeof raw.updated_at === 'string') ||
+    !(raw.position === undefined || raw.position === null || (Number.isInteger(raw.position) && (raw.position as number) >= 1)) ||
     !isRecord(raw.payload)
   ) {
     throw new YatrisDeliveryError(`${where}: malformed Delivery item`);
@@ -239,10 +278,37 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
   } catch (error) {
     throw new YatrisDeliveryError(`${where}: content does not match the declared schema: ${(error as Error).message}`);
   }
-  return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, data };
+  const position = (raw.position ?? null) as number | null;
+  return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, position, data };
 }
 
-function sortItems<T>(items: DeliveryItem<T>[], sort: DeliverySort): DeliveryItem<T>[] {
+/** Validates the overlay's items once, keyed by canonical ID. */
+function indexOverlay(raw: unknown[]): Map<string, unknown> {
+  const drafts = new Map<string, unknown>();
+  for (const item of raw) {
+    const parsed = parseItem(item, 'preview overlay');
+    if (drafts.has(parsed.canonicalId)) {
+      throw new YatrisDeliveryError(`preview overlay: item ${parsed.canonicalId} appears twice`);
+    }
+    drafts.set(parsed.canonicalId, item);
+  }
+  return drafts;
+}
+
+/** The editor's order when every item has a position (an Ordered Content Type), otherwise most recently updated first. */
+function defaultSort(items: DeliveryItem<unknown>[]): DeliverySort {
+  return items.length > 0 && items.every((item) => item.position !== null) ? 'position' : '-updated_at';
+}
+
+/** Sorts a copy of `items`. The sort is stable, so ties keep the API's `sort=id` order. */
+function sortItems<T>(items: DeliveryItem<T>[], sort: DeliverySort, context: string): DeliveryItem<T>[] {
+  if (sort === 'position') {
+    const unplaced = items.find((item) => item.position === null);
+    if (unplaced) {
+      throw new YatrisDeliveryError(`${context}: item ${unplaced.canonicalId} has no position, so the type is not Ordered; drop sort: 'position'`);
+    }
+    return [...items].sort((a, b) => (a.position as number) - (b.position as number));
+  }
   const descending = sort.startsWith('-');
   const key = (sort.replace(/^-/, '') === 'published_at' ? 'publishedAt' : 'updatedAt') as 'publishedAt' | 'updatedAt';
   const time = (value: string | null) => (value ? Date.parse(value) : 0);
