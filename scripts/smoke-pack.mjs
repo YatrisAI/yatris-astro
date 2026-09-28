@@ -47,6 +47,7 @@ for (const pkg of packed) {
   }
   if (pkg.name === 'create-yatris') {
     expect(files.includes('template/README.md'), 'create-yatris tarball contains the template');
+    expect(files.includes('template/.env.example'), 'create-yatris tarball contains the template .env.example');
     expect(files.includes('skills/README.md'), 'create-yatris tarball contains the skill pack');
   }
 }

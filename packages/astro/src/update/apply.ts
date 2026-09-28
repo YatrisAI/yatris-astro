@@ -95,7 +95,8 @@ export async function applyUpdate(root: string, plan: UpdatePlan, manifest: Plat
     writeFileSync(join(root, PLATFORM_LOCK_PATH), platformLockText(lock));
 
     // 5. Verification: schema contract, stage doctor (which builds), tests
-    const schema = verifySchema(root);
+    // Errors only: an unsynced lock (a site with no schema yet) is a warning
+    const schema = verifySchema(root).filter((finding) => finding.severity === 'error');
     if (schema.length > 0) {
       return fail({ step: 'schema verify', command: 'yatris schema verify', output: schema.map((f) => `${f.code}${f.file ? ` ${f.file}` : ''}: ${f.message}`).join('\n') });
     }
