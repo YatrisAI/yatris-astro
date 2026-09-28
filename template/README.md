@@ -23,4 +23,8 @@ skills, the managed block of `AGENTS.md` and the MCP configuration) and runs
 skills, stops if you edited a managed file, restores what it changed if
 verification fails, and never commits.
 
+It also adds `.env.example` if the site has none, and then leaves it to you:
+an existing one is never replaced. If `.gitignore` would hide the new file
+or let `.env` be committed, the update appends the rule that fixes it.
+
 Agent and developer conventions are in [AGENTS.md](AGENTS.md).

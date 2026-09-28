@@ -10,7 +10,7 @@ import { AGENTS_BLOCK, digest, lockFor, managedArtifacts, PLATFORM_LOCK_PATH, re
 import { emptyLock, LOCK_PATH } from '../schema.js';
 import { applyUpdate, TRANSACTION_DIR } from './apply.js';
 import { CONFLICTS_DIR, runUpdate, type UpdateEnvironment } from './command.js';
-import type { Exec } from './exec.js';
+import { exec as realExec, type Exec } from './exec.js';
 import { planUpdate } from './plan.js';
 import { newestStable, type UpdateSource } from './source.js';
 import { isMajorChange, isStable, nodeSatisfies } from './versions.js';
@@ -57,6 +57,7 @@ function nextRelease(changes: { astro?: string } = {}): string {
   mkdirSync(join(dir, 'skills/yatris-content'));
   writeFileSync(join(dir, 'skills/yatris-content/SKILL.md'), '# yatris-content\n');
   writeFileSync(join(dir, 'template/AGENTS.md'), readFileSync(join(repo, 'template/AGENTS.md'), 'utf8').replace('## Conventions', '## Conventions (0.1.0)'));
+  cpSync(join(repo, 'template/.env.example'), join(dir, 'template/.env.example'));
   next = {
     ...current,
     platformVersion: '0.1.0',
@@ -71,13 +72,19 @@ function nextRelease(changes: { astro?: string } = {}): string {
 const sources = () => ({ skillsDir: join(release, 'skills'), agentsTemplate: join(release, 'template/AGENTS.md') });
 const read = (path: string) => readFileSync(join(site, path), 'utf8');
 
-/** Fakes npm and git: records commands, lets `npm install` pin versions, fails what it is told to. */
-function fakeExec(fail: RegExp | null = null) {
+/**
+ * Fakes npm and git: records commands, lets `npm install` pin versions, fails
+ * what it is told to. `git check-ignore` answers from `ignored` (by default
+ * the template's rules: `.env` ignored, `.env.example` committed).
+ */
+function fakeExec(fail: RegExp | null = null, ignored: string[] = ['.env']) {
   const commands: string[] = [];
   const fn: Exec = async (command) => {
     const line = command.join(' ');
     commands.push(line);
     if (fail?.test(line)) return { code: 1, output: `${line} failed\nError: doctor found 1 error` };
+    if (command[0] === 'git' && command[1] === 'rev-parse') return { code: 0, output: 'true\n' };
+    if (command[0] === 'git' && command[1] === 'check-ignore') return { code: ignored.includes(command.at(-1)!) ? 0 : 1, output: '' };
     if (command[0] === 'npm' && command[1] === 'install') {
       const pkg = JSON.parse(read('package.json'));
       for (const spec of command.slice(2).filter((a) => !a.startsWith('--'))) {
@@ -179,6 +186,8 @@ describe('applying an update', () => {
     expect(existsSync(join(site, '.claude/skills/yatris-content'))).toBe(true); // the directory, now empty
     expect(existsSync(join(site, '.claude/skills/yatris-content/SKILL.md'))).toBe(false);
     expect(read('src/pages/draft.astro')).toBe('work in progress');
+    // The seeded .env.example did not exist before, so the rollback removes it
+    expect(existsSync(join(site, '.env.example'))).toBe(false);
     expect(exec.commands.at(-1)).toBe('npm ci --no-audit --no-fund');
     expect(existsSync(join(site, TRANSACTION_DIR))).toBe(false);
   });
@@ -290,6 +299,84 @@ describe('yatris update', () => {
     expect(newestStable(['1.0.0', '1.1.0-rc.1'])).toBe('1.0.0');
     expect(isStable('1.1.0-rc.1')).toBe(false);
     expect(nodeSatisfies('>=22.12.0', '22.11.0')).toBe(false);
+  });
+});
+
+describe('seeding .env.example (YatrisCMS#329)', () => {
+  const env = (exec: Exec, extra: Partial<UpdateEnvironment> = {}): UpdateEnvironment => ({ cwd: site, exec, log: () => {}, ...extra });
+  const args = (...more: string[]) => [...more, '--resolved', release, '--install-spec', '@yatris/astro@0.1.0'];
+  const template = () => readFileSync(join(repo, 'template/.env.example'), 'utf8').replace(/\r\n/g, '\n');
+  /** Real Git for `git`, the fake for npm. */
+  const withGit =
+    (fake: Exec): Exec =>
+    (command, options) =>
+      command[0] === 'git' ? realExec(command, options) : fake(command, options);
+  const gitIgnores = async (path: string) => (await realExec(['git', 'check-ignore', '-q', '--', path], { cwd: site })).code === 0;
+
+  it('creates a missing one from the template, as a site file rather than a managed one', async () => {
+    const result = await runUpdate(args('--yes', '--to', '0.1.0', '--major'), env(fakeExec().fn));
+
+    expect(result.code).toBe(0);
+    expect(read('.env.example')).toBe(template());
+    expect(read('.env.example')).toContain('\nYATRIS_DELIVERY_API_KEY=\n');
+    expect(Object.keys(readPlatformLock(site)!.managed)).not.toContain('.env.example');
+    // Git already ignores .env and not .env.example here, so .gitignore is left alone
+    expect(existsSync(join(site, '.gitignore'))).toBe(false);
+  });
+
+  it('never touches an existing one', async () => {
+    const ours = '# our own variables\nYATRIS_DELIVERY_ENDPOINT=\nSITE_FLAG=\n';
+    writeFileSync(join(site, '.env.example'), ours);
+    expect(planUpdate(site, readPlatformLock(site)!, next, sources()).seeded).toEqual([]);
+
+    const exec = fakeExec();
+    const result = await runUpdate(args('--yes', '--to', '0.1.0', '--major'), env(exec.fn));
+
+    expect(result.code).toBe(0);
+    expect(read('.env.example')).toBe(ours);
+    expect(exec.commands.some((c) => c.startsWith('git check-ignore'))).toBe(false);
+  });
+
+  it('shows it in a dry run, and writes nothing', async () => {
+    const logged: string[] = [];
+    const result = await runUpdate(args('--dry-run'), env(fakeExec(null, ['.env', '.env.example']).fn, { log: (line) => logged.push(line) }));
+
+    expect(result.stdout).toContain('nothing was written');
+    expect(logged.join('\n')).toContain(
+      [
+        'Site files (created only because they are missing; the site owns them afterwards):',
+        '  add .env.example',
+        '  append to .gitignore: !.env.example (commit the template; .env stays ignored)',
+      ].join('\n'),
+    );
+    expect(existsSync(join(site, '.env.example'))).toBe(false);
+    expect(existsSync(join(site, '.gitignore'))).toBe(false);
+  });
+
+  it('makes Git track it and keep ignoring .env, whatever the site’s .gitignore said', async () => {
+    await realExec(['git', 'init', '-q'], { cwd: site });
+    const cases = [
+      // An older site: .env.* ignored, with no exception for the example
+      { before: 'node_modules/\n.env\n.env.*\n', appended: ['!.env.example'] },
+      // A site that never ignored .env at all
+      { before: 'node_modules/', appended: ['.env'] },
+    ];
+
+    for (const { before, appended } of cases) {
+      rmSync(join(site, '.env.example'), { force: true });
+      writeFileSync(join(site, '.gitignore'), before);
+      writePlatformLock(site, { ...readPlatformLock(site)!, platformVersion: '0.0.0' });
+
+      const result = await runUpdate(args('--yes', '--to', '0.1.0', '--major', '--allow-dirty'), env(withGit(fakeExec().fn)));
+
+      expect(result.code).toBe(0);
+      expect(read('.env.example')).toBe(template());
+      const text = read('.gitignore');
+      expect(text.startsWith(before)).toBe(true);
+      expect(text.slice(before.length).trim().split('\n').slice(1)).toEqual(appended);
+      expect(await gitIgnores('.env')).toBe(true);
+      expect(await gitIgnores('.env.example')).toBe(false);
+    }
   });
 });
 

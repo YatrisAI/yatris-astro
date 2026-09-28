@@ -1,9 +1,19 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { PlatformManifest } from '../platform.js';
 import { digest, managedArtifacts, readArtifact, siteMcpUrl, type ManagedSources, type PlatformLock } from '../platform-lock.js';
+import type { Exec } from './exec.js';
 import { PLATFORM_PACKAGE } from './source.js';
 import { isMajorChange, parseVersion } from './versions.js';
+
+/**
+ * Template files the updater seeds into a site that lacks them, then leaves
+ * to the site: never overwritten, never recorded in the platform lock, so a
+ * site may customise or delete them (YatrisCMS#329). `.env.example` is the
+ * tracked template for the ignored `.env` that the managed AGENTS.md block
+ * points agents at; create-yatris has shipped it since 0.3.0.
+ */
+export const SEEDED_FILES = ['.env.example'] as const;
 
 export type FileChangeKind = 'add' | 'update' | 'remove' | 'adopt';
 
@@ -48,6 +58,13 @@ export interface UpdatePlan {
   major: string[];
   /** The lock's managed digests once the plan (without conflicts) is applied. */
   managed: Record<string, string>;
+  /** Site-owned template files the site lacks, created once (`SEEDED_FILES`). */
+  seeded: FileChange[];
+  /**
+   * Lines appended to `.gitignore` so a seeded `.env.example` is committed and
+   * `.env` stays ignored; filled in by `planIgnoreRules`, which asks Git.
+   */
+  ignoreRules: string[];
 }
 
 /**
@@ -66,6 +83,8 @@ export function planUpdate(root: string, lock: PlatformLock, manifest: PlatformM
     conflicts: [],
     major: [],
     managed: {},
+    seeded: seededFiles(root, dirname(sources.agentsTemplate)),
+    ignoreRules: [],
   };
 
   const keys = [...new Set([...Object.keys(lock.managed), ...Object.keys(target)])].sort();
@@ -115,6 +134,34 @@ export function planUpdate(root: string, lock: PlatformLock, manifest: PlatformM
   return plan;
 }
 
+/** The seeded files missing from the site that the release's template has. */
+function seededFiles(root: string, templateDir: string): FileChange[] {
+  return SEEDED_FILES.filter((key) => !existsSync(join(root, key)) && existsSync(join(templateDir, key))).map((key) => ({
+    key,
+    kind: 'add' as const,
+    text: readFileSync(join(templateDir, key), 'utf8').replace(/\r\n/g, '\n'),
+  }));
+}
+
+/**
+ * What `.gitignore` needs so the seeded `.env.example` can be committed while
+ * `.env` stays ignored, as Git itself matches the site's ignore rules. An older
+ * site may ignore `.env.*` without re-including `.env.example`. Nothing is
+ * checked, and nothing appended, outside a Git work tree or when nothing is seeded.
+ */
+export async function planIgnoreRules(root: string, plan: UpdatePlan, exec: Exec): Promise<string[]> {
+  if (!plan.seeded.some((file) => file.key === '.env.example')) return [];
+  const tree = await exec(['git', 'rev-parse', '--is-inside-work-tree'], { cwd: root });
+  if (tree.code !== 0 || tree.output.trim() !== 'true') return [];
+
+  // Exit 0: ignored; 1: not ignored. --no-index matches the rules even for a tracked file.
+  const ignored = async (path: string) => (await exec(['git', 'check-ignore', '-q', '--no-index', '--', path], { cwd: root })).code === 0;
+  const rules: string[] = [];
+  if (!(await ignored('.env'))) rules.push('.env');
+  if (await ignored('.env.example')) rules.push('!.env.example');
+  return rules;
+}
+
 /** The plan with conflicts the user accepted turned into ordinary changes. */
 export function acceptConflicts(plan: UpdatePlan, accepted: Conflict[]): UpdatePlan {
   const files = [...plan.files];
@@ -159,6 +206,12 @@ export function formatPlan(plan: UpdatePlan): string {
   for (const f of shown) lines.push(`  ${verb[f.kind]} ${f.key}`);
   for (const key of plan.kept) lines.push(`  keep (customised; this release does not change it) ${key}`);
 
+  if (plan.seeded.length || plan.ignoreRules.length) {
+    lines.push('Site files (created only because they are missing; the site owns them afterwards):');
+    for (const f of plan.seeded) lines.push(`  add ${f.key}`);
+    for (const rule of plan.ignoreRules) lines.push(`  append to .gitignore: ${rule} (${IGNORE_REASON[rule] ?? ''})`);
+  }
+
   if (plan.conflicts.length) {
     lines.push('Conflicts (customised managed files this release would change):');
     for (const c of plan.conflicts) lines.push(`  ✖ ${c.key}: ${CONFLICT_TEXT[c.reason]}`);
@@ -169,6 +222,11 @@ export function formatPlan(plan: UpdatePlan): string {
   }
   return lines.join('\n');
 }
+
+const IGNORE_REASON: Record<string, string> = {
+  '.env': 'keep local keys out of Git',
+  '!.env.example': 'commit the template; .env stays ignored',
+};
 
 export const CONFLICT_TEXT: Record<ConflictReason, string> = {
   modified: 'changed in this repository since Yatris last wrote it',
