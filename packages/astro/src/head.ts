@@ -28,6 +28,11 @@ export interface YatrisRuntimeConfig {
    * (and then no GTM from Yatris).
    */
   consentMode?: 'not_required' | 'required' | null;
+  /**
+   * A preview build of unpublished content (YatrisCMS#310): every page is
+   * noindex, nofollow and nothing is measured.
+   */
+  preview?: boolean;
 }
 
 export interface HeadContext {
@@ -62,7 +67,7 @@ export function headTags(page: YatrisPageMeta, ctx: HeadContext): HeadTag[] {
   const canonical = ctx.site ? new URL(page.canonicalPath ?? ctx.pathname, ctx.site).href : undefined;
   if (canonical) tags.push({ tag: 'link', attrs: { rel: 'canonical', href: canonical } });
 
-  if (page.noindex) meta({ name: 'robots', content: 'noindex, nofollow' });
+  if (page.noindex || ctx.config.preview) meta({ name: 'robots', content: 'noindex, nofollow' });
 
   meta({ property: 'og:title', content: title });
   if (description) meta({ property: 'og:description', content: description });
@@ -80,7 +85,7 @@ export function headTags(page: YatrisPageMeta, ctx: HeadContext): HeadTag[] {
     if (page.modifiedAt) meta({ property: 'article:modified_time', content: page.modifiedAt });
   }
 
-  if (ctx.config.searchConsoleVerification) {
+  if (ctx.config.searchConsoleVerification && !ctx.config.preview) {
     meta({ name: 'google-site-verification', content: ctx.config.searchConsoleVerification });
   }
 
@@ -88,7 +93,7 @@ export function headTags(page: YatrisPageMeta, ctx: HeadContext): HeadTag[] {
     tags.push({ tag: 'script', attrs: { type: 'application/ld+json' }, html: jsonForScript(data) });
   }
 
-  if (ctx.config.gtmContainerId) {
+  if (ctx.config.gtmContainerId && !ctx.config.preview) {
     const gtm = gtmHeadSnippet(ctx.config.gtmContainerId);
     tags.push({ tag: 'script', attrs: {}, html: ctx.config.consentMode === 'required' ? gtmAfterConsentSnippet(gtm) : gtm });
   }

@@ -203,4 +203,99 @@ describe('Delivery client', () => {
     expect(() => createDeliveryClient({ endpoint: 'http://api.yatris.test/x', apiKey: KEY })).toThrow('must use https');
     expect(() => createDeliveryClient({ endpoint: 'http://127.0.0.1:4000/x', apiKey: KEY })).not.toThrow();
   });
+
+  describe('in a preview build', () => {
+    const preview = {
+      active: true as const,
+      lookupUrl: 'https://api.yatris.test/api/v1/preview-builds/7/current',
+      key: `alk_${'p'.repeat(40)}`,
+      deploymentUrl: 'https://3f2a1b9c.works-site.pages.dev',
+    };
+
+    /** The published API plus the preview lookup and its signed overlay. */
+    function withOverlay(published: Raw[], drafts: Raw[]) {
+      const delivery = api(published);
+      let overlayReads = 0;
+      const fake: typeof fetch = async (input, init) => {
+        const url = String(input);
+        if (url.startsWith(preview.lookupUrl)) {
+          return Response.json({ data: { preview_build_id: 5, overlay_url: 'https://api.yatris.test/api/v1/preview-builds/5/overlay?signature=s' } });
+        }
+        if (url.includes('/overlay')) {
+          overlayReads++;
+          return Response.json({ data: drafts, meta: { preview_build_id: 5 } });
+        }
+        return delivery.fake(input, init);
+      };
+      return { fake, reads: () => overlayReads };
+    }
+
+    const draft = (n: number, title: string): Raw => item(n, 'works', { version: 2, payload: { title } });
+
+    it('replaces a published item with its draft and adds a new one', async () => {
+      const { fake, reads } = withOverlay([item(1), item(2)], [draft(2, '下書き 2'), draft(5, '新規 5')]);
+      const deliver = client(fake, { preview });
+
+      const items = await deliver.list('works');
+
+      expect(items.map((i) => [i.canonicalId, i.data.title])).toEqual([
+        ['w-5', '新規 5'],
+        ['w-2', '下書き 2'],
+        ['w-1', '実績 1'],
+      ]);
+      expect((await deliver.item('w-2'))?.data).toEqual({ title: '下書き 2' });
+      expect((await deliver.item('w-5'))?.version).toBe(2);
+      expect((await deliver.item('w-1'))?.data).toEqual({ title: '実績 1' });
+      expect(reads()).toBe(1);
+    });
+
+    it('fills an otherwise empty list and leaves other types alone', async () => {
+      const { fake } = withOverlay([], [draft(3, '初めての実績')]);
+
+      expect((await client(fake, { preview }).list('works')).map((i) => i.canonicalId)).toEqual(['w-3']);
+      await expect(client(fake, { preview }).list('news')).rejects.toThrow('has no published items');
+    });
+
+    it('validates drafts against the declared schema', async () => {
+      const { fake } = withOverlay([item(1)], [item(4, 'works', { payload: { title: 7 } })]);
+      const schema = {
+        parse(value: unknown) {
+          const title = (value as { title: unknown }).title;
+          if (typeof title !== 'string') throw new Error('title must be a string');
+          return { title };
+        },
+      };
+
+      await expect(client(fake, { preview }).list('works', { schema })).rejects.toThrow('(preview), item w-4: content does not match the declared schema');
+    });
+
+    it('fails the build rather than render published content when the overlay cannot be read', async () => {
+      const broken: typeof fetch = async (input) =>
+        String(input).startsWith(preview.lookupUrl) ? new Response('{}', { status: 404 }) : api([item(1)]).fake(input);
+
+      await expect(client(broken, { preview }).list('works')).rejects.toThrow('found no preview for this deployment');
+    });
+
+    it("keeps an Ordered type in the editor's order with drafts in it", async () => {
+      const { fake } = withOverlay(
+        [item(1, 'works', { position: 2 }), item(2, 'works', { position: 1 })],
+        [item(3, 'works', { position: 3, payload: { title: '新規 3' } }), item(1, 'works', { position: 2, payload: { title: '下書き 1' } })],
+      );
+
+      const items = await client(fake, { preview }).list('works');
+
+      expect(items.map((i) => [i.canonicalId, i.data.title])).toEqual([
+        ['w-2', '実績 2'],
+        ['w-1', '下書き 1'],
+        ['w-3', '新規 3'],
+      ]);
+    });
+
+    it('never reads an overlay outside a preview build', async () => {
+      const { fake, reads } = withOverlay([item(1)], [draft(1, '下書き')]);
+
+      expect((await client(fake, { preview: { active: false, reason: null } }).list('works'))[0].data).toEqual({ title: '実績 1' });
+      expect(reads()).toBe(0);
+    });
+  });
 });
