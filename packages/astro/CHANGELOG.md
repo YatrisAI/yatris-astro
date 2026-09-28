@@ -1,5 +1,13 @@
 # @yatris/astro
 
+## 0.2.0
+
+### Minor Changes
+
+- 3211daa: A paired site's production build now enforces its schema contract (YatrisCMS#304). It reads `GET {yatris}/api/v1/sites/{id}/schema` and, when the Website is in revisioned schema mode, fails unless `.yatris/schema.lock.json` names the active revision and digest (or the pending one whose deployment precedes its activation) and the generated files verify against the lock. A build that cannot read Yatris fails too. Immediate-mode sites are not checked, and unpaired projects and `astro dev` make no request. Yatris lets a Website switch to revisioned mode only once its repository is on this release.
+- 8419265: Ordered Content Types (YatrisCMS#312). Delivery items gain `position`, the item's 1-based place in an Ordered Content Type, or `null` for other structures and from servers that do not send it. `getYatrisList` now returns an Ordered type in the editor's order (lowest position first, ties by ID) when no `sort` is given and every item has a position; anything else keeps the most-recently-updated-first default. `sort: 'position'` asks for that order explicitly and fails the build if an item has no position.
+- b116828: Preview builds (YatrisCMS#310). A build of the `yatris-preview` branch that has `YATRIS_PREVIEW_URL` and `YATRIS_PREVIEW_KEY` (installed by Yatris on the Pages project's Preview environment only) reads the preview's draft items from Yatris: each one replaces the published item with the same canonical ID in `getYatrisList`, `getYatrisSingleton` and `getYatrisItem`, or is added when there is none. Every page of such a build gets `<meta name="robots" content="noindex, nofollow">` from `YatrisHead`, no Google Tag Manager or Search Console tag, and `dist/_headers` gains an `X-Robots-Tag: noindex, nofollow` rule for `/*` alongside the site's own rules. Any other branch, including the production branch, ignores the preview variables even if they leak into it, and a preview build whose drafts cannot be read fails instead of showing published content.
+
 ## 0.1.1
 
 ### Patch Changes
