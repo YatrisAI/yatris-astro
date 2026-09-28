@@ -10,6 +10,7 @@ interface Raw {
   version: number;
   published_at: string;
   updated_at: string | null;
+  position?: number | null;
   payload: Record<string, unknown>;
 }
 
@@ -79,9 +80,48 @@ describe('Delivery client', () => {
       version: 1,
       publishedAt: '2026-09-03T10:00:00+09:00',
       updatedAt: '2026-09-03T12:00:00+09:00',
+      position: null,
       data: { title: '実績 3' },
     });
     expect((await client(fake).list('works', { sort: 'published_at' })).map((i) => i.canonicalId)).toEqual(['w-1', 'w-2', 'w-3']);
+  });
+
+  it('orders an Ordered Content Type by position, ties in id order, unless another sort is asked for', async () => {
+    const at = (n: number, position: number) => item(n, 'steps', { position });
+    const { fake } = api([at(1, 3), at(2, 1), at(3, 2), at(4, 1)]);
+
+    const items = await client(fake).list('steps');
+
+    expect(items.map((i) => [i.canonicalId, i.position])).toEqual([
+      ['w-2', 1],
+      ['w-4', 1],
+      ['w-3', 2],
+      ['w-1', 3],
+    ]);
+    expect((await client(fake).list('steps', { sort: 'position' })).map((i) => i.canonicalId)).toEqual(['w-2', 'w-4', 'w-3', 'w-1']);
+    expect((await client(fake).list('steps', { sort: '-updated_at' })).map((i) => i.canonicalId)).toEqual(['w-4', 'w-3', 'w-2', 'w-1']);
+  });
+
+  it('keeps the updated-first default unless every item has a position', async () => {
+    const { fake } = api([item(1, 'works', { position: 1 }), item(2, 'works', { position: null }), item(3)]);
+
+    const items = await client(fake).list('works');
+
+    expect(items.map((i) => [i.canonicalId, i.position])).toEqual([
+      ['w-3', null],
+      ['w-2', null],
+      ['w-1', 1],
+    ]);
+    await expect(client(fake).list('works', { sort: 'position' })).rejects.toThrow(
+      `Content Type "works": item w-2 has no position, so the type is not Ordered; drop sort: 'position'`,
+    );
+  });
+
+  it('fails a position that is not a 1-based integer', async () => {
+    for (const position of [0, 1.5, '1']) {
+      const { fake } = api([item(1, 'steps', { position: position as number })]);
+      await expect(client(fake).list('steps')).rejects.toThrow('Content Type "steps", item w-1: malformed Delivery item');
+    }
   });
 
   it('fails an empty list unless it is expected', async () => {
