@@ -11,6 +11,12 @@ export interface DeliveryItem<T = Record<string, unknown>> {
   version: number;
   publishedAt: string;
   updatedAt: string | null;
+  /**
+   * The item's 1-based place in an Ordered Content Type, as the editor
+   * arranged it; null for every other structure (and from servers that
+   * predate Ordered Content Types).
+   */
+  position: number | null;
   data: T;
 }
 
@@ -19,14 +25,19 @@ export interface Parser<T> {
   parse(value: unknown): T;
 }
 
-export type DeliverySort = 'updated_at' | '-updated_at' | 'published_at' | '-published_at';
+export type DeliverySort = 'position' | 'updated_at' | '-updated_at' | 'published_at' | '-published_at';
 
 export interface ListOptions<T> {
   /** Validates and types each item's data; a failure fails the build. */
   schema?: Parser<T>;
   /** Whether zero published items is expected. Otherwise an empty result fails the build. */
   allowEmpty?: boolean;
-  /** Order of the returned items. Defaults to most recently updated first. */
+  /**
+   * Order of the returned items. By default an Ordered Content Type (every
+   * item has a `position`) comes back in the editor's order, lowest position
+   * first; anything else comes back most recently updated first. `position`
+   * fails the build if any item has no position.
+   */
   sort?: DeliverySort;
 }
 
@@ -142,7 +153,7 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
         `${context} has no published items, or does not exist. Pass { allowEmpty: true } where an empty list is expected and render an empty state.`,
       );
     }
-    return sortItems(items, options.sort ?? '-updated_at');
+    return sortItems(items, options.sort ?? defaultSort(items), context);
   }
 
   return {
@@ -229,6 +240,7 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
     typeof raw.version !== 'number' ||
     typeof raw.published_at !== 'string' ||
     !(raw.updated_at === null || typeof raw.updated_at === 'string') ||
+    !(raw.position === undefined || raw.position === null || (Number.isInteger(raw.position) && (raw.position as number) >= 1)) ||
     !isRecord(raw.payload)
   ) {
     throw new YatrisDeliveryError(`${where}: malformed Delivery item`);
@@ -239,10 +251,24 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
   } catch (error) {
     throw new YatrisDeliveryError(`${where}: content does not match the declared schema: ${(error as Error).message}`);
   }
-  return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, data };
+  const position = (raw.position ?? null) as number | null;
+  return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, position, data };
 }
 
-function sortItems<T>(items: DeliveryItem<T>[], sort: DeliverySort): DeliveryItem<T>[] {
+/** The editor's order when every item has a position (an Ordered Content Type), otherwise most recently updated first. */
+function defaultSort(items: DeliveryItem<unknown>[]): DeliverySort {
+  return items.length > 0 && items.every((item) => item.position !== null) ? 'position' : '-updated_at';
+}
+
+/** Sorts a copy of `items`. The sort is stable, so ties keep the API's `sort=id` order. */
+function sortItems<T>(items: DeliveryItem<T>[], sort: DeliverySort, context: string): DeliveryItem<T>[] {
+  if (sort === 'position') {
+    const unplaced = items.find((item) => item.position === null);
+    if (unplaced) {
+      throw new YatrisDeliveryError(`${context}: item ${unplaced.canonicalId} has no position, so the type is not Ordered; drop sort: 'position'`);
+    }
+    return [...items].sort((a, b) => (a.position as number) - (b.position as number));
+  }
   const descending = sort.startsWith('-');
   const key = (sort.replace(/^-/, '') === 'published_at' ? 'publishedAt' : 'updatedAt') as 'publishedAt' | 'updatedAt';
   const time = (value: string | null) => (value ? Date.parse(value) : 0);
