@@ -1,5 +1,16 @@
 # @yatris/astro
 
+## 0.3.0
+
+### Minor Changes
+
+- 0fe2e42: `yatris schema sync` now also writes `src/generated/yatris-zod.ts` (YatrisCMS#307): a zod schema per Content Type, derived from the manifest's canonical schema and pinned in `.yatris/schema.lock.json` like Yatris's own generated files, so `yatris schema verify` catches a hand edit. Pass `yatrisSchemas['<slug>']` as the `schema` of `getYatrisList`, `getYatrisSingleton` or `getYatrisItem`. The new `repeater` field type becomes `z.array(z.object({ … }))` of its sub-fields with its `min_items` / `max_items` bounds (an optional repeater may also be empty); a list of strings is a repeater with one text sub-field. Locks written by earlier versions keep verifying; the file appears on the next sync.
+
+### Patch Changes
+
+- 27bc3f6: The managed AGENTS.md block documents CMS content reads and how a local build gets its Delivery key (the Yatris MCP tool `issue_delivery_key`) (YatrisCMS#307).
+- 86ee2a0: `yatris schema verify` no longer reports `schema-lock-missing` for a `.yatris/schema.lock.json` that exists but has no revision synced yet (YatrisCMS#307). That case is now the warning `schema-lock-unsynced`, and `verify` exits 0 for it; `yatris schema status` says "no schema revision synced yet". Both, and a truly missing lock, name the next step: read `yatris://websites/{id}/schema` from the Yatris MCP, save it outside the repository and run `yatris schema sync --manifest <file>`. `yatris doctor` still treats the empty lock of a new site as normal. New sites get a `.env.example` for `YATRIS_DELIVERY_ENDPOINT` and `YATRIS_DELIVERY_API_KEY` that says where a local read key comes from.
+
 ## 0.2.0
 
 ### Minor Changes
