@@ -58,7 +58,9 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   say so instead of hardcoding it.
 - Read published CMS content at build time only, with `getYatrisList`,
   `getYatrisSingleton` or `getYatrisItem` from `@yatris/astro/delivery`
-  (pass a `schema` from `astro/zod`, and `allowEmpty: true` plus an empty
+  (pass the type's `schema` from `yatrisSchemas` in
+  `src/generated/yatris-zod.ts`, which `yatris schema sync` writes, or one
+  of your own from `astro/zod`, and `allowEmpty: true` plus an empty
   state where no items is expected). Never call the Delivery API directly or
   from browser code. `getYatrisList` returns an Ordered Content Type in the
   editor's order (by `position`) and anything else most recently updated
