@@ -58,7 +58,9 @@ repository contract, lints `src/` and audits the build output; fix every ✖.
   say so instead of hardcoding it.
 - Read published CMS content at build time only, with `getYatrisList`,
   `getYatrisSingleton` or `getYatrisItem` from `@yatris/astro/delivery`
-  (pass a `schema` from `astro/zod`, and `allowEmpty: true` plus an empty
+  (pass the type's `schema` from `yatrisSchemas` in
+  `src/generated/yatris-zod.ts`, which `yatris schema sync` writes, or one
+  of your own from `astro/zod`, and `allowEmpty: true` plus an empty
   state where no items is expected). Never call the Delivery API directly or
   from browser code. `getYatrisList` returns an Ordered Content Type in the
   editor's order (by `position`) and anything else most recently updated
@@ -87,6 +89,23 @@ run `claude mcp login yatris`. Codex: trust this project (Codex reads
 Website. Never put a token or
 header in those files, never call Yatris APIs another way, and if the MCP
 is unavailable, say so rather than guessing live state.
+
+## CMS content (Delivery)
+
+Pages read published Yatris content at build time with `getYatrisList`,
+`getYatrisSingleton` and `getYatrisItem` from `@yatris/astro/delivery`, each
+with a zod schema (use the generated schemas from `yatris schema sync` when
+they exist). Never call the Delivery API directly and never read content in
+browser code.
+
+A local build needs `YATRIS_DELIVERY_ENDPOINT` and `YATRIS_DELIVERY_API_KEY`
+in the gitignored `.env` (see `.env.example`). If they are missing, call the
+Yatris MCP tool `issue_delivery_key` for this Website and write the two
+values it returns into `.env`. The key is read-only, reaches published
+content only and expires after 90 days. Never commit, print or paste the
+key anywhere else; reuse the key already in `.env` instead of issuing
+another. Deployed builds (Cloudflare Pages) get their own keys from Yatris,
+so never put a key in the hosting settings yourself.
 
 ## Development
 

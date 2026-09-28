@@ -57,6 +57,17 @@ describe('createProject', () => {
     expect(files(target).some((f) => /^tailwind\.config\./.test(f))).toBe(false);
   });
 
+  it('ships an empty .env.example for the Delivery variables, and ignores .env (YatrisCMS#307)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const example = readFileSync(join(target, '.env.example'), 'utf8');
+    const ignored = readFileSync(join(target, '.gitignore'), 'utf8').split(/\r?\n/);
+
+    expect(example).toMatch(/^YATRIS_DELIVERY_ENDPOINT=$/m);
+    expect(example).toMatch(/^YATRIS_DELIVERY_API_KEY=$/m);
+    expect(example).toContain('Content Delivery API キー');
+    expect(ignored).toEqual(expect.arrayContaining(['.env', '.env.*', '!.env.example']));
+  });
+
   it('pins every dependency to the platform release', () => {
     const target = createProject({ targetDir: join(work, 'My Site') }, sources);
     const pkg = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8'));
@@ -116,7 +127,8 @@ describe('createProject', () => {
 
   it('contains no credentials', () => {
     const target = createProject({ targetDir: join(work, 'site') }, sources);
-    const secretish = /alk_[A-Za-z0-9]{8,}|YATRIS_DELIVERY_API_KEY\s*=|Bearer\s+[A-Za-z0-9._-]{10,}|ghp_[A-Za-z0-9]{10,}/;
+    // `.env.example` names the variable with an empty value; any value is a leak
+    const secretish = /alk_[A-Za-z0-9]{8,}|YATRIS_DELIVERY_API_KEY[ \t]*=[ \t]*[^\s#]|Bearer\s+[A-Za-z0-9._-]{10,}|ghp_[A-Za-z0-9]{10,}/;
 
     for (const file of files(target)) {
       expect(readFileSync(join(target, file), 'utf8'), file).not.toMatch(secretish);
