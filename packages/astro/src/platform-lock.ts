@@ -15,6 +15,11 @@ import type { PlatformManifest } from './platform.js';
  * Site pages, components, styles, assets, custom skills and the prose outside
  * the AGENTS.md markers are the site's own, even though the scaffold wrote
  * some of them.
+ *
+ * A few template files are seeded instead (`SEEDED_FILES` in update/plan.ts,
+ * today `.env.example`): an update creates one only when the site lacks it,
+ * never overwrites it and does not record it here, so it is site-owned from
+ * the moment it exists.
  */
 
 export const PLATFORM_LOCK_PATH = '.yatris/platform.lock.json';
