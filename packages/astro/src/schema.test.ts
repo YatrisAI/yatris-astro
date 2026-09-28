@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { run } from './commands.js';
-import { emptyLock, LOCK_PATH, parseManifest, sha256, syncSchema, verifySchema, type SchemaManifest } from './schema.js';
+import { emptyLock, generateZodModule, LOCK_PATH, parseManifest, sha256, syncSchema, verifySchema, ZOD_PATH, type SchemaManifest } from './schema.js';
 
 const TYPES = 'export const schemaRevision = "schema_01abc" as const;\n';
 
@@ -60,12 +60,15 @@ describe('schema sync and verify', () => {
     const lock = syncSchema(site, manifest());
 
     expect(readFileSync(join(site, 'src/generated/yatris-schema.ts'), 'utf8')).toBe(TYPES);
+    // The zod schemas derived from the canonical schema are pinned alongside (YatrisCMS#307)
+    const zod = readFileSync(join(site, ZOD_PATH), 'utf8');
+    expect(zod).toBe(generateZodModule(manifest().canonical, 'schema_01abc'));
     expect(lock).toEqual({
       contractVersion: 1,
       websiteId: 7,
       schemaRevision: 'schema_01abc',
       schemaDigest: manifest().schemaDigest,
-      generatedFiles: { 'src/generated/yatris-schema.ts': sha256(TYPES) },
+      generatedFiles: { 'src/generated/yatris-schema.ts': sha256(TYPES), [ZOD_PATH]: sha256(zod) },
     });
     expect(verifySchema(site)).toEqual([]);
     expect(verifySchema(site, manifest())).toEqual([]);
@@ -82,12 +85,28 @@ describe('schema sync and verify', () => {
     expect(codes(verifySchema(site))).toEqual(['schema-generated-drift']);
   });
 
+  it('catches a hand-edited zod schema file', () => {
+    syncSchema(site, manifest());
+    writeFileSync(join(site, ZOD_PATH), readFileSync(join(site, ZOD_PATH), 'utf8').replace('z.string()', 'z.any()'));
+
+    expect(codes(verifySchema(site))).toEqual(['schema-generated-drift']);
+  });
+
+  it('keeps a zod file Yatris sends itself instead of deriving one', () => {
+    const own = '// from Yatris\n';
+    const m = manifest();
+    m.generatedFiles[ZOD_PATH] = { contents: own, sha256: sha256(own) };
+
+    expect(syncSchema(site, m).generatedFiles[ZOD_PATH]).toBe(sha256(own));
+    expect(readFileSync(join(site, ZOD_PATH), 'utf8')).toBe(own);
+  });
+
   it('catches a repository locked to a different revision than expected', () => {
     syncSchema(site, manifest());
     const newer = 'export const schemaRevision = "schema_02def" as const;\n';
     const expected = manifest({ schemaRevision: 'schema_02def', schemaDigest: sha256('{"v":2}'), canonical: '{"v":2}' }, newer);
 
-    expect(codes(verifySchema(site, expected))).toEqual(['schema-revision-mismatch', 'schema-generated-mismatch']);
+    expect(codes(verifySchema(site, expected))).toEqual(['schema-revision-mismatch', 'schema-generated-mismatch', 'schema-generated-mismatch']);
   });
 
   it('requires a lock, and accepts the explicit empty lock of a new site', () => {

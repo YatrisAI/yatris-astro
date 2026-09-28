@@ -2,13 +2,18 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import type { Finding } from './doctor/findings.js';
+import { generateZodModule, ZOD_PATH } from './schema-zod.js';
+
+export { generateZodModule, ZOD_PATH } from './schema-zod.js';
 
 /**
  * The site's schema contract (#265 / ADR-0008): `.yatris/schema.lock.json`
  * names the exact Yatris schema revision the repository was built against,
  * and the hashes of the files generated from it. Yatris generates those
- * files; `sync` only writes what a pinned manifest carries, after checking
- * its integrity, and `verify` never writes anything.
+ * files; `sync` writes what a pinned manifest carries, after checking its
+ * integrity, plus the zod schemas derived from the manifest's canonical
+ * schema (`src/generated/yatris-zod.ts`, YatrisCMS#307). `verify` never
+ * writes anything.
  */
 
 export const LOCK_PATH = '.yatris/schema.lock.json';
@@ -73,7 +78,7 @@ export function syncSchema(root: string, manifest: SchemaManifest): SchemaLock {
   }
 
   const generatedFiles: Record<string, string> = {};
-  for (const [path, file] of Object.entries(manifest.generatedFiles)) {
+  for (const [path, file] of Object.entries(derivedFiles(manifest))) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), file.contents);
     generatedFiles[path] = file.sha256;
@@ -125,12 +130,25 @@ export function verifySchema(root: string, manifest?: SchemaManifest): Finding[]
     if (lock.schemaRevision !== manifest.schemaRevision || lock.schemaDigest !== manifest.schemaDigest) {
       error('schema-revision-mismatch', `the lock names ${lock.schemaRevision ?? 'no revision'}, expected ${manifest.schemaRevision}; run \`yatris schema sync\``, LOCK_PATH);
     }
-    for (const [path, file] of Object.entries(manifest.generatedFiles)) {
+    for (const [path, file] of Object.entries(derivedFiles(manifest))) {
       if (lock.generatedFiles?.[path] !== file.sha256) error('schema-generated-mismatch', `does not match revision ${manifest.schemaRevision}`, path);
     }
   }
 
   return findings;
+}
+
+/**
+ * The files a sync writes: Yatris's own, plus the zod schemas derived from
+ * the canonical schema (YatrisCMS#307) unless Yatris already sent them.
+ */
+export function derivedFiles(manifest: SchemaManifest): Record<string, { contents: string; sha256: string }> {
+  const files = { ...manifest.generatedFiles };
+  if (!(ZOD_PATH in files)) {
+    const contents = generateZodModule(manifest.canonical, manifest.schemaRevision);
+    files[ZOD_PATH] = { contents, sha256: sha256(contents) };
+  }
+  return files;
 }
 
 function isGeneratedPath(path: string): boolean {
