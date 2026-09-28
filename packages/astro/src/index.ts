@@ -2,6 +2,7 @@ import { resolveConfig, type YatrisOptions } from './config.js';
 import { loadDeliveryEnv } from './env.js';
 import { loadMeasurement, withMeasurement } from './measurement-config.js';
 import { missingDestinations, registeredNavigation } from './navigation.js';
+import { checkSchemaContract } from './schema-check.js';
 
 export type { YatrisOptions } from './config.js';
 export type { YatrisPageMeta } from './head.js';
@@ -22,6 +23,7 @@ export interface YatrisIntegration {
       config?: { root: URL };
       command?: 'dev' | 'build' | 'preview' | 'sync';
       updateConfig: (config: Record<string, unknown>) => unknown;
+      logger?: Logger;
     }) => Promise<void>;
     'astro:build:done': (options: { pages: { pathname: string }[]; logger: Logger }) => void;
   };
@@ -29,7 +31,8 @@ export interface YatrisIntegration {
 
 /**
  * The Yatris Astro integration. It feeds site-level settings to
- * `YatrisHead`/`YatrisBodyStart` and fails the build when a navigation
+ * `YatrisHead`/`YatrisBodyStart`, fails a paired production build whose
+ * schema lock does not match Yatris, and fails the build when a navigation
  * destination was not built.
  */
 export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
@@ -38,8 +41,12 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
   return {
     name: '@yatris/astro',
     hooks: {
-      'astro:config:setup': async ({ config: astroConfig, command, updateConfig }) => {
+      'astro:config:setup': async ({ config: astroConfig, command, updateConfig, logger }) => {
         if (astroConfig) await loadDeliveryEnv(astroConfig.root, command === 'dev' ? 'development' : 'production');
+        // YatrisCMS#304: a paired revisioned site's production build fails
+        // unless its schema lock matches the revision Yatris expects
+        const schema = astroConfig ? await checkSchemaContract({ root: astroConfig.root, command }) : null;
+        if (schema?.schemaMode === 'revisioned') logger?.info(`schema: locked to the ${schema.state} revision ${schema.revision}`);
         // YatrisCMS#271: a paired site's production build takes GTM, Search
         // Console and consent from Yatris
         const measurement = astroConfig ? await loadMeasurement({ root: astroConfig.root, command }) : null;

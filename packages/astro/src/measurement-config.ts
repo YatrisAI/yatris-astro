@@ -1,7 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { YatrisRuntimeConfig } from './head.js';
+import { readPairedProject, siteApiUrl } from './paired-build.js';
 
 /**
  * Measurement settings for a paired site's production build (YatrisCMS#271 /
@@ -36,15 +34,12 @@ const NONE: MeasurementSettings = { gtmContainerId: null, consentMode: null, sea
 /** Null when this build does not take measurement from Yatris. */
 export async function loadMeasurement(source: MeasurementSource): Promise<MeasurementSettings | null> {
   const env = source.env ?? process.env;
-  const project = readProject(source.root);
+  const project = readPairedProject(source.root);
 
   if (project === null || source.command !== 'build') return null;
   if (env.YATRIS_MEASUREMENT === 'off') return NONE;
 
-  const origin = env.YATRIS_URL ?? (project.deliveryEndpoint ? new URL(project.deliveryEndpoint).origin : null);
-  if (!origin) throw new Error('@yatris/astro: this project is paired but .yatris/project.json has no Yatris origin; run `npx yatris connect` again.');
-
-  const url = `${origin.replace(/\/$/, '')}/api/v1/sites/${project.websiteId}/measurement`;
+  const url = siteApiUrl(project, 'measurement', env);
   let response: Response;
   try {
     response = await (source.fetch ?? fetch)(url, { headers: { accept: 'application/json' } });
@@ -81,12 +76,4 @@ export function withMeasurement(config: YatrisRuntimeConfig, measurement: Measur
     throw new Error('@yatris/astro: this site is paired with Yatris, so GTM and Search Console are set in Yatris (接続・診断), not in astro.config. Remove gtmContainerId/searchConsoleVerification from the integration options.');
   }
   return { ...config, ...measurement };
-}
-
-function readProject(root: URL): { websiteId: number; deliveryEndpoint: string | null } | null {
-  const path = join(fileURLToPath(root), '.yatris/project.json');
-  if (!existsSync(path)) return null;
-  const project = JSON.parse(readFileSync(path, 'utf8')) as { websiteId?: unknown; deliveryEndpoint?: unknown };
-  if (typeof project.websiteId !== 'number') return null;
-  return { websiteId: project.websiteId, deliveryEndpoint: typeof project.deliveryEndpoint === 'string' ? project.deliveryEndpoint : null };
 }
