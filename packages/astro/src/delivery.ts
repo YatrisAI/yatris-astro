@@ -2,7 +2,13 @@
  * Build-time client for the Yatris Content Delivery API. It serves published
  * content only, fetches every page, and fails the build loudly rather than
  * rendering a partial or malformed site. Never import it into browser code.
+ *
+ * In a preview build (see `./preview.ts`) it also reads the preview's draft
+ * items from Yatris; each one replaces the published item with the same
+ * canonical ID, or is added when there is none.
  */
+
+import { fetchPreviewOverlay, previewBuild, type PreviewBuild } from './preview.js';
 
 /** One published content item. `data` is the item's field values. */
 export interface DeliveryItem<T = Record<string, unknown>> {
@@ -50,6 +56,8 @@ export interface DeliveryConfig {
   /** Retries after a network error or 5xx response. */
   retries?: number;
   retryDelayMs?: number;
+  /** Whether this is a preview build; defaults to reading the environment. */
+  preview?: PreviewBuild;
 }
 
 export class YatrisDeliveryError extends Error {
@@ -83,6 +91,16 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     );
   }
   const base = parseEndpoint(endpoint);
+  const preview = config.preview ?? previewBuild();
+
+  // The preview's draft items by canonical ID, fetched once per build
+  let overlay: Promise<Map<string, unknown>> | undefined;
+  const drafts = () =>
+    (overlay ??= preview.active
+      ? fetchPreviewOverlay(preview, doFetch).then(indexOverlay, (error: Error) => {
+          throw new YatrisDeliveryError(error.message);
+        })
+      : Promise.resolve(new Map()));
 
   async function get(path: string, context: string): Promise<{ status: number; body: unknown }> {
     const url = `${base}${path}`;
@@ -148,6 +166,13 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     if (items.length !== total) {
       throw new YatrisDeliveryError(`${context}: received ${items.length} of ${total} items; content changed during the build, so retry it`);
     }
+    for (const [id, raw] of await drafts()) {
+      if (!isRecord(raw) || raw.type !== type) continue;
+      const draft = parseItem<T>(raw, `${context} (preview)`, options.schema);
+      const at = items.findIndex((item) => item.canonicalId === id);
+      if (at === -1) items.push(draft);
+      else items[at] = draft;
+    }
     if (items.length === 0 && !options.allowEmpty) {
       throw new YatrisDeliveryError(
         `${context} has no published items, or does not exist. Pass { allowEmpty: true } where an empty list is expected and render an empty state.`,
@@ -170,6 +195,8 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
     },
     async item<T>(canonicalId: string, options: { schema?: Parser<T> } = {}) {
       const context = `item ${canonicalId}`;
+      const draft = (await drafts()).get(canonicalId);
+      if (draft !== undefined) return parseItem(draft, `${context} (preview)`, options.schema);
       const { status, body } = await get(`/items/${encodeURIComponent(canonicalId)}`, context);
       if (status === 404) return null;
       if (!isRecord(body) || !('data' in body)) {
@@ -253,6 +280,19 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
   }
   const position = (raw.position ?? null) as number | null;
   return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, position, data };
+}
+
+/** Validates the overlay's items once, keyed by canonical ID. */
+function indexOverlay(raw: unknown[]): Map<string, unknown> {
+  const drafts = new Map<string, unknown>();
+  for (const item of raw) {
+    const parsed = parseItem(item, 'preview overlay');
+    if (drafts.has(parsed.canonicalId)) {
+      throw new YatrisDeliveryError(`preview overlay: item ${parsed.canonicalId} appears twice`);
+    }
+    drafts.set(parsed.canonicalId, item);
+  }
+  return drafts;
 }
 
 /** The editor's order when every item has a position (an Ordered Content Type), otherwise most recently updated first. */

@@ -66,6 +66,15 @@ describe('headTags', () => {
     expect(find(tags, 'name', 'google-site-verification')).toBeUndefined();
   });
 
+  it('marks a preview build noindex and measures nothing in it', () => {
+    const config = { gtmContainerId: 'GTM-ABC1234', searchConsoleVerification: 'tok', preview: true };
+    const tags = headTags({ title: 'T' }, ctx({ config }));
+
+    expect(find(tags, 'name', 'robots')).toMatchObject({ attrs: { content: 'noindex, nofollow' } });
+    expect(JSON.stringify(tags)).not.toContain('googletagmanager');
+    expect(find(tags, 'name', 'google-site-verification')).toBeUndefined();
+  });
+
   it('renders exactly one GTM loader and the verification tag when configured', () => {
     const tags = headTags({ title: 'T' }, ctx({ config: { gtmContainerId: 'GTM-ABC1234', searchConsoleVerification: 'tok' } }));
 
