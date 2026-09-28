@@ -5,7 +5,7 @@ import { doctor, formatReport } from './doctor/doctor.js';
 import { STAGES, type Stage } from './doctor/findings.js';
 import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
-import { readLock, readManifest, syncSchema, verifySchema } from './schema.js';
+import { LOCK_PATH, projectWebsiteId, readLock, readManifest, syncInstructions, syncSchema, verifySchema } from './schema.js';
 import { runUpdate, type UpdateEnvironment } from './update/command.js';
 import { exec, type Exec } from './update/exec.js';
 
@@ -152,9 +152,13 @@ function runSchema(argv: string[], env: CliEnvironment): CliResult {
   try {
     if (action === 'status') {
       const lock = readLock(env.cwd);
-      if (lock === null) return { code: 1, stdout: '', stderr: 'yatris schema: no .yatris/schema.lock.json' };
-      const revision = lock.schemaRevision === null ? 'no schema revision yet' : `${lock.schemaRevision} (${lock.schemaDigest})`;
-      return { code: 0, stdout: `Website ${lock.websiteId ?? '(unpaired)'}: ${revision}`, stderr: '' };
+      if (lock === null) return { code: 1, stdout: '', stderr: `yatris schema: ${LOCK_PATH} does not exist. ${syncInstructions(projectWebsiteId(env.cwd))}` };
+      const website = `Website ${lock.websiteId ?? '(unpaired)'}`;
+      // The lock exists but nothing is synced into it yet (YatrisCMS#307)
+      if (lock.schemaRevision === null) {
+        return { code: 0, stdout: `${website}: no schema revision synced yet. ${syncInstructions(projectWebsiteId(env.cwd) ?? lock.websiteId)}`, stderr: '' };
+      }
+      return { code: 0, stdout: `${website}: ${lock.schemaRevision} (${lock.schemaDigest})`, stderr: '' };
     }
 
     if (action === 'sync') {
@@ -167,8 +171,10 @@ function runSchema(argv: string[], env: CliEnvironment): CliResult {
     if (action === 'verify') {
       const findings = verifySchema(env.cwd, manifestPath ? readManifest(manifestPath) : undefined);
       if (findings.length === 0) return { code: 0, stdout: 'schema: the repository matches its schema contract', stderr: '' };
-      const lines = findings.map((f) => `✖ ${f.code}${f.file ? ` ${f.file}` : ''}: ${f.message}`);
-      return { code: 1, stdout: '', stderr: lines.join('\n') };
+      const lines = findings.map((f) => `${f.severity === 'error' ? '✖' : '⚠'} ${f.code}${f.file ? ` ${f.file}` : ''}: ${f.message}`).join('\n');
+      // Warnings only (an unsynced lock): nothing contradicts the contract yet
+      if (!findings.some((f) => f.severity === 'error')) return { code: 0, stdout: lines, stderr: '' };
+      return { code: 1, stdout: '', stderr: lines };
     }
   } catch (error) {
     return { code: 1, stdout: '', stderr: `yatris schema: ${(error as Error).message}` };

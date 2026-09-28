@@ -93,8 +93,9 @@ export function verifyAgainstContract(root: string, contract: SchemaContract): S
 
   if (state === null) {
     const expected = pending === null ? `${active.id} (${active.digest})` : `${active.id} (${active.digest}) or the pending ${pending.id} (${pending.digest})`;
+    const locked = lock.schemaRevision === null ? 'exists, but no schema revision has been synced into it yet' : `is locked to ${lock.schemaRevision} (${lock.schemaDigest ?? 'no digest'})`;
     throw new Error(
-      `${PREFIX} ${LOCK_PATH} is locked to ${lock.schemaRevision ?? 'no revision'} (${lock.schemaDigest ?? 'no digest'}), but Yatris expects ${expected}. ` +
+      `${PREFIX} ${LOCK_PATH} ${locked}, but Yatris expects ${expected}. ` +
         'Run `yatris schema sync` with the manifest from the Yatris MCP (yatris://websites/{id}/schema) and commit the result.',
     );
   }

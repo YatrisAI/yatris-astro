@@ -83,6 +83,15 @@ describe('yatris doctor --stage=scaffold', () => {
     expect(formatReport(report)).toContain('✔ passed');
   });
 
+  it('treats the empty schema lock of a new site as normal, and names the next step when the lock is missing (YatrisCMS#307)', async () => {
+    expect((await run()).findings.map((f) => f.code)).not.toContain('schema-lock-unsynced');
+
+    rmSync(join(site, LOCK_PATH));
+    const missing = (await run()).findings.find((f) => f.code === 'schema-lock-missing');
+    expect(missing?.message).toContain('the file does not exist');
+    expect(missing?.message).toContain('yatris schema sync --manifest <file>');
+  });
+
   it('fails when the build fails, and shows the redacted end of its output', async () => {
     const report = await run(async () => ({ code: 1, output: `Navigation points to pages that were not built\nkey alk_${'x'.repeat(40)}` }));
 
