@@ -4,7 +4,7 @@ import { join, relative } from 'node:path';
 import { looksLikeCredential, MCP_FILES, mcpFiles, type McpDescriptor } from '../mcp.js';
 import type { PlatformManifest } from '../platform.js';
 import { digest, PLATFORM_LOCK_PATH, readArtifact, readPlatformLock } from '../platform-lock.js';
-import { verifySchema } from '../schema.js';
+import { UNSYNCED, verifySchema } from '../schema.js';
 import { findCredentials, type Finding } from './findings.js';
 
 const REQUIRED_PATHS = [
@@ -100,8 +100,10 @@ export function checkStructure(root: string, manifest: PlatformManifest): Findin
   findings.push(...checkPlatformLock(root, manifest));
   findings.push(...checkMcpConfig(root, manifest));
   // The schema contract, offline: the lock exists and every generated file
-  // is exactly what Yatris generated for the locked revision (#265)
-  findings.push(...verifySchema(root));
+  // is exactly what Yatris generated for the locked revision (#265). A lock
+  // with nothing synced yet is the normal state of a new site, so the doctor
+  // does not flag it; `yatris schema verify` and `status` explain it (#307)
+  findings.push(...verifySchema(root).filter((finding) => finding.code !== UNSYNCED));
 
   return findings;
 }

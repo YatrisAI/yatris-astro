@@ -109,11 +109,23 @@ describe('schema sync and verify', () => {
     expect(codes(verifySchema(site, expected))).toEqual(['schema-revision-mismatch', 'schema-generated-mismatch', 'schema-generated-mismatch']);
   });
 
-  it('requires a lock, and accepts the explicit empty lock of a new site', () => {
+  it('requires a lock, and reports the empty lock of a new site as unsynced, not missing', () => {
     expect(codes(verifySchema(site))).toEqual(['schema-lock-missing']);
 
-    writeFileSync(join(site, LOCK_PATH), JSON.stringify(emptyLock()));
-    expect(verifySchema(site)).toEqual([]);
+    writeFileSync(join(site, LOCK_PATH), JSON.stringify(emptyLock(7)));
+    const findings = verifySchema(site);
+    expect(codes(findings)).toEqual(['schema-lock-unsynced']);
+    expect(findings[0].severity).toBe('warning');
+    expect(findings[0].message).toContain('yatris://websites/7/schema');
+  });
+
+  it('reports an unsynced lock checked against a manifest as a revision mismatch', () => {
+    writeFileSync(join(site, LOCK_PATH), JSON.stringify(emptyLock(7)));
+    const findings = verifySchema(site, manifest());
+
+    // One per synced file: Yatris's generated types and the derived zod module (#307)
+    expect(codes(findings)).toEqual(['schema-revision-mismatch', 'schema-generated-mismatch', 'schema-generated-mismatch']);
+    expect(findings[0].message).toContain('no revision has been synced yet, expected schema_01abc');
   });
 });
 
@@ -131,6 +143,28 @@ describe('yatris schema CLI', () => {
     expect(failed.code).toBe(1);
     expect(failed.stderr).toContain('schema-generated-drift');
     rmSync(file);
+  });
+
+  it('tells an unsynced lock apart from a missing one in verify and status (YatrisCMS#307)', async () => {
+    const missingVerify = await run(['schema', 'verify'], { cwd: site });
+    expect(missingVerify.code).toBe(1);
+    expect(missingVerify.stderr).toContain('✖ schema-lock-missing .yatris/schema.lock.json: the file does not exist.');
+    const missingStatus = await run(['schema', 'status'], { cwd: site });
+    expect(missingStatus.code).toBe(1);
+    expect(missingStatus.stderr).toContain('does not exist');
+
+    writeFileSync(join(site, LOCK_PATH), JSON.stringify(emptyLock(7)));
+
+    const verify = await run(['schema', 'verify'], { cwd: site });
+    expect(verify.code).toBe(0);
+    expect(verify.stdout).toContain('⚠ schema-lock-unsynced .yatris/schema.lock.json: the lock exists, but no schema revision has been synced yet.');
+    expect(verify.stdout).toContain('read yatris://websites/7/schema');
+    expect(verify.stdout).toContain('yatris schema sync --manifest <file>');
+    expect(`${verify.stdout}${verify.stderr}`).not.toContain('schema-lock-missing');
+
+    const status = await run(['schema', 'status'], { cwd: site });
+    expect(status.code).toBe(0);
+    expect(status.stdout).toContain('Website 7: no schema revision synced yet. To sync: read yatris://websites/7/schema');
   });
 
   it('explains a missing manifest argument', async () => {

@@ -98,20 +98,28 @@ export function syncSchema(root: string, manifest: SchemaManifest): SchemaLock {
 
 /**
  * Read-only check of the repository against its lock and, when given, an
- * expected manifest (the revision a Work Order or PR is pinned to).
+ * expected manifest (the revision a Work Order or PR is pinned to). Every
+ * finding is an error except `schema-lock-unsynced`, a warning.
  */
 export function verifySchema(root: string, manifest?: SchemaManifest): Finding[] {
   const findings: Finding[] = [];
   const error = (code: string, message: string, file?: string) => findings.push({ severity: 'error', code, message, file });
   const lock = readLock(root);
 
+  const projectWebsite = projectWebsiteId(root);
+
   if (lock === null) {
-    error('schema-lock-missing', 'no schema lock; run `yatris schema sync --manifest <file>`', LOCK_PATH);
+    error('schema-lock-missing', `the file does not exist. ${syncInstructions(projectWebsite)}`, LOCK_PATH);
     return findings;
   }
   if (lock.contractVersion !== 1) error('schema-lock-invalid', `unsupported contractVersion ${lock.contractVersion}`, LOCK_PATH);
 
-  const projectWebsite = projectWebsiteId(root);
+  // A lock that exists but names no revision is the scaffold state, not a
+  // missing lock (YatrisCMS#307): nothing to verify yet, so it is a warning
+  if (lock.schemaRevision === null && !manifest) {
+    findings.push({ severity: 'warning', code: UNSYNCED, message: `the lock exists, but no schema revision has been synced yet. ${syncInstructions(projectWebsite ?? lock.websiteId)}`, file: LOCK_PATH });
+  }
+
   if (projectWebsite !== null && lock.websiteId !== null && lock.websiteId !== projectWebsite) {
     error('schema-website-mismatch', `the lock is for Website ${lock.websiteId}, but .yatris/project.json names Website ${projectWebsite}`, LOCK_PATH);
   }
@@ -128,7 +136,8 @@ export function verifySchema(root: string, manifest?: SchemaManifest): Finding[]
   if (manifest) {
     if (lock.websiteId !== manifest.websiteId) error('schema-website-mismatch', `the lock is for Website ${lock.websiteId}, expected ${manifest.websiteId}`, LOCK_PATH);
     if (lock.schemaRevision !== manifest.schemaRevision || lock.schemaDigest !== manifest.schemaDigest) {
-      error('schema-revision-mismatch', `the lock names ${lock.schemaRevision ?? 'no revision'}, expected ${manifest.schemaRevision}; run \`yatris schema sync\``, LOCK_PATH);
+      const locked = lock.schemaRevision === null ? 'no revision has been synced yet' : `the lock names ${lock.schemaRevision}`;
+      error('schema-revision-mismatch', `${locked}, expected ${manifest.schemaRevision}; run \`yatris schema sync --manifest <file>\` with that manifest`, LOCK_PATH);
     }
     for (const [path, file] of Object.entries(derivedFiles(manifest))) {
       if (lock.generatedFiles?.[path] !== file.sha256) error('schema-generated-mismatch', `does not match revision ${manifest.schemaRevision}`, path);
@@ -151,11 +160,20 @@ export function derivedFiles(manifest: SchemaManifest): Record<string, { content
   return files;
 }
 
+/** The finding code of a lock that exists but has no revision synced yet. */
+export const UNSYNCED = 'schema-lock-unsynced';
+
+/** The next step towards a synced lock, for a person or an agent. */
+export function syncInstructions(websiteId: number | null): string {
+  const id = websiteId === null ? '{id}' : String(websiteId);
+  return `To sync: read yatris://websites/${id}/schema from the Yatris MCP, save the JSON to a file outside the repository, and run \`yatris schema sync --manifest <file>\`.`;
+}
+
 function isGeneratedPath(path: string): boolean {
   return /^src\/generated\/[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/.test(path) && !path.includes('..');
 }
 
-function projectWebsiteId(root: string): number | null {
+export function projectWebsiteId(root: string): number | null {
   const path = join(root, '.yatris/project.json');
   if (!existsSync(path)) return null;
   const id = (JSON.parse(readFileSync(path, 'utf8')) as { websiteId?: unknown }).websiteId;
