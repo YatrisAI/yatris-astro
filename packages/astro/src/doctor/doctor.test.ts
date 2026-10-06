@@ -8,7 +8,7 @@ import { readPlatformManifest } from '../platform.js';
 import { lockFor, managedArtifacts, PLATFORM_LOCK_PATH, writePlatformLock } from '../platform-lock.js';
 import { emptyLock, LOCK_PATH } from '../schema.js';
 import { doctor, formatReport } from './doctor.js';
-import { SKILL_LOCATIONS } from './structure.js';
+import { BUILT_IN_SKILLS, SKILL_LOCATIONS } from './structure.js';
 
 const root = fileURLToPath(new URL('../../../../', import.meta.url));
 const manifest = readPlatformManifest(new URL('platform/manifest.json', `file:///${root.replaceAll('\\', '/')}`));
@@ -23,7 +23,7 @@ function scaffold(): string {
   cpSync(join(root, 'template'), dir, { recursive: true });
   renameSync(join(dir, '_gitignore'), join(dir, '.gitignore'));
   for (const location of SKILL_LOCATIONS) {
-    for (const skill of ['tailwindcss-development', 'alpinejs-development']) {
+    for (const skill of BUILT_IN_SKILLS) {
       cpSync(join(root, 'skills', skill), join(dir, location, skill), { recursive: true });
     }
   }

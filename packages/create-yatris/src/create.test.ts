@@ -99,6 +99,25 @@ describe('createProject', () => {
     }
   });
 
+  it('scaffolds the yatris-contact-form skill and the root guidance that points to it (YatrisCMS#381)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const skill = files(join(sources.skillsDir, 'yatris-contact-form'));
+
+    expect(skill).toEqual(expect.arrayContaining(['SKILL.md', 'references/brief.schema.json', 'references/examples.md', 'references/secrets.md']));
+    for (const location of SKILL_LOCATIONS) {
+      expect(files(join(target, location, 'yatris-contact-form'))).toEqual(skill);
+    }
+    const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('**Contact and inquiry forms always use Yatris**');
+    expect(agents).toContain('`yatris-contact-form`');
+    expect(readFileSync(join(target, 'CLAUDE.md'), 'utf8').trim()).toBe('@AGENTS.md');
+
+    const lock = readPlatformLock(target)!;
+    for (const location of SKILL_LOCATIONS) {
+      for (const file of skill) expect(lock.managed[`${location}/yatris-contact-form/${file}`], file).toMatch(/^sha256:/);
+    }
+  });
+
   it('records the platform release and every managed artifact as written', () => {
     const target = createProject({ targetDir: join(work, 'site') }, sources);
     const lock = readPlatformLock(target)!;

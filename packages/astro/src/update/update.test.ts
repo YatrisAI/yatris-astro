@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mcpDescriptor, mcpFiles } from '../mcp.js';
 import { pairProject } from '../pairing.js';
 import { readPlatformManifest, type PlatformManifest } from '../platform.js';
-import { AGENTS_BLOCK, digest, lockFor, managedArtifacts, PLATFORM_LOCK_PATH, readPlatformLock, writePlatformLock } from '../platform-lock.js';
+import { AGENTS_BLOCK, digest, lockFor, managedArtifacts, PLATFORM_LOCK_PATH, readPlatformLock, writePlatformLock, type ManagedSources } from '../platform-lock.js';
 import { emptyLock, LOCK_PATH } from '../schema.js';
 import { applyUpdate, TRANSACTION_DIR } from './apply.js';
 import { CONFLICTS_DIR, runUpdate, type UpdateEnvironment } from './command.js';
@@ -28,9 +28,9 @@ let release: string;
 let next: PlatformManifest;
 
 /** A site on the current platform, with its own page and its own skill. */
-function scaffold(): string {
+function scaffold(managed: ManagedSources = { skillsDir: join(repo, 'skills'), agentsTemplate: join(repo, 'template/AGENTS.md') }): string {
   const dir = mkdtempSync(join(tmpdir(), 'yatris-update-site-'));
-  const artifacts = managedArtifacts({ skillsDir: join(repo, 'skills'), agentsTemplate: join(repo, 'template/AGENTS.md') }, current.mcp.url);
+  const artifacts = managedArtifacts(managed, current.mcp.url);
   for (const [key, text] of Object.entries(artifacts)) {
     const path = key === AGENTS_BLOCK ? 'AGENTS.md' : key;
     mkdirSync(join(dir, path, '..'), { recursive: true });
@@ -170,6 +170,34 @@ describe('applying an update', () => {
     expect(lock.platformVersion).toBe('0.1.0');
     expect(lock.managed['.claude/skills/yatris-content/SKILL.md']).toBe(digest('# yatris-content\n'));
     expect(existsSync(join(site, TRANSACTION_DIR))).toBe(false);
+  });
+
+  it('delivers the yatris-contact-form skill and its guidance to a site scaffolded before it existed (YatrisCMS#381)', async () => {
+    // The site as a release without the skill scaffolded it
+    const older = mkdtempSync(join(tmpdir(), 'yatris-update-older-'));
+    cpSync(join(repo, 'skills'), join(older, 'skills'), { recursive: true, filter: (path) => !path.includes('yatris-contact-form') });
+    const agents = readFileSync(join(repo, 'template/AGENTS.md'), 'utf8');
+    writeFileSync(join(older, 'AGENTS.md'), agents.replace(/- \*\*Contact and inquiry forms[\s\S]*?(?=- \*\*No runtime CDNs)/, ''));
+    rmSync(site, { recursive: true, force: true });
+    site = scaffold({ skillsDir: join(older, 'skills'), agentsTemplate: join(older, 'AGENTS.md') });
+    rmSync(older, { recursive: true, force: true });
+    expect(read('AGENTS.md')).not.toContain('yatris-contact-form');
+
+    const withSkill = { skillsDir: join(repo, 'skills'), agentsTemplate: join(repo, 'template/AGENTS.md') };
+    const skillFiles = Object.keys(managedArtifacts(withSkill, current.mcp.url)).filter((key) => key.includes('/yatris-contact-form/'));
+    const plan = planUpdate(site, readPlatformLock(site)!, next, withSkill);
+
+    expect(skillFiles).toEqual(expect.arrayContaining(['.agents/skills/yatris-contact-form/SKILL.md', '.claude/skills/yatris-contact-form/references/brief.schema.json']));
+    expect(plan.conflicts).toEqual([]);
+    expect(plan.files.filter((f) => f.kind === 'add').map((f) => f.key)).toEqual(expect.arrayContaining(skillFiles));
+    expect(plan.files.find((f) => f.key === AGENTS_BLOCK)?.kind).toBe('update');
+
+    const exec = fakeExec();
+    expect(await applyUpdate(site, plan, next, '@yatris/astro@0.1.0', { exec: exec.fn, log: () => {} })).toEqual({ ok: true });
+    for (const key of skillFiles) expect(read(key), key).toBe(readFileSync(join(repo, 'skills', key.replace(/^\.(agents|claude)\/skills\//, '')), 'utf8').replace(/\r\n/g, '\n'));
+    expect(read('AGENTS.md')).toContain('**Contact and inquiry forms always use Yatris**');
+    expect(read('AGENTS.md')).toContain('お客様固有のメモ');
+    expect(Object.keys(readPlatformLock(site)!.managed)).toEqual(expect.arrayContaining(skillFiles));
   });
 
   it('restores exactly the files it touched when verification fails', async () => {
