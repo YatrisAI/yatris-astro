@@ -1,0 +1,91 @@
+{
+  "apiErrors": {
+    "form_unavailable": {
+      "status": [
+        404,
+        410
+      ],
+      "message": "このフォームは現在ご利用いただけません。"
+    },
+    "form_version_changed": {
+      "status": [
+        409
+      ],
+      "message": "フォームの内容が更新されました。変更箇所をご確認のうえ、もう一度送信してください。"
+    },
+    "idempotency_conflict": {
+      "status": [
+        409
+      ],
+      "message": "送信内容を確認できませんでした。内容をご確認のうえ、改めて送信してください。"
+    },
+    "validation_failed": {
+      "status": [
+        422
+      ],
+      "message": "入力内容に誤りがあります。各項目をご確認ください。"
+    },
+    "verification_failed": {
+      "status": [
+        422
+      ],
+      "message": "送信の確認に失敗しました。もう一度お試しください。"
+    },
+    "payload_too_large": {
+      "status": [
+        413
+      ],
+      "message": "送信できるサイズの上限を超えています。添付ファイルをご確認ください。"
+    },
+    "rate_limited": {
+      "status": [
+        429
+      ],
+      "message": "送信が集中しています。しばらく時間をおいてから、もう一度お試しください。"
+    },
+    "temporarily_unavailable": {
+      "status": [
+        503
+      ],
+      "message": "現在、送信を受け付けられません。入力内容は保持されています。しばらくしてから、もう一度お試しください。"
+    }
+  },
+  "fieldErrors": {
+    "required": "この項目は必須です。",
+    "must_accept": "同意いただく必要があります。",
+    "invalid_type": "入力内容をご確認ください。",
+    "too_short": "{min}文字以上で入力してください。",
+    "too_long": "{max}文字以内で入力してください。",
+    "invalid_format": "入力形式が正しくありません。",
+    "invalid_format.katakana": "カタカナで入力してください。",
+    "invalid_format.hiragana": "ひらがなで入力してください。",
+    "invalid_format.digits": "半角数字で入力してください。",
+    "invalid_format.alphanumeric": "英数字で入力してください。",
+    "invalid_format.postal_code_jp": "郵便番号は「123-4567」の形式で入力してください。",
+    "invalid_email": "メールアドレスの形式が正しくありません。",
+    "invalid_tel": "電話番号の形式が正しくありません。",
+    "invalid_url": "URLの形式が正しくありません。",
+    "invalid_number": "数値を入力してください。",
+    "below_min": "{min}以上の値を入力してください。",
+    "above_max": "{max}以下の値を入力してください。",
+    "step_mismatch": "この値は入力できません。",
+    "invalid_date": "日付が正しくありません。",
+    "invalid_time": "時刻が正しくありません。",
+    "invalid_datetime": "日時が正しくありません。",
+    "nonexistent_time": "この日時は存在しないため指定できません。",
+    "ambiguous_time": "この日時は重複するため指定できません。",
+    "invalid_option": "選択肢から選んでください。",
+    "too_few": "{min}個以上選択してください。",
+    "too_many": "{max}個以内で選択してください。",
+    "too_many_files": "ファイルは{max}個まで添付できます。",
+    "file_too_large": "ファイルサイズが上限を超えています。",
+    "file_type_not_allowed": "この形式のファイルは添付できません。",
+    "quiz_incorrect": "答えが正しくありません。",
+    "invalid_question": "質問を読み込み直してください。"
+  },
+  "formErrors": {
+    "undeclared_field": "送信内容に不明な項目が含まれています。ページを再読み込みしてください。",
+    "too_many_files_total": "添付できるファイル数の上限を超えています。",
+    "payload_too_large_total": "添付ファイルの合計サイズが上限を超えています。"
+  }
+}

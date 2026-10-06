@@ -1,0 +1,1757 @@
+[
+  {
+    "options": {},
+    "name": "normalization of text-like values",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "message",
+          "type": "textarea",
+          "label": "m",
+          "required": false
+        },
+        {
+          "key": "mail",
+          "type": "email",
+          "label": "mail",
+          "required": false
+        },
+        {
+          "key": "tel",
+          "type": "tel",
+          "label": "tel",
+          "required": false
+        },
+        {
+          "key": "n",
+          "type": "number",
+          "label": "n",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "　山田 太郎 ",
+        "message": "一行目\r\n二行目\r三行目",
+        "mail": "ｔａｒｏ＠ｅｘａｍｐｌｅ．ｊｐ",
+        "tel": "０３－１２３４－５６７８",
+        "n": "００７.５０"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "山田 太郎",
+        "message": "一行目\n二行目\n三行目",
+        "mail": "taro@example.jp",
+        "tel": "03-1234-5678",
+        "n": "7.5"
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "kana presets and formats",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "kana",
+          "type": "text",
+          "label": "kana",
+          "required": false,
+          "preset": "katakana"
+        },
+        {
+          "key": "hira",
+          "type": "text",
+          "label": "hira",
+          "required": false,
+          "preset": "hiragana"
+        },
+        {
+          "key": "bad",
+          "type": "text",
+          "label": "bad",
+          "required": false,
+          "preset": "katakana"
+        },
+        {
+          "key": "zip",
+          "type": "text",
+          "label": "zip",
+          "required": false,
+          "validation": {
+            "format": "postal_code_jp"
+          }
+        },
+        {
+          "key": "digits",
+          "type": "text",
+          "label": "digits",
+          "required": false,
+          "validation": {
+            "format": "digits"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "kana": "やまだ　ﾀﾛｳ",
+        "hira": "ヤマダ",
+        "bad": "Yamada",
+        "zip": "１２３４５６７",
+        "digits": "12a"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "kana": "ヤマダ タロウ",
+        "hira": "やまだ",
+        "zip": "123-4567"
+      },
+      "fieldErrors": {
+        "bad": "invalid_format",
+        "digits": "invalid_format"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "required rules by type",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": true
+        },
+        {
+          "key": "message",
+          "type": "textarea",
+          "label": "m",
+          "required": true
+        },
+        {
+          "key": "agree",
+          "type": "checkbox",
+          "label": "a",
+          "required": true
+        },
+        {
+          "key": "consent",
+          "type": "acceptance",
+          "label": "c",
+          "required": true,
+          "consentText": "同意します。"
+        },
+        {
+          "key": "n",
+          "type": "number",
+          "label": "n",
+          "required": true,
+          "validation": {
+            "min": 0
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "   ",
+        "message": " \n\t ",
+        "agree": false,
+        "n": 0
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "n": "0"
+      },
+      "fieldErrors": {
+        "name": "required",
+        "message": "required",
+        "agree": "required",
+        "consent": "must_accept"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "inactive answers are dropped without validation",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "customer_type",
+          "type": "radio",
+          "label": "customer_type",
+          "required": true,
+          "options": [
+            {
+              "value": "individual",
+              "label": "individual"
+            },
+            {
+              "value": "business",
+              "label": "business"
+            }
+          ]
+        },
+        {
+          "key": "company",
+          "type": "text",
+          "label": "company",
+          "required": true,
+          "visibleWhen": {
+            "field": "customer_type",
+            "operator": "eq",
+            "value": "business"
+          }
+        },
+        {
+          "key": "department",
+          "type": "text",
+          "label": "department",
+          "required": false,
+          "visibleWhen": {
+            "field": "company",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "customer_type": "individual",
+        "company": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
+        "department": "営業"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "customer_type": "individual"
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "undeclared answers are rejected",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "doc",
+          "type": "file",
+          "label": "d",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "a",
+        "extra": "b",
+        "doc": "c"
+      },
+      "files": {
+        "name": []
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "a"
+      },
+      "fieldErrors": {},
+      "formErrors": [
+        "undeclared_field"
+      ]
+    }
+  },
+  {
+    "options": {},
+    "name": "type mismatches",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "n",
+          "type": "number",
+          "label": "n",
+          "required": false
+        },
+        {
+          "key": "m",
+          "type": "multiselect",
+          "label": "m",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ]
+        },
+        {
+          "key": "c",
+          "type": "checkbox",
+          "label": "c",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "n": true,
+        "m": "a",
+        "c": "true"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {},
+      "fieldErrors": {
+        "n": "invalid_type",
+        "m": "invalid_type",
+        "c": "invalid_type"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "choices are checked and ordered",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "s",
+          "type": "select",
+          "label": "s",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ],
+          "prompt": "選択してください"
+        },
+        {
+          "key": "m",
+          "type": "multiselect",
+          "label": "m",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "a"
+            },
+            {
+              "value": "b",
+              "label": "b"
+            },
+            {
+              "value": "c",
+              "label": "c"
+            }
+          ],
+          "validation": {
+            "minSelected": 2,
+            "maxSelected": 2
+          }
+        },
+        {
+          "key": "dup",
+          "type": "checkboxes",
+          "label": "d",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ]
+        },
+        {
+          "key": "few",
+          "type": "checkboxes",
+          "label": "f",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "a"
+            },
+            {
+              "value": "b",
+              "label": "b"
+            }
+          ],
+          "validation": {
+            "minSelected": 2
+          }
+        },
+        {
+          "key": "empty",
+          "type": "select",
+          "label": "e",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "s": "z",
+        "m": [
+          "c",
+          "a"
+        ],
+        "dup": [
+          "a",
+          "a"
+        ],
+        "few": [
+          "b"
+        ],
+        "empty": ""
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "m": [
+          "a",
+          "c"
+        ]
+      },
+      "fieldErrors": {
+        "s": "invalid_option",
+        "dup": "invalid_option",
+        "few": "too_few"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "number bounds and decimal steps",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "high",
+          "type": "number",
+          "label": "high",
+          "required": false,
+          "validation": {
+            "min": 1,
+            "max": 10,
+            "step": 0.5
+          }
+        },
+        {
+          "key": "off",
+          "type": "number",
+          "label": "off",
+          "required": false,
+          "validation": {
+            "min": 1,
+            "max": 10,
+            "step": 0.5
+          }
+        },
+        {
+          "key": "low",
+          "type": "number",
+          "label": "low",
+          "required": false,
+          "validation": {
+            "min": 1,
+            "max": 10,
+            "step": 0.5
+          }
+        },
+        {
+          "key": "ok",
+          "type": "number",
+          "label": "ok",
+          "required": false,
+          "validation": {
+            "min": 1,
+            "max": 10,
+            "step": 0.5
+          }
+        },
+        {
+          "key": "zero",
+          "type": "number",
+          "label": "zero",
+          "required": false,
+          "validation": {
+            "min": 0,
+            "step": 1
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "high": "10.5",
+        "off": "1.25",
+        "low": "0",
+        "ok": 9.5,
+        "zero": "0"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "ok": "9.5",
+        "zero": "0"
+      },
+      "fieldErrors": {
+        "high": "above_max",
+        "off": "step_mismatch",
+        "low": "below_min"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "calendar dates and steps",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "a",
+          "type": "date",
+          "label": "a",
+          "required": false
+        },
+        {
+          "key": "b",
+          "type": "date",
+          "label": "b",
+          "required": false
+        },
+        {
+          "key": "weekly",
+          "type": "date",
+          "label": "w",
+          "required": false,
+          "validation": {
+            "min": "2026-10-05",
+            "step": 7
+          }
+        },
+        {
+          "key": "weekly_bad",
+          "type": "date",
+          "label": "w",
+          "required": false,
+          "validation": {
+            "min": "2026-10-05",
+            "step": 7
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "a": "2026-02-29",
+        "b": "2028-02-29",
+        "weekly": "2026-10-19",
+        "weekly_bad": "2026-10-20"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "b": "2028-02-29",
+        "weekly": "2026-10-19"
+      },
+      "fieldErrors": {
+        "a": "invalid_date",
+        "weekly_bad": "step_mismatch"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "times are canonical and stepped",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "a",
+          "type": "time",
+          "label": "a",
+          "required": false
+        },
+        {
+          "key": "b",
+          "type": "time",
+          "label": "b",
+          "required": false
+        },
+        {
+          "key": "c",
+          "type": "time",
+          "label": "c",
+          "required": false,
+          "validation": {
+            "step": 1
+          }
+        },
+        {
+          "key": "d",
+          "type": "time",
+          "label": "d",
+          "required": false,
+          "validation": {
+            "min": "09:00",
+            "max": "18:00"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "a": "09:00:00",
+        "b": "09:00:30",
+        "c": "09:00:30",
+        "d": "18:30"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "a": "09:00",
+        "c": "09:00:30"
+      },
+      "fieldErrors": {
+        "b": "step_mismatch",
+        "d": "above_max"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "timeZone": "America/New_York"
+    },
+    "name": "date-times in a zone with daylight saving",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "gap",
+          "type": "datetime",
+          "label": "g",
+          "required": false
+        },
+        {
+          "key": "overlap",
+          "type": "datetime",
+          "label": "o",
+          "required": false
+        },
+        {
+          "key": "fine",
+          "type": "datetime",
+          "label": "f",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "gap": "2026-03-08T02:30",
+        "overlap": "2026-11-01T01:30",
+        "fine": "2026-07-01T10:00:00"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "fine": "2026-07-01T10:00"
+      },
+      "fieldErrors": {
+        "gap": "nonexistent_time",
+        "overlap": "ambiguous_time"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "timeZone": "Asia/Tokyo"
+    },
+    "name": "date-times in Tokyo are always unique",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "at",
+          "type": "datetime",
+          "label": "at",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "at": "2026-03-08T02:30"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "at": "2026-03-08T02:30"
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "file rules per field and per submission",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "many",
+          "type": "file",
+          "label": "m",
+          "required": false,
+          "validation": {
+            "maxFiles": 1
+          }
+        },
+        {
+          "key": "big",
+          "type": "file",
+          "label": "b",
+          "required": false,
+          "validation": {
+            "maxFileSize": 1000
+          }
+        },
+        {
+          "key": "kind",
+          "type": "file",
+          "label": "k",
+          "required": false,
+          "validation": {
+            "accept": [
+              "pdf"
+            ]
+          }
+        },
+        {
+          "key": "ok",
+          "type": "file",
+          "label": "o",
+          "required": false,
+          "validation": {
+            "maxFiles": 5
+          }
+        },
+        {
+          "key": "more",
+          "type": "file",
+          "label": "x",
+          "required": false,
+          "validation": {
+            "maxFiles": 2
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {},
+      "files": {
+        "many": [
+          {
+            "name": "a.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          },
+          {
+            "name": "b.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          }
+        ],
+        "big": [
+          {
+            "name": "a.png",
+            "size": 1001,
+            "type": "image/png"
+          }
+        ],
+        "kind": [
+          {
+            "name": "a.pdf",
+            "size": 10,
+            "type": "image/png"
+          }
+        ],
+        "ok": [
+          {
+            "name": "1.JPG",
+            "size": 10,
+            "type": "image/jpeg"
+          },
+          {
+            "name": "2.png",
+            "size": 10,
+            "type": "image/png"
+          },
+          {
+            "name": "3.webp",
+            "size": 10,
+            "type": "image/webp"
+          },
+          {
+            "name": "4.txt",
+            "size": 10,
+            "type": "text/plain; charset=utf-8"
+          }
+        ],
+        "more": [
+          {
+            "name": "5.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          },
+          {
+            "name": "6.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "files": {
+        "ok": [
+          {
+            "name": "1.JPG",
+            "size": 10,
+            "type": "image/jpeg"
+          },
+          {
+            "name": "2.png",
+            "size": 10,
+            "type": "image/png"
+          },
+          {
+            "name": "3.webp",
+            "size": 10,
+            "type": "image/webp"
+          },
+          {
+            "name": "4.txt",
+            "size": 10,
+            "type": "text/plain; charset=utf-8"
+          }
+        ],
+        "more": [
+          {
+            "name": "5.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          },
+          {
+            "name": "6.pdf",
+            "size": 10,
+            "type": "application/pdf"
+          }
+        ]
+      },
+      "answers": {},
+      "fieldErrors": {
+        "many": "too_many_files",
+        "big": "file_too_large",
+        "kind": "file_type_not_allowed"
+      },
+      "formErrors": [
+        "too_many_files_total"
+      ]
+    }
+  },
+  {
+    "options": {},
+    "name": "files of an inactive field are detached",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "attach",
+          "type": "checkbox",
+          "label": "a",
+          "required": false
+        },
+        {
+          "key": "doc",
+          "type": "file",
+          "label": "d",
+          "required": true,
+          "visibleWhen": {
+            "field": "attach",
+            "operator": "eq",
+            "value": true
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "attach": false
+      },
+      "files": {
+        "doc": [
+          {
+            "name": "a.exe",
+            "size": 99999999,
+            "type": "application/x-msdownload"
+          }
+        ]
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "attach": false
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "checkQuiz": true
+    },
+    "name": "quiz: a width- and case-insensitive correct answer (quiz answers are never stored)",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "q",
+          "type": "quiz",
+          "label": "確認",
+          "questions": [
+            {
+              "id": "abc",
+              "question": "アルファベットの最初の3文字は?",
+              "answers": [
+                "ABC"
+              ]
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "山田",
+        "q": {
+          "questionId": "abc",
+          "answer": " ａｂｃ "
+        }
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "山田"
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "checkQuiz": true
+    },
+    "name": "quiz: a wrong answer (quiz answers are never stored)",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "q",
+          "type": "quiz",
+          "label": "確認",
+          "questions": [
+            {
+              "id": "abc",
+              "question": "アルファベットの最初の3文字は?",
+              "answers": [
+                "ABC"
+              ]
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "山田",
+        "q": {
+          "questionId": "abc",
+          "answer": "abd"
+        }
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "山田"
+      },
+      "fieldErrors": {
+        "q": "quiz_incorrect"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "checkQuiz": true
+    },
+    "name": "quiz: an unknown question (quiz answers are never stored)",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "q",
+          "type": "quiz",
+          "label": "確認",
+          "questions": [
+            {
+              "id": "abc",
+              "question": "アルファベットの最初の3文字は?",
+              "answers": [
+                "ABC"
+              ]
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "山田",
+        "q": {
+          "questionId": "zzz",
+          "answer": "abc"
+        }
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "山田"
+      },
+      "fieldErrors": {
+        "q": "invalid_question"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {
+      "checkQuiz": true
+    },
+    "name": "quiz: no answer (quiz answers are never stored)",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "q",
+          "type": "quiz",
+          "label": "確認",
+          "questions": [
+            {
+              "id": "abc",
+              "question": "アルファベットの最初の3文字は?",
+              "answers": [
+                "ABC"
+              ]
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "name": "山田"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "name": "山田"
+      },
+      "fieldErrors": {
+        "q": "required"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "hidden metadata and single-line text",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "source",
+          "type": "hidden"
+        },
+        {
+          "key": "bad",
+          "type": "hidden"
+        },
+        {
+          "key": "line",
+          "type": "text",
+          "label": "line",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "source": "lp-2026",
+        "bad": "a\u0007b",
+        "line": "a\nb"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "source": "lp-2026"
+      },
+      "fieldErrors": {
+        "bad": "invalid_format",
+        "line": "invalid_format"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "urls",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "js",
+          "type": "url",
+          "label": "js",
+          "required": false
+        },
+        {
+          "key": "creds",
+          "type": "url",
+          "label": "creds",
+          "required": false
+        },
+        {
+          "key": "idn",
+          "type": "url",
+          "label": "idn",
+          "required": false
+        },
+        {
+          "key": "plain",
+          "type": "url",
+          "label": "plain",
+          "required": false
+        },
+        {
+          "key": "secure",
+          "type": "url",
+          "label": "s",
+          "required": false,
+          "validation": {
+            "schemes": [
+              "https"
+            ]
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {
+        "js": "javascript:alert(1)",
+        "creds": "https://user:pw@example.jp/",
+        "idn": "http://例え.jp/パス",
+        "plain": "https://example.jp:8443/a?b=c#d",
+        "secure": "http://example.jp/"
+      }
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "idn": "http://例え.jp/パス",
+        "plain": "https://example.jp:8443/a?b=c#d"
+      },
+      "fieldErrors": {
+        "js": "invalid_url",
+        "creds": "invalid_url",
+        "secure": "invalid_url"
+      },
+      "formErrors": []
+    }
+  },
+  {
+    "options": {},
+    "name": "unchecked optional checkbox is a real false",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "newsletter",
+          "type": "checkbox",
+          "label": "n",
+          "required": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "input": {
+      "answers": {}
+    },
+    "expected": {
+      "files": {},
+      "answers": {
+        "newsletter": false
+      },
+      "fieldErrors": {},
+      "formErrors": []
+    }
+  }
+]

@@ -1,0 +1,857 @@
+[
+  {
+    "name": "visibleWhen eq activates a required field",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "customer_type",
+          "type": "radio",
+          "label": "customer_type",
+          "required": true,
+          "options": [
+            {
+              "value": "individual",
+              "label": "individual"
+            },
+            {
+              "value": "business",
+              "label": "business"
+            }
+          ]
+        },
+        {
+          "key": "company",
+          "type": "text",
+          "label": "company",
+          "required": true,
+          "visibleWhen": {
+            "field": "customer_type",
+            "operator": "eq",
+            "value": "business"
+          }
+        },
+        {
+          "key": "department",
+          "type": "text",
+          "label": "department",
+          "required": false,
+          "visibleWhen": {
+            "field": "company",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "customer_type": "business",
+      "company": "ヤトリス"
+    },
+    "active": [
+      "customer_type",
+      "company",
+      "department"
+    ],
+    "required": [
+      "customer_type",
+      "company"
+    ]
+  },
+  {
+    "name": "an inactive field cannot activate another with its stale value",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "customer_type",
+          "type": "radio",
+          "label": "customer_type",
+          "required": true,
+          "options": [
+            {
+              "value": "individual",
+              "label": "individual"
+            },
+            {
+              "value": "business",
+              "label": "business"
+            }
+          ]
+        },
+        {
+          "key": "company",
+          "type": "text",
+          "label": "company",
+          "required": true,
+          "visibleWhen": {
+            "field": "customer_type",
+            "operator": "eq",
+            "value": "business"
+          }
+        },
+        {
+          "key": "department",
+          "type": "text",
+          "label": "department",
+          "required": false,
+          "visibleWhen": {
+            "field": "company",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "customer_type": "individual",
+      "company": "ヤトリス"
+    },
+    "active": [
+      "customer_type"
+    ],
+    "required": [
+      "customer_type"
+    ]
+  },
+  {
+    "name": "neq holds when the source has no answer",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "r",
+          "type": "radio",
+          "label": "r",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "a"
+            },
+            {
+              "value": "b",
+              "label": "b"
+            }
+          ]
+        },
+        {
+          "key": "x",
+          "type": "text",
+          "label": "x",
+          "required": false,
+          "visibleWhen": {
+            "field": "r",
+            "operator": "neq",
+            "value": "a"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {},
+    "active": [
+      "r",
+      "x"
+    ],
+    "required": []
+  },
+  {
+    "name": "groups gate their descendants",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "agree",
+          "type": "checkbox",
+          "label": "agree",
+          "required": false
+        },
+        {
+          "key": "outer",
+          "type": "group",
+          "visibleWhen": {
+            "field": "agree",
+            "operator": "eq",
+            "value": true
+          },
+          "fields": [
+            {
+              "key": "a",
+              "type": "text",
+              "label": "a",
+              "required": true
+            },
+            {
+              "key": "inner",
+              "type": "group",
+              "fields": [
+                {
+                  "key": "b",
+                  "type": "text",
+                  "label": "b",
+                  "required": false
+                }
+              ]
+            },
+            {
+              "key": "note",
+              "type": "help",
+              "text": "補足"
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "agree": false,
+      "a": "x",
+      "b": "y"
+    },
+    "active": [
+      "agree"
+    ],
+    "required": []
+  },
+  {
+    "name": "groups open with their condition",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "agree",
+          "type": "checkbox",
+          "label": "agree",
+          "required": false
+        },
+        {
+          "key": "outer",
+          "type": "group",
+          "visibleWhen": {
+            "field": "agree",
+            "operator": "eq",
+            "value": true
+          },
+          "fields": [
+            {
+              "key": "a",
+              "type": "text",
+              "label": "a",
+              "required": true
+            },
+            {
+              "key": "inner",
+              "type": "group",
+              "fields": [
+                {
+                  "key": "b",
+                  "type": "text",
+                  "label": "b",
+                  "required": false
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "agree": true
+    },
+    "active": [
+      "agree",
+      "outer",
+      "a",
+      "inner",
+      "b"
+    ],
+    "required": [
+      "a"
+    ]
+  },
+  {
+    "name": "requiredWhen makes an optional active field required",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "method",
+          "type": "radio",
+          "label": "method",
+          "required": false,
+          "options": [
+            {
+              "value": "mail",
+              "label": "mail"
+            },
+            {
+              "value": "phone",
+              "label": "phone"
+            }
+          ]
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "phone",
+          "required": false,
+          "requiredWhen": {
+            "field": "method",
+            "operator": "eq",
+            "value": "phone"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "method": "phone"
+    },
+    "active": [
+      "method",
+      "phone"
+    ],
+    "required": [
+      "phone"
+    ]
+  },
+  {
+    "name": "decimal comparisons are numeric",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "n",
+          "type": "number",
+          "label": "n",
+          "required": false
+        },
+        {
+          "key": "big",
+          "type": "text",
+          "label": "big",
+          "required": false,
+          "visibleWhen": {
+            "field": "n",
+            "operator": "gt",
+            "value": 10
+          }
+        },
+        {
+          "key": "listed",
+          "type": "text",
+          "label": "listed",
+          "required": false,
+          "visibleWhen": {
+            "field": "n",
+            "operator": "in",
+            "value": [
+              "10.5",
+              3
+            ]
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "n": "10.5"
+    },
+    "active": [
+      "n",
+      "big",
+      "listed"
+    ],
+    "required": []
+  },
+  {
+    "name": "temporal comparisons and choice lists",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "d",
+          "type": "date",
+          "label": "d",
+          "required": false
+        },
+        {
+          "key": "t",
+          "type": "time",
+          "label": "t",
+          "required": false
+        },
+        {
+          "key": "c",
+          "type": "checkboxes",
+          "label": "c",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "A"
+            },
+            {
+              "value": "other",
+              "label": "その他"
+            }
+          ]
+        },
+        {
+          "key": "late",
+          "type": "text",
+          "label": "late",
+          "required": false,
+          "visibleWhen": {
+            "field": "d",
+            "operator": "gte",
+            "value": "2026-10-01"
+          }
+        },
+        {
+          "key": "morning",
+          "type": "text",
+          "label": "morning",
+          "required": false,
+          "visibleWhen": {
+            "field": "t",
+            "operator": "lt",
+            "value": "12:00:00"
+          }
+        },
+        {
+          "key": "other_text",
+          "type": "text",
+          "label": "other_text",
+          "required": false,
+          "visibleWhen": {
+            "field": "c",
+            "operator": "contains",
+            "value": "other"
+          }
+        },
+        {
+          "key": "none",
+          "type": "text",
+          "label": "none",
+          "required": false,
+          "visibleWhen": {
+            "field": "c",
+            "operator": "isEmpty"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "d": "2026-10-07",
+      "t": "09:30",
+      "c": [
+        "other"
+      ]
+    },
+    "active": [
+      "d",
+      "t",
+      "c",
+      "late",
+      "morning",
+      "other_text"
+    ],
+    "required": []
+  },
+  {
+    "name": "reflection follows its source",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "r",
+          "type": "radio",
+          "label": "r",
+          "required": false,
+          "options": [
+            {
+              "value": "a",
+              "label": "a"
+            },
+            {
+              "value": "b",
+              "label": "b"
+            }
+          ]
+        },
+        {
+          "key": "x",
+          "type": "text",
+          "label": "x",
+          "required": false,
+          "visibleWhen": {
+            "field": "r",
+            "operator": "eq",
+            "value": "a"
+          }
+        },
+        {
+          "key": "echo",
+          "type": "reflection",
+          "source": "x"
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "r": "b",
+      "x": "stale"
+    },
+    "active": [
+      "r"
+    ],
+    "required": []
+  },
+  {
+    "name": "hidden metadata is active unless a condition deactivates it",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "source",
+          "type": "hidden",
+          "required": true
+        },
+        {
+          "key": "gated",
+          "type": "hidden",
+          "visibleWhen": {
+            "field": "source",
+            "operator": "eq",
+            "value": "lp"
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "source": "top"
+    },
+    "active": [
+      "source"
+    ],
+    "required": [
+      "source"
+    ]
+  },
+  {
+    "name": "all, any and not",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "a",
+          "type": "radio",
+          "label": "a",
+          "required": false,
+          "options": [
+            {
+              "value": "x",
+              "label": "x"
+            },
+            {
+              "value": "y",
+              "label": "y"
+            }
+          ]
+        },
+        {
+          "key": "b",
+          "type": "radio",
+          "label": "b",
+          "required": false,
+          "options": [
+            {
+              "value": "x",
+              "label": "x"
+            },
+            {
+              "value": "y",
+              "label": "y"
+            }
+          ]
+        },
+        {
+          "key": "t",
+          "type": "text",
+          "label": "t",
+          "required": false,
+          "visibleWhen": {
+            "all": [
+              {
+                "field": "a",
+                "operator": "eq",
+                "value": "x"
+              },
+              {
+                "any": [
+                  {
+                    "field": "b",
+                    "operator": "eq",
+                    "value": "x"
+                  },
+                  {
+                    "not": {
+                      "field": "b",
+                      "operator": "isNotEmpty"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "【お問い合わせ】{{form.name}}",
+          "body": "{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "values": {
+      "a": "x"
+    },
+    "active": [
+      "a",
+      "b",
+      "t"
+    ],
+    "required": []
+  }
+]
