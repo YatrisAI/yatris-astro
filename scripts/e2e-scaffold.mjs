@@ -63,6 +63,11 @@ expect(
   'Claude Code and Codex MCP configs are generated from the Yatris descriptor',
 );
 expect(!/bearer|authorization|token/i.test(read('.mcp.json') + read('.codex/config.toml').replace(/^#.*$/gm, '')), 'the MCP configs hold no credential');
+expect(
+  read('AGENTS.md').includes('Contact and inquiry forms always use Yatris') &&
+    ['.agents/skills', '.claude/skills'].every((location) => sha(`${location}/yatris-contact-form/SKILL.md`) === sha('.agents/skills/yatris-contact-form/SKILL.md') && existsSync(join(site, location, 'yatris-contact-form/references/brief.schema.json'))),
+  'the new site tells agents to use Yatris for contact forms and ships the yatris-contact-form skill to both agents (YatrisCMS#381)',
+);
 
 const html = read('dist/index.html');
 expect(html.includes('<html lang="ja">') && html.includes('<title>ホーム</title>'), 'home page has a language and a title');

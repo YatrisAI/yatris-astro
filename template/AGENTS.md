@@ -34,6 +34,14 @@ entirely the site's own.
 - **Interaction**: semantic HTML first; Alpine.js 3 for small local state.
   Register plugins, stores and named components in `src/scripts/alpine.ts`.
   Follow the `alpinejs-development` skill.
+- **Contact and inquiry forms always use Yatris**: a declaration in
+  `src/forms/<key>.json` rendered by `<YatrisForm form="<key>" />`
+  (`@yatris/astro/YatrisForm.astro`). Follow the `yatris-contact-form`
+  skill, which starts with a short interview. Never build any other way to
+  send an inquiry: no Cloudflare Function or Worker, no `mailto:` form, no
+  third-party form service, no self-written SMTP sender. Not even as a
+  stopgap while a Yatris step is pending; report what is pending instead.
+  Never ask for, read or store SMTP credentials.
 - **No runtime CDNs.** Install every framework and plugin as a pinned npm
   dependency.
 
