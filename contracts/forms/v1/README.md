@@ -241,6 +241,10 @@ Values are escaped when rendered and never reach headers unescaped. `submission.
 
 ## 6. Public definition and submission wire format
 
+### Public keys
+
+A form's public key is `"<websiteId>.<formKey>"`, for example `42.contact`: the paired Website's id from `.yatris/project.json` and the declaration `key`. Both are identifiers, not secrets; nothing about a submission is authorized by knowing them. The definition URL is `<Yatris origin>/api/v1/forms/<publicKey>`, where the origin is that of the project's recorded `deliveryEndpoint` (`<origin>/api/v1/delivery/<id>`), or `YATRIS_URL` when set. The submission endpoint is whatever the definition's `submission.endpoint` says; the renderer refuses one on a different origin from the definition URL.
+
 ### `GET /api/v1/forms/{publicKey}`
 
 The public definition contains:
@@ -280,7 +284,7 @@ The request is `multipart/form-data` with these parts:
 | --- | --- |
 | `version` | Published version number the visitor saw. |
 | `answers` | JSON object (§4). |
-| `files[<fieldKey>]` | One part per file, repeated, in attach order. |
+| `files[<fieldKey>][]` | One part per file, repeated, in attach order. The trailing `[]` is required: PHP keeps every repeated part only when the name ends in `[]`. |
 | `idempotencyKey` | 16–128 chars of `[A-Za-z0-9_-]`. One per deliberate submission, reused on retry. |
 | `turnstileToken` | When the definition has `turnstile`. |
 | `hp_website` | Honeypot; must be empty. |
@@ -290,16 +294,21 @@ The idempotency fingerprint is computed by the server (`requestHash` in `hash.ts
 ```
 sha256hex( "yatris-form-submission-v1\n" + publicKey + "\n" + version + "\n"
          + sha256hex(answers part bytes) + "\n"
-         + for each file part in order: fieldKey + ":" + sha256hex(file bytes) + ":" + size + "\n" )
+         + for each files[<fieldKey>][] part in order: fieldKey + ":" + sha256hex(file bytes) + ":" + size + "\n" )
 ```
+
+`fieldKey` in the fingerprint is the bare key from the part name `files[<fieldKey>][]`, without the brackets.
 
 A retry must resend the same `answers` bytes; the renderer keeps the serialized string.
 
-Accepted (`202`):
+Accepted (HTTP `202`):
 
 ```json
 { "status": "accepted", "receipt": "<opaque>", "success": { "mode": "redirect", "path": "/contact/thanks/" } }
+{ "status": "accepted", "receipt": "<opaque>", "success": { "mode": "message", "message": "<ja message>" } }
 ```
+
+`success` mirrors the published definition's `success`. The renderer treats only a 2xx response whose body has `status: "accepted"` as success, and always takes the redirect destination from the definition it rendered, never from the response.
 
 Rejected:
 
@@ -325,3 +334,83 @@ A malformed or superseded `version` is `form_version_changed`; it never falls ba
 ## 7. Consuming the fixtures from PHP
 
 YatrisCMS vendors this directory at a pinned `@yatris/astro` version and records its SHA-256 digests. A test fails when the vendored copy drifts from the recorded digests, and the parity tests run every fixture through the PHP validator, evaluator, normalizer, projection and request hash. Read the fixtures as data; never execute them.
+
+## 8. Astro renderer and CLI (`@yatris/astro`)
+
+These names are frozen for contract v1; agents and the skill may teach them.
+
+### Placing a form
+
+```astro
+---
+import YatrisForm from '@yatris/astro/YatrisForm.astro';
+---
+<YatrisForm form="contact" />
+<YatrisForm form="contact" hidden={{ source: 'lp-a' }} classes={{ submit: 'btn btn-primary' }} class="my-form" />
+```
+
+| Prop | Meaning |
+| --- | --- |
+| `form` | The form key (`src/forms/<key>.json`). Required. |
+| `hidden` | Values for declared `hidden` fields only. Other keys are ignored (with a console warning). At most 500 characters each. |
+| `classes` | Extra classes per element: `root`, `form`, `field`, `label`, `input`, `choice`, `help`, `error`, `actions`, `submit`, `success`. |
+| `class`, `id` | On the mount element. |
+
+The page ships a mount element, a JSON configuration (mode, public key, definition URL, time zone) and the bundled renderer (`@yatris/astro/forms/client`, vanilla TypeScript). On load the renderer fetches the published definition (normal HTTP caching, so Yatris's ETag applies), checks `contractVersion` and `capabilities` against `SUPPORTED_CAPABILITIES`, and renders. A definition it cannot fully draw gets the unavailable state, never a partial form. A failed load shows a retry button; a missing form (404/410) does not. Without JavaScript a `<noscript>` explanation shows. The renderer runs conditions with `evaluateActivity` semantics and validates with `validateSubmission` before sending, then submits as §6 describes. It redirects only after an `accepted` response, and only to the definition's `success.redirectPath`. Turnstile loads from `https://challenges.cloudflare.com` only when the definition has `submission.turnstile`; a site with a Content-Security-Policy must allow that origin and the Yatris origin.
+
+Modes, decided at build time by the integration:
+
+| Mode | When | Mount |
+| --- | --- | --- |
+| `live` | A paired project (`.yatris/project.json` has `websiteId`) | Fetches `<origin>/api/v1/forms/<websiteId>.<key>` |
+| `preview` | `astro dev` **and** `YATRIS_FORMS_PREVIEW=1` | Renders the public projection of `src/forms/<key>.json` |
+| `unconfigured` | Anything else (an unpaired project) | Unavailable state; no request |
+
+### Local preview
+
+Set `YATRIS_FORMS_PREVIEW=1` for `astro dev` only, for example in `.env.development.local` (builds never read it). The integration converts each `src/forms/*.json` with `toPublicDefinition`, so mail settings, recipients and quiz answers never reach the browser even in preview. A preview form shows a visible marker naming its source file, a scenario switch (accepted/redirect as declared, `validation_failed`, `verification_failed`, `form_version_changed`, `idempotency_conflict`, `payload_too_large`, `rate_limited`, `temporarily_unavailable`, `form_unavailable`, network failure) and the request it would have sent. It sends nothing. An invalid declaration shows its validation issues instead of a form.
+
+`astro build` **refuses** `YATRIS_FORMS_PREVIEW` (set in the environment or in `.env`/`.env.production`) with an error. A build never reads `src/forms/` and resolves the preview module to `null`, so no declaration content and no preview code reach `dist/`. No configuration gap ever falls back to preview.
+
+### Styling contract
+
+Classes (stable; `data-*` attributes carry state):
+
+| Class | Element |
+| --- | --- |
+| `yf-root` | The mount. `data-yf-state`: `loading`, `ready`, `confirm`, `done`, `unavailable`. `data-yf-step`, `data-yf-mode`, `data-yf-pending`, `data-yf-preview`. Gets `yf-pending` while sending. |
+| `yf-form`, `yf-section` | The input step and its field list. |
+| `yf-field` | Each input wrapper (`fieldset` for radio and checkboxes, with `yf-choice-group`). `data-yf-field` (key), `data-yf-type` (type), `data-yf-state="invalid"`, `data-yf-changed="true"` after a version change. |
+| `yf-label`, `yf-required`, `yf-help`, `yf-error` | Label or legend, its 必須 marker, help text, the field's error. |
+| `yf-input` | Text-like inputs, `select`, `textarea`, range and file inputs. |
+| `yf-choices`, `yf-choice`, `yf-choice-input`, `yf-choice-label` | Choice lists, each `label`, its input and text. |
+| `yf-counter`, `yf-range-value` | Character counter; the range's shown value (`output`). |
+| `yf-consent`, `yf-policy` | Acceptance consent text and privacy-policy link. |
+| `yf-file`, `yf-file-limits`, `yf-file-list`, `yf-file-item`, `yf-file-name`, `yf-file-size`, `yf-file-remove` | File fields and the attached-file list. |
+| `yf-quiz-question` | The quiz question. |
+| `yf-heading`, `yf-help-text`, `yf-divider`, `yf-group`, `yf-legend`, `yf-reflection`, `yf-reflection-label`, `yf-reflection-value` | Display nodes. Headings render as `h2`–`h4` from `level` (default 2). |
+| `yf-error-summary`, `yf-error-summary-title`, `yf-form-error`, `yf-changed-note` | Error summary with links, form-level messages, changed-field note. |
+| `yf-actions`, `yf-submit`, `yf-back`, `yf-turnstile` | Buttons and the Turnstile slot. |
+| `yf-steps`, `yf-step` | 入力→確認→完了 indicator (`aria-current="step"`). |
+| `yf-confirm`, `yf-confirm-heading`, `yf-confirm-intro`, `yf-confirm-list`, `yf-confirm-row` | The confirmation step. |
+| `yf-status`, `yf-success`, `yf-success-message`, `yf-unavailable`, `yf-unavailable-message`, `yf-retry`, `yf-loading`, `yf-noscript` | Status, success, unavailable, loading and no-JavaScript states. |
+| `yf-preview-marker` | The preview marker (dev only). |
+
+The default stylesheet (`components/YatrisForm.css`) puts every rule inside `:where()`, so it has zero specificity and any site rule wins. There is no reset and no palette: colours derive from `currentColor` unless these custom properties are set on `.yf-root` or an ancestor: `--yf-gap`, `--yf-radius`, `--yf-border`, `--yf-control-bg`, `--yf-focus`, `--yf-error`, `--yf-muted`.
+
+### Behaviour details
+
+- Inactive nodes are hidden; inactive inputs lose their value and error, and file fields detach their files. A field that becomes active again starts empty. Declared `hidden` metadata keeps its value but is sent only while active.
+- An untouched `range` without a `default` has no answer.
+- Kana presets and `validation.format` show the normalized value when the visitor leaves the field.
+- Field errors show on leaving a field (except "required"), as soon as files are chosen, and on submit. Submit shows an error summary with links and focuses the first invalid control.
+- One `idempotencyKey` (`crypto.randomUUID`) per deliberate submission. A retry after a network failure, `temporarily_unavailable`, `rate_limited` or `verification_failed` with unchanged answers reuses the key and the exact `answers` string. Any other rejection, or changed answers, makes a new one.
+- `form_version_changed` reloads the definition (revalidating), keeps answers that still fit the same key and type, asks again for changed consent and the quiz, marks changed fields and waits for the visitor. It never resubmits.
+- After `accepted` the form state is cleared before the success message or the redirect, so going back never shows or resends answers.
+
+### CLI
+
+| Command | Behaviour |
+| --- | --- |
+| `yatris forms validate [--dir=src/forms]` | Runs `validateDeclaration` on every `*.json` (not `*.brief.json`), checks the file name matches `key`, prints `path code` findings and warnings. Offline. Exits 1 on any error. |
+| `yatris forms plan`, `apply`, `pull` | Synchronization with Yatris is not available yet. They say so, touch nothing and exit 69 (`EX_UNAVAILABLE`). |
