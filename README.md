@@ -33,6 +33,16 @@ types). `getYatrisList` orders its result as follows:
 - No `sort`, every item has a position: lowest position first, ties by ID.
 - Otherwise: most recently updated first.
 
+## Contact forms
+
+A site places a Yatris form with `<YatrisForm form="contact" />` from
+`@yatris/astro/YatrisForm.astro`; the browser loads the published definition
+from Yatris and submits to Yatris. `yatris forms validate` checks
+`src/forms/*.json` offline, and `astro dev` with `YATRIS_FORMS_PREVIEW=1`
+previews them locally without sending anything (builds refuse preview). The
+contract, renderer, styling classes and CLI are documented in
+[`contracts/forms/v1/README.md`](contracts/forms/v1/README.md).
+
 ## Development
 
 Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).

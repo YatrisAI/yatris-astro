@@ -41,7 +41,7 @@ for (const pkg of packed) {
   }
   expect(!files.some((f) => f.endsWith('.test.js') || f.startsWith('src/')), `${pkg.name} tarball ships no sources or tests`);
   if (pkg.name === '@yatris/astro') {
-    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro']) {
+    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro', 'components/YatrisForm.astro', 'components/YatrisForm.css', 'dist/forms-client/index.js', 'dist/forms-client/preview.js']) {
       expect(files.includes(component), `@yatris/astro tarball contains ${component}`);
     }
     // `yatris update` seeds a missing .env.example from the release's own template
@@ -65,6 +65,10 @@ expect(sh('npm exec --offline -- yatris --version', appDir).endsWith(expected), 
 
 const name = sh(`node --input-type=module -e "import y from '@yatris/astro'; console.log(y().name)"`, appDir);
 expect(name === '@yatris/astro', 'integration imports from the installed package');
+
+const capabilities = sh(`node --input-type=module -e "import { SUPPORTED_CAPABILITIES } from '@yatris/astro/forms/client'; import { formMountConfig } from '@yatris/astro/forms/mount'; console.log(SUPPORTED_CAPABILITIES.includes('confirm_step') && formMountConfig({ mode: 'live', origin: 'https://app.yatris.jp', websiteId: 1, timeZone: 'Asia/Tokyo' }, { form: 'contact' }).publicKey)"`, appDir);
+expect(capabilities === '1.contact', 'the forms renderer and mount helper import from the installed package');
+expect(sh('npm exec --offline -- yatris forms validate', appDir).includes('no declarations'), 'yatris forms validate runs');
 
 rmSync(work, { recursive: true, force: true });
 console.log('smoke: all checks passed');

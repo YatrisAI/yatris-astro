@@ -1,0 +1,361 @@
+/*
+ * Minimal defaults for <YatrisForm> (YatrisCMS#380). Every rule sits inside
+ * :where(), so it has zero specificity and any site rule wins. No reset, no
+ * palette: colours derive from currentColor unless a custom property is set.
+ *
+ *   --yf-gap            space between fields
+ *   --yf-radius         control corner radius
+ *   --yf-border         control border colour
+ *   --yf-control-bg     control background
+ *   --yf-focus          focus ring colour
+ *   --yf-error          error text and border colour
+ *   --yf-muted          help and counter text colour
+ */
+
+:where(.yf-root) {
+  --yf-gap: 1.25rem;
+  --yf-radius: 0.375rem;
+  --yf-border: color-mix(in srgb, currentColor 35%, transparent);
+  --yf-control-bg: transparent;
+  --yf-focus: currentColor;
+  --yf-error: #b42318;
+  --yf-muted: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+:where(.yf-root [hidden]) {
+  display: none !important;
+}
+
+:where(.yf-form, .yf-section, .yf-group, .yf-confirm) {
+  display: grid;
+  gap: var(--yf-gap);
+}
+
+:where(.yf-group) {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+:where(.yf-legend) {
+  font-weight: 700;
+  padding: 0;
+  margin-block-end: 0.5rem;
+}
+
+:where(.yf-field) {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+
+:where(.yf-label) {
+  font-weight: 600;
+  padding: 0;
+}
+
+:where(.yf-required) {
+  font-size: 0.8em;
+  font-weight: 600;
+  margin-inline-start: 0.25em;
+  color: var(--yf-error);
+}
+
+:where(.yf-help, .yf-counter, .yf-file-limits) {
+  margin: 0;
+  font-size: 0.875em;
+  color: var(--yf-muted);
+}
+
+:where(.yf-help, .yf-help-text, .yf-consent, .yf-reflection-value, .yf-confirm-list dd) {
+  white-space: pre-line;
+}
+
+:where(.yf-input) {
+  box-sizing: border-box;
+  inline-size: 100%;
+  max-inline-size: 100%;
+  min-block-size: 2.75rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: inherit;
+  background: var(--yf-control-bg);
+  border: 1px solid var(--yf-border);
+  border-radius: var(--yf-radius);
+}
+
+:where(textarea.yf-input) {
+  resize: vertical;
+}
+
+:where(.yf-range, .yf-file-input) {
+  padding-inline: 0;
+  border: 0;
+  background: transparent;
+}
+
+:where(.yf-choices) {
+  display: grid;
+  gap: 0.5rem;
+}
+
+:where(.yf-choice) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+:where(.yf-choice-input) {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0.15em 0 0;
+  flex: none;
+  accent-color: var(--yf-focus);
+}
+
+:where(.yf-root :focus-visible) {
+  outline: 2px solid var(--yf-focus);
+  outline-offset: 2px;
+}
+
+:where(.yf-field[data-yf-state='invalid'] .yf-input) {
+  border-color: var(--yf-error);
+}
+
+:where(.yf-error, .yf-form-error) {
+  margin: 0;
+  font-weight: 600;
+  color: var(--yf-error);
+}
+
+:where(.yf-error-summary) {
+  padding: 1rem;
+  border: 2px solid var(--yf-error);
+  border-radius: var(--yf-radius);
+}
+
+:where(.yf-error-summary-title) {
+  margin: 0 0 0.5rem;
+  font-weight: 700;
+  color: var(--yf-error);
+}
+
+:where(.yf-error-summary a, .yf-policy a) {
+  color: inherit;
+  text-decoration: underline;
+}
+
+:where(.yf-error-summary ul) {
+  margin: 0;
+  padding-inline-start: 1.25rem;
+}
+
+:where(.yf-field[data-yf-changed='true']) {
+  padding-inline-start: 0.75rem;
+  border-inline-start: 4px solid var(--yf-focus);
+}
+
+:where(.yf-changed-note) {
+  margin: 0;
+  font-size: 0.875em;
+}
+
+:where(.yf-divider) {
+  inline-size: 100%;
+  margin: 0;
+  border: 0;
+  border-block-start: 1px solid var(--yf-border);
+}
+
+:where(.yf-heading) {
+  margin: 0;
+}
+
+:where(.yf-help-text, .yf-consent, .yf-policy, .yf-quiz-question, .yf-reflection-label, .yf-reflection-value) {
+  margin: 0;
+}
+
+:where(.yf-reflection) {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--yf-border);
+  border-radius: var(--yf-radius);
+}
+
+:where(.yf-reflection-label) {
+  font-size: 0.875em;
+  color: var(--yf-muted);
+}
+
+:where(.yf-file-list) {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+:where(.yf-file-item) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+:where(.yf-file-size) {
+  color: var(--yf-muted);
+}
+
+:where(.yf-actions) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+:where(.yf-submit, .yf-back, .yf-retry, .yf-file-remove) {
+  min-block-size: 2.75rem;
+  padding: 0.5rem 1.25rem;
+  font: inherit;
+  color: inherit;
+  background: var(--yf-control-bg);
+  border: 1px solid currentColor;
+  border-radius: var(--yf-radius);
+  cursor: pointer;
+}
+
+:where(.yf-submit) {
+  font-weight: 600;
+}
+
+:where(.yf-file-remove) {
+  min-block-size: 2.25rem;
+  padding: 0.25rem 0.75rem;
+}
+
+:where(.yf-submit:disabled, .yf-back:disabled) {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+:where(.yf-steps) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  margin: 0 0 var(--yf-gap);
+  padding: 0;
+  list-style: none;
+  counter-reset: yf-step;
+}
+
+:where(.yf-step) {
+  counter-increment: yf-step;
+  color: var(--yf-muted);
+}
+
+:where(.yf-step)::before {
+  content: counter(yf-step) '. ';
+}
+
+:where(.yf-step[aria-current='step']) {
+  font-weight: 700;
+  color: inherit;
+}
+
+:where(.yf-confirm-heading) {
+  margin: 0;
+}
+
+:where(.yf-confirm-list) {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+:where(.yf-confirm-row) {
+  display: grid;
+  gap: 0.25rem;
+  padding-block-end: 0.75rem;
+  border-block-end: 1px solid var(--yf-border);
+}
+
+:where(.yf-confirm-row dt) {
+  font-weight: 600;
+}
+
+:where(.yf-confirm-row dd) {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(.yf-status:empty) {
+  display: none;
+}
+
+:where(.yf-success, .yf-unavailable) {
+  padding: 1rem;
+  border: 1px solid var(--yf-border);
+  border-radius: var(--yf-radius);
+}
+
+:where(.yf-success-message, .yf-unavailable-message) {
+  margin: 0;
+  white-space: pre-line;
+}
+
+:where(.yf-unavailable) {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+}
+
+:where(.yf-preview-marker) {
+  display: grid;
+  gap: 0.5rem;
+  margin-block-end: var(--yf-gap);
+  padding: 0.75rem 1rem;
+  border: 2px dashed #b54708;
+  border-radius: var(--yf-radius);
+  background: color-mix(in srgb, #fdb022 18%, transparent);
+}
+
+:where(.yf-preview-marker > *) {
+  min-inline-size: 0;
+}
+
+:where(.yf-preview-title) {
+  margin: 0;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+:where(.yf-preview-control) {
+  display: grid;
+  gap: 0.25rem;
+}
+
+:where(.yf-preview-scenario) {
+  inline-size: 100%;
+  max-inline-size: 100%;
+  font: inherit;
+}
+
+:where(.yf-preview-log) {
+  max-block-size: 16rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  font-size: 0.8125em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :where(.yf-root.yf-pending .yf-submit) {
+    transition: opacity 0.2s;
+  }
+}

@@ -57,8 +57,21 @@
       "types": "./dist/forms/index.d.ts",
       "default": "./dist/forms/index.js"
     },
+    "./forms/client": {
+      "types": "./dist/forms-client/index.d.ts",
+      "default": "./dist/forms-client/index.js"
+    },
+    "./forms/preview": {
+      "types": "./dist/forms-client/preview.d.ts",
+      "default": "./dist/forms-client/preview.js"
+    },
+    "./forms/mount": {
+      "types": "./dist/forms-mount.d.ts",
+      "default": "./dist/forms-mount.js"
+    },
     "./contracts/forms/v1/*": "./contracts/forms/v1/*",
     "./YatrisHead.astro": "./components/YatrisHead.astro",
+    "./YatrisForm.astro": "./components/YatrisForm.astro",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
     "./virtual": {
       "types": "./components/virtual.d.ts"

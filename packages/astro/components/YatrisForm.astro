@@ -1,0 +1,46 @@
+---
+// A Yatris contact form (YatrisCMS#380). Renders a mount; the bundled
+// renderer below loads the published definition from Yatris in the browser
+// and submits to Yatris directly, so the site needs no server function.
+//
+//   <YatrisForm form="contact" />
+//   <YatrisForm form="contact" hidden={{ source: 'lp-a' }} classes={{ submit: 'btn' }} />
+//
+// Styling: the yf-* class contract in contracts/forms/v1/README.md §8.
+// Local preview: astro dev with YATRIS_FORMS_PREVIEW=1 (never in a build).
+import runtime from 'virtual:yatris/forms';
+import { formMountConfig, serializeMountConfig, type YatrisFormProps } from '@yatris/astro/forms/mount';
+import './YatrisForm.css';
+
+interface Props extends YatrisFormProps {
+  class?: string;
+  id?: string;
+}
+
+const { class: className, id, ...props } = Astro.props;
+const config = formMountConfig(runtime, props);
+---
+
+<div
+  class:list={['yf-root', config.classes?.root, className]}
+  id={id}
+  data-yatris-form={config.form}
+  data-yf-state="loading"
+  data-yf-mode={config.mode}
+>
+  <script is:inline type="application/json" data-yf-config set:html={serializeMountConfig(config)} />
+  <noscript>
+    <p class="yf-noscript">
+      このフォームを表示・送信するには JavaScript が必要です。ブラウザの設定で JavaScript を有効にしてから、ページを再読み込みしてください。
+    </p>
+  </noscript>
+</div>
+
+<script>
+  import { mountAll } from '@yatris/astro/forms/client';
+  import preview from 'virtual:yatris/forms-preview';
+
+  mountAll(preview);
+  // Sites using Astro's client router mount forms on every page swap.
+  document.addEventListener('astro:page-load', () => mountAll(preview));
+</script>
