@@ -20,7 +20,7 @@ cpSync(resolve(root, 'platform/manifest.json'), resolve(pkg, 'platform.json'));
 cpSync(resolve(root, 'LICENSE'), resolve(pkg, 'LICENSE'));
 
 if (flag === '--with-assets') {
-  for (const dir of ['template', 'skills']) {
+  for (const dir of ['template', 'skills', 'contracts']) {
     rmSync(resolve(pkg, dir), { recursive: true, force: true });
     cpSync(resolve(root, dir), resolve(pkg, dir), { recursive: true });
   }

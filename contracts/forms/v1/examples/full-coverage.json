@@ -1,0 +1,113 @@
+{
+  "$schema": "https://yatris.jp/schemas/forms/v1/declaration.schema.json",
+  "contractVersion": 1,
+  "key": "full-coverage",
+  "name": "全項目サンプル",
+  "locale": "ja",
+  "fields": [
+    { "key": "intro", "type": "heading", "text": "お客様情報", "level": 2 },
+    { "key": "intro_help", "type": "help", "text": "* は必須項目です。" },
+    { "key": "name", "type": "text", "label": "お名前", "required": true, "autocomplete": "name", "placeholder": "山田 太郎", "validation": { "maxLength": 100 } },
+    { "key": "name_kana", "type": "text", "label": "フリガナ", "required": true, "preset": "katakana", "validation": { "maxLength": 100 } },
+    { "key": "postal_code", "type": "text", "label": "郵便番号", "required": false, "autocomplete": "postal-code", "validation": { "format": "postal_code_jp" } },
+    { "key": "email", "type": "email", "label": "メールアドレス", "required": true, "autocomplete": "email" },
+    { "key": "tel", "type": "tel", "label": "電話番号", "required": false, "autocomplete": "tel" },
+    { "key": "website", "type": "url", "label": "ホームページ", "required": false, "validation": { "schemes": ["https"] } },
+    { "key": "divider_1", "type": "divider" },
+    {
+      "key": "customer_type",
+      "type": "radio",
+      "label": "お問い合わせ区分",
+      "required": true,
+      "options": [
+        { "value": "individual", "label": "個人" },
+        { "value": "business", "label": "法人" }
+      ]
+    },
+    {
+      "key": "business",
+      "type": "group",
+      "label": "法人情報",
+      "visibleWhen": { "field": "customer_type", "operator": "eq", "value": "business" },
+      "fields": [
+        { "key": "company", "type": "text", "label": "会社名", "required": true, "autocomplete": "organization" },
+        { "key": "employees", "type": "number", "label": "従業員数", "required": false, "validation": { "min": 1, "max": 100000, "step": 1 } },
+        { "key": "budget", "type": "range", "label": "ご予算（万円）", "required": false, "showValue": true, "default": 50, "validation": { "min": 0, "max": 500, "step": 10 } }
+      ]
+    },
+    {
+      "key": "topic",
+      "type": "select",
+      "label": "ご相談内容",
+      "required": true,
+      "prompt": "選択してください",
+      "options": [
+        { "value": "estimate", "label": "お見積もり" },
+        { "value": "visit", "label": "来店予約" },
+        { "value": "other", "label": "その他" }
+      ]
+    },
+    {
+      "key": "channels",
+      "type": "multiselect",
+      "label": "ご希望の連絡方法",
+      "required": false,
+      "options": [
+        { "value": "mail", "label": "メール" },
+        { "value": "phone", "label": "電話" }
+      ],
+      "validation": { "maxSelected": 2 }
+    },
+    {
+      "key": "phone_time",
+      "type": "time",
+      "label": "お電話希望時刻",
+      "required": false,
+      "requiredWhen": { "field": "channels", "operator": "contains", "value": "phone" },
+      "visibleWhen": { "field": "channels", "operator": "contains", "value": "phone" },
+      "validation": { "min": "09:00", "max": "18:00", "step": 1800 }
+    },
+    { "key": "visit_date", "type": "date", "label": "ご来店希望日", "required": true, "visibleWhen": { "field": "topic", "operator": "eq", "value": "visit" }, "validation": { "min": "2026-01-01" } },
+    { "key": "visit_at", "type": "datetime", "label": "ご来店希望日時", "required": false, "visibleWhen": { "field": "topic", "operator": "eq", "value": "visit" }, "validation": { "step": 900 } },
+    {
+      "key": "interests",
+      "type": "checkboxes",
+      "label": "ご興味のある内容",
+      "required": false,
+      "options": [
+        { "value": "renovation", "label": "リフォーム" },
+        { "value": "new_build", "label": "新築" },
+        { "value": "other", "label": "その他" }
+      ],
+      "validation": { "minSelected": 0, "maxSelected": 3 }
+    },
+    { "key": "interests_other", "type": "text", "label": "その他の内容", "required": true, "visibleWhen": { "field": "interests", "operator": "contains", "value": "other" } },
+    { "key": "message", "type": "textarea", "label": "お問い合わせ内容", "required": true, "rows": 6, "characterCount": "remaining", "validation": { "maxLength": 2000 } },
+    { "key": "message_echo", "type": "reflection", "source": "message", "label": "入力内容の確認" },
+    { "key": "attachments", "type": "file", "label": "資料（任意）", "required": false, "help": "PDF・画像を3点まで添付できます。", "validation": { "maxFiles": 3, "maxFileSize": 5242880, "accept": ["pdf", "jpeg", "png", "webp"] } },
+    { "key": "newsletter", "type": "checkbox", "label": "お知らせメールを受け取る", "required": false, "default": false },
+    { "key": "source", "type": "hidden", "default": "website", "validation": { "maxLength": 100 } },
+    { "key": "human_check", "type": "quiz", "label": "確認のため質問にお答えください", "questions": [{ "id": "mount_fuji", "question": "日本一高い山は?", "answers": ["富士山", "ふじさん", "fujisan"] }] },
+    { "key": "consent", "type": "acceptance", "label": "個人情報の取り扱いに同意する", "required": true, "consentText": "お問い合わせへの回答のために入力内容を利用します。", "consentVersion": "2026-10", "privacyPolicyPath": "/privacy/" }
+  ],
+  "confirmStep": { "enabled": true, "heading": "入力内容の確認", "backLabel": "修正する", "submitLabel": "この内容で送信する" },
+  "submit": { "label": "確認画面へ", "pendingLabel": "送信中…" },
+  "success": { "mode": "message", "message": "お問い合わせを受け付けました。担当者よりご連絡いたします。" },
+  "mail": {
+    "notification": {
+      "to": ["contact@example.jp"],
+      "replyToField": "email",
+      "subject": "【{{website.name}}】{{form.name}} {{submission.reference}}",
+      "body": "{{submission.date}} に受け付けました。\n\n{{submission.answers}}",
+      "attachmentFields": ["attachments"]
+    },
+    "thankYou": {
+      "enabled": true,
+      "toField": "email",
+      "subject": "お問い合わせありがとうございます",
+      "body": "{{field.name}} 様\n\n以下の内容で受け付けました。\n\n{{submission.answers}}",
+      "replyToAddress": "contact@example.jp"
+    }
+  },
+  "uploads": { "maxFiles": 3, "maxTotalBytes": 15728640 }
+}

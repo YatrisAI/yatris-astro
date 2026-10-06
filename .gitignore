@@ -9,6 +9,7 @@ coverage/
 packages/*/platform.json
 packages/*/template/
 packages/*/skills/
+packages/*/contracts/
 .smoke/
 packages/*/LICENSE
 .e2e/

@@ -1,0 +1,27 @@
+[
+  {
+    "publicKey": "frm_01HZXJ8Q0EXAMPLE",
+    "version": 3,
+    "answersJson": "{\"name\":\"山田\",\"message\":\"よろしくお願いします。\"}",
+    "files": [
+      {
+        "field": "attachments",
+        "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "size": 1024
+      },
+      {
+        "field": "attachments",
+        "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "size": 2048
+      }
+    ],
+    "expected": "d5251b2f4789525e3d3cd945d28df36088a5a32b02e6e899dd3595a749246ae3"
+  },
+  {
+    "publicKey": "frm_01HZXJ8Q0EXAMPLE",
+    "version": 3,
+    "answersJson": "{}",
+    "files": [],
+    "expected": "9dc31b08b923b4a9b782c3bddc7068cc3f977ed7940e56eeb457d19ff9239965"
+  }
+]

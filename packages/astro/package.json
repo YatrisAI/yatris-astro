@@ -53,6 +53,11 @@
       "types": "./dist/pairing.d.ts",
       "default": "./dist/pairing.js"
     },
+    "./forms": {
+      "types": "./dist/forms/index.d.ts",
+      "default": "./dist/forms/index.js"
+    },
+    "./contracts/forms/v1/*": "./contracts/forms/v1/*",
     "./YatrisHead.astro": "./components/YatrisHead.astro",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
     "./virtual": {
@@ -70,7 +75,8 @@
     "components",
     "platform.json",
     "template",
-    "skills"
+    "skills",
+    "contracts"
   ],
   "peerDependencies": {
     "astro": "^7.3.5"
