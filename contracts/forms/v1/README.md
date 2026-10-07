@@ -72,6 +72,19 @@ The form-level options are:
 - `success` (`message` or `redirect`);
 - `uploads: { maxFiles ≤ 5, maxTotalBytes ≤ 20 MiB }`.
 
+### Sensitive questions
+
+Every input except `quiz` takes an optional `sensitive: true` marker for answers such as health information or anything else that should stay with the business that asked for it (reservations reuse these questions). On a `quiz` the property is `unknown_property`. The marker changes neither normalization nor validation nor activity; a sensitive field may carry conditions and may be referenced by them like any other input.
+
+Consumers **MUST** keep sensitive answers, and the attachments of sensitive `file` fields, off every outbound surface:
+
+- notification and thank-you mail, including the `{{submission.answers}}` catch-all, which leaves sensitive answers out;
+- calendar events, ICS files and any other export or integration payload;
+- logs, error reports and analytics;
+- agent and LLM access.
+
+They remain visible only to the authorised people viewing the submission itself. Validation enforces the part it can see: a `{{field.<key>}}` placeholder naming a sensitive field is rejected with `sensitive_placeholder` (§5).
+
 ## 2. Validation rules (both implementations)
 
 ### Value rules
@@ -140,7 +153,7 @@ Issues are `{ path, code }` with `path` a JSON Pointer (`""` is the root). Imple
 ```
 
 - `all`/`any` take 1–20 items. Nesting depth is at most 5. `in` lists hold 1–50 values.
-- A comparison referencing a nonexistent key reports `unknown_reference`, and one referencing its own node reports `self_reference`, both at `…/field`.
+- A comparison referencing a nonexistent key reports `unknown_reference`, and one referencing its own node reports `self_reference`, both at `…/field`. Dotted keys refer to the question context (see "Question context" below).
 - Comparisons may reference inputs only, and never `file` or `quiz` (`reference_not_allowed` at `…/field`).
 - Operators by answer kind (otherwise `invalid_operator` at `…/operator`):
 
@@ -181,6 +194,32 @@ Issues are `{ path, code }` with `path` a JSON Pointer (`""` is the root). Imple
 7. **Cycles:** a node depends on its enclosing group, on every field its `visibleWhen` references, and (for a reflection) on its source. Each strongly connected component with more than one node is one `condition_cycle` error, reported at `…/visibleWhen` of the component's first node in document (pre-) order that has a `visibleWhen`.
 
 The `activity.json` fixtures hold normalized values and the expected `active` and `required` key lists, in document order.
+
+### Question context
+
+A consumer may supply a **question context** next to a node list: read-only system inputs that conditions can compare like answers, such as the booked service of a reservation. Reservations validate their questions with `validateQuestions(fields, { context })` (PHP twin: the same rules), which runs every node and condition rule of §2 and §3 on the list (shape limits of `fields`, paths `/fields/...`) and no declaration-level rule (mail, success, key, name, warnings). `validateDeclaration` is the same validation with an empty context.
+
+```ts
+type QuestionContext = Record<string, { kind: AnswerKind; options?: string[] }>;
+// e.g. { "booking.service_key": { "kind": "choice", "options": ["cut", "color"] }, "booking.party_size": { "kind": "decimal" } }
+```
+
+- **Keys** match `^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]{0,63}$`. The dot is required, so a context key can never collide with a node key.
+- **Kinds** are the referenceable answer kinds: `string`, `choice`, `choices`, `decimal`, `date`, `time`, `datetime`, `boolean` (never `files` or `quiz`). `options` is allowed for `choice` and `choices` only. A context is consumer configuration, so a malformed one (bad key, kind or options, unknown entry property) is a programming error and implementations throw.
+
+**Validation.** A comparison whose `field` is a context key is checked against the context entry instead of a node:
+
+- operators follow the kind table above (`invalid_operator` at `…/operator`);
+- for `choice` and `choices` with `options`, values (including each `in` item and the `contains` value) must be among the options (`invalid_condition_value`). Without `options` any string is accepted (a non-empty one for `contains`);
+- every other kind uses the ordinary value rules;
+- a `field` that contains a dot but is not a key of the supplied context, or any dotted `field` when no context is supplied (always the case for `validateDeclaration`), reports `unknown_reference` at `…/field`;
+- context references never add a dependency edge, so they never take part in `condition_cycle`, and never count as `self_reference`.
+
+**Evaluation.** `evaluateActivity(…, { context, contextValues })` and `validateSubmission(…, { context, contextValues })` compare a context condition against `contextValues[key]` with the operator semantics above, using the entry's kind. Context values are always active. Before comparison each value is coerced to its kind: a `decimal` accepts a decimal string or JSON number and is canonicalized; `choices` needs an array of strings; `boolean` a Boolean; every other kind a string. A value of the wrong type, an invalid decimal, or a key missing from `contextValues` is empty. A condition on a dotted key that is not in the context evaluates to false.
+
+**Visitors can never set context values.** They come from `contextValues` only, never from `answers`; an `answers` key containing a dot is always `undeclared_field` (§4).
+
+The `context.json` fixtures hold `questions` cases (`fields`, `context` and the expected `errors`, sorted by path then code) and `activity` cases (`fields`, `context`, `contextValues`, normalized `values` and the expected `active` and `required` lists).
 
 ## 4. Answers
 
@@ -234,10 +273,11 @@ Subjects (single line, ≤200) and bodies (≤10000) are plain text. Placeholder
 | --- | --- |
 | `placeholder_not_allowed` | `submission.answers` in a subject. |
 | `invalid_placeholder_field` | `field.<key>` with an unknown key or a disallowed field. |
+| `sensitive_placeholder` | `field.<key>` naming a field marked `sensitive: true` (§1 "Sensitive questions"). |
 | `unknown_placeholder` | Any other name. |
 | `malformed_placeholder` | A leftover `{{` or `}}`. |
 
-Values are escaped when rendered and never reach headers unescaped. `submission.answers` lists active answers with their labels. In thank-you mail it leaves out `hidden` fields.
+Values are escaped when rendered and never reach headers unescaped. `submission.answers` lists active answers with their labels. It always leaves out sensitive fields, and in thank-you mail it also leaves out `hidden` fields.
 
 ## 6. Public definition and submission wire format
 
