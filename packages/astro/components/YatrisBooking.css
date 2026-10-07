@@ -122,6 +122,51 @@
   gap: 0.5rem;
 }
 
+/* Service and variant options: the label, then its duration on its own line. */
+:where(.yb-option) {
+  align-items: flex-start;
+}
+
+:where(.yb-option .yb-choice-input) {
+  margin-block-start: 0.3em;
+}
+
+:where(.yb-option .yb-choice-label) {
+  display: grid;
+  gap: 0.125rem;
+}
+
+:where(.yb-option-detail) {
+  font-size: 0.875rem;
+  color: var(--yf-muted);
+}
+
+:where(.yb-service-details, .yb-selection-summary) {
+  display: grid;
+  gap: var(--yb-gap);
+}
+
+:where(.yb-selection, .yb-outcome-what) {
+  margin: 0;
+  font-weight: 600;
+}
+
+:where(.yb-input) {
+  box-sizing: border-box;
+  inline-size: 8rem;
+  max-inline-size: 100%;
+  font: inherit;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--yf-border);
+  border-radius: var(--yf-radius);
+  background: var(--yf-control-bg);
+  color: inherit;
+}
+
+:where(.yb-input[aria-invalid='true'], .yb-select[aria-invalid='true']) {
+  border-color: var(--yf-error);
+}
+
 :where(.yb-dates-nav, .yb-actions) {
   display: flex;
   flex-wrap: wrap;
@@ -131,6 +176,10 @@
 
 :where(.yb-actions) {
   justify-content: space-between;
+}
+
+:where(.yb-actions-end) {
+  justify-content: flex-end;
 }
 
 :where(.yb-dates, .yb-times) {
@@ -194,7 +243,7 @@
   color: inherit;
 }
 
-:where(.yb-root button:focus-visible, .yb-root a:focus-visible, .yb-select:focus-visible, .yb-choice-input:focus-visible) {
+:where(.yb-root button:focus-visible, .yb-root a:focus-visible, .yb-select:focus-visible, .yb-input:focus-visible, .yb-choice-input:focus-visible) {
   outline: 2px solid var(--yf-focus);
   outline-offset: 2px;
 }

@@ -10,9 +10,10 @@
 import { BookingController, type BookingOptions } from './controller.js';
 import type { BookingConfig } from './types.js';
 
-export { applyTheme, BookingController, cutoffNotice, newIdempotencyKey, PREVIEW_MARKER_ID, type BookingOptions, type BookingStep } from './controller.js';
+export { applyTheme, BookingController, cutoffNotice, newIdempotencyKey, PREVIEW_MARKER_ID, type BookingOptions } from './controller.js';
 export { rejectionCode, resolveEndpoints, retryAfterSeconds } from './api.js';
-export { previewApi, SYNTHETIC_WEEKLY_HOURS, syntheticSlots, type PreviewApi } from './preview-api.js';
+export { contextValuesOf, durationOf, flowOf, keptSelection, selectionProblem, stepsOf, type BookingFlow, type BookingStep } from './flow.js';
+export { previewApi, redactedBooking, sensitiveKeys, SYNTHETIC_WEEKLY_HOURS, syntheticSlots, type PreviewApi } from './preview-api.js';
 export { UI as BOOKING_UI } from './ui.js';
 export type {
   AcceptedResponse,
