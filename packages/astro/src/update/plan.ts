@@ -61,8 +61,9 @@ export interface UpdatePlan {
   /** Site-owned template files the site lacks, created once (`SEEDED_FILES`). */
   seeded: FileChange[];
   /**
-   * Lines appended to `.gitignore` so a seeded `.env.example` is committed and
-   * `.env` stays ignored; filled in by `planIgnoreRules`, which asks Git.
+   * Lines appended to `.gitignore`: a seeded `.env.example` is committed,
+   * `.env` and the local forms plan stay ignored. Filled in by
+   * `planIgnoreRules`, which asks Git.
    */
   ignoreRules: string[];
 }
@@ -143,22 +144,29 @@ function seededFiles(root: string, templateDir: string): FileChange[] {
   }));
 }
 
+/** Where `yatris forms plan` writes its plan (`DEFAULT_PLAN_PATH` in forms-sync). */
+export const FORMS_PLAN_PATH = '.yatris/forms.plan.json';
+
 /**
- * What `.gitignore` needs so the seeded `.env.example` can be committed while
- * `.env` stays ignored, as Git itself matches the site's ignore rules. An older
- * site may ignore `.env.*` without re-including `.env.example`. Nothing is
- * checked, and nothing appended, outside a Git work tree or when nothing is seeded.
+ * What `.gitignore` needs, as Git itself matches the site's ignore rules:
+ * - a seeded `.env.example` committed while `.env` stays ignored (an older
+ *   site may ignore `.env.*` without re-including `.env.example`);
+ * - the local forms plan ignored. New sites get that rule from the template;
+ *   sites created before contact forms do not (YatrisCMS#395).
+ * Nothing is checked, and nothing appended, outside a Git work tree.
  */
 export async function planIgnoreRules(root: string, plan: UpdatePlan, exec: Exec): Promise<string[]> {
-  if (!plan.seeded.some((file) => file.key === '.env.example')) return [];
   const tree = await exec(['git', 'rev-parse', '--is-inside-work-tree'], { cwd: root });
   if (tree.code !== 0 || tree.output.trim() !== 'true') return [];
 
   // Exit 0: ignored; 1: not ignored. --no-index matches the rules even for a tracked file.
   const ignored = async (path: string) => (await exec(['git', 'check-ignore', '-q', '--no-index', '--', path], { cwd: root })).code === 0;
   const rules: string[] = [];
-  if (!(await ignored('.env'))) rules.push('.env');
-  if (await ignored('.env.example')) rules.push('!.env.example');
+  if (plan.seeded.some((file) => file.key === '.env.example')) {
+    if (!(await ignored('.env'))) rules.push('.env');
+    if (await ignored('.env.example')) rules.push('!.env.example');
+  }
+  if (!(await ignored(FORMS_PLAN_PATH))) rules.push(FORMS_PLAN_PATH);
   return rules;
 }
 
@@ -226,6 +234,7 @@ export function formatPlan(plan: UpdatePlan): string {
 const IGNORE_REASON: Record<string, string> = {
   '.env': 'keep local keys out of Git',
   '!.env.example': 'commit the template; .env stays ignored',
+  [FORMS_PLAN_PATH]: 'a local forms sync plan, never committed or deployed',
 };
 
 export const CONFLICT_TEXT: Record<ConflictReason, string> = {
