@@ -1,0 +1,3298 @@
+[
+  {
+    "name": "valid time_slot operations",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "valid business service operations",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "valid party operations with tables and a combination",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t3",
+          "kind": "table",
+          "label": "t3",
+          "seats": {
+            "min": 2,
+            "max": 4
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 6,
+        "durationMinutes": 120,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1",
+          "t2",
+          "t3"
+        ],
+        "combinations": [
+          {
+            "key": "t1_t2",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          }
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "valid party operations with a capacity pool",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 90,
+        "strategy": "pool",
+        "poolResourceKey": "seats"
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "confirmationMode missing is a warning",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": [
+      {
+        "path": "/confirmationMode",
+        "code": "confirmation_mode_missing"
+      }
+    ]
+  },
+  {
+    "name": "an empty revision lacks its mode section",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {},
+    "errors": [
+      {
+        "path": "/appointment",
+        "code": "required_property"
+      }
+    ],
+    "warnings": [
+      {
+        "path": "/confirmationMode",
+        "code": "confirmation_mode_missing"
+      }
+    ]
+  },
+  {
+    "name": "business without a presentation skips mode sections",
+    "mode": "business",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 30,
+        "hostStrategy": "single",
+        "hostResourceKeys": [
+          "sato"
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "not an object",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": "not an object",
+    "errors": [
+      {
+        "path": "",
+        "code": "invalid_type"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "no recipients, calendars or secrets",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "recipients": [
+        "owner@example.jp"
+      ],
+      "calendarId": "primary"
+    },
+    "errors": [
+      {
+        "path": "/calendarId",
+        "code": "unknown_property"
+      },
+      {
+        "path": "/recipients",
+        "code": "unknown_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "policy ranges and types",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "auto",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "",
+      "slotIntervalMinutes": 3,
+      "holdMinutes": 31,
+      "approvalWindowMinutes": 10,
+      "minimumLeadMinutes": "120",
+      "bookingHorizonDays": 366,
+      "cancelCutoffMinutes": -1,
+      "reminderMinutesBefore": 59
+    },
+    "errors": [
+      {
+        "path": "/approvalWindowMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/bookingHorizonDays",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/cancelCutoffMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/confirmationMode",
+        "code": "invalid_enum"
+      },
+      {
+        "path": "/holdMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/minimumLeadMinutes",
+        "code": "invalid_type"
+      },
+      {
+        "path": "/reminderMinutesBefore",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/slotIntervalMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/timezone",
+        "code": "too_short"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "nested shapes",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "staff",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host"
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "T1",
+          "seats": {
+            "min": 2
+          }
+        },
+        {
+          "key": "Room",
+          "kind": "room",
+          "label": "R"
+        }
+      ],
+      "venueHours": {
+        "weekly": [
+          {
+            "day": "mon",
+            "start": "9:00",
+            "end": "18:00"
+          }
+        ],
+        "exceptions": [
+          {
+            "date": "2026/12/31",
+            "closed": true
+          }
+        ]
+      },
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "sato"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/appointment/hostResourceKeys",
+        "code": "not_unique"
+      },
+      {
+        "path": "/locations",
+        "code": "too_short"
+      },
+      {
+        "path": "/resources/0/kind",
+        "code": "invalid_enum"
+      },
+      {
+        "path": "/resources/1/label",
+        "code": "required_property"
+      },
+      {
+        "path": "/resources/2/seats/max",
+        "code": "required_property"
+      },
+      {
+        "path": "/resources/3/key",
+        "code": "pattern_mismatch"
+      },
+      {
+        "path": "/venueHours/exceptions/0/date",
+        "code": "pattern_mismatch"
+      },
+      {
+        "path": "/venueHours/weekly/0/day",
+        "code": "invalid_enum"
+      },
+      {
+        "path": "/venueHours/weekly/0/start",
+        "code": "pattern_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "mode section shapes",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 600,
+          "variants": [],
+          "requirements": []
+        }
+      ],
+      "party": {
+        "minSize": 0,
+        "maxSize": 2,
+        "durationMinutes": 60
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/minSize",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/party/strategy",
+        "code": "required_property"
+      },
+      {
+        "path": "/services/0/durationMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/services/0/requirements",
+        "code": "too_short"
+      },
+      {
+        "path": "/services/0/variants",
+        "code": "too_short"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone Asia/Tokyo is valid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Asia/Tokyo"
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "timezone UTC is valid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "UTC"
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "timezone Etc/GMT-9 is valid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Etc/GMT-9"
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "timezone America/Argentina/Buenos_Aires is valid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "America/Argentina/Buenos_Aires"
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "timezone Europe/London is valid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Europe/London"
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"Asia/Nowhere\" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Asia/Nowhere"
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"JST\" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "JST"
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"+09:00\" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "+09:00"
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"asia/tokyo\" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "asia/tokyo"
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"Japan\" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Japan"
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "timezone \"Asia/Tokyo \" is invalid",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "timezone": "Asia/Tokyo "
+    },
+    "errors": [
+      {
+        "path": "/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a 5-minute slot interval divides a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 5
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a 45-minute slot interval divides a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 45
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a 90-minute slot interval divides a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 90
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a 120-minute slot interval divides a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 120
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a 7-minute slot interval does not divide a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 7
+    },
+    "errors": [
+      {
+        "path": "/slotIntervalMinutes",
+        "code": "invalid_slot_interval"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a 25-minute slot interval does not divide a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 25
+    },
+    "errors": [
+      {
+        "path": "/slotIntervalMinutes",
+        "code": "invalid_slot_interval"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a 100-minute slot interval does not divide a day",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "slotIntervalMinutes": 100
+    },
+    "errors": [
+      {
+        "path": "/slotIntervalMinutes",
+        "code": "invalid_slot_interval"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "duplicate location and resource keys",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "online"
+        },
+        {
+          "key": "online",
+          "type": "phone",
+          "label": "online"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "tanaka"
+        },
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤（別）"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/locations/1/key",
+        "code": "duplicate_key"
+      },
+      {
+        "path": "/resources/2/key",
+        "code": "duplicate_key"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "duplicate service and variant keys",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "short",
+              "label": "ショート2",
+              "durationMinutes": 50
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "cut",
+          "label": "カット2",
+          "durationMinutes": 30,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/services/0/variants/1/key",
+        "code": "duplicate_key"
+      },
+      {
+        "path": "/services/2/key",
+        "code": "duplicate_key"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "variant keys may repeat across services",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 60
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "duplicate combination keys",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t3",
+          "kind": "table",
+          "label": "t3",
+          "seats": {
+            "min": 2,
+            "max": 4
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 6,
+        "durationMinutes": 120,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1",
+          "t2",
+          "t3"
+        ],
+        "combinations": [
+          {
+            "key": "t1_t2",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          },
+          {
+            "key": "t1_t2",
+            "resourceKeys": [
+              "t2",
+              "t3"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 6
+            }
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/combinations/1/key",
+        "code": "duplicate_key"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "weekly hours intervals and overlaps",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato",
+          "weeklyHours": [
+            {
+              "day": "friday",
+              "start": "09:00",
+              "end": "12:00"
+            },
+            {
+              "day": "friday",
+              "start": "11:59",
+              "end": "13:00"
+            }
+          ]
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "tanaka"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "venueHours": {
+        "weekly": [
+          {
+            "day": "monday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "monday",
+            "start": "12:00",
+            "end": "18:00"
+          },
+          {
+            "day": "monday",
+            "start": "11:00",
+            "end": "13:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "11:00",
+            "end": "13:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "18:00",
+            "end": "18:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "19:00",
+            "end": "09:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "09:00",
+            "end": "17:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "09:00",
+            "end": "17:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "17:00",
+            "end": "19:00"
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/resources/0/weeklyHours/1",
+        "code": "overlapping_hours"
+      },
+      {
+        "path": "/venueHours/weekly/2",
+        "code": "overlapping_hours"
+      },
+      {
+        "path": "/venueHours/weekly/4",
+        "code": "invalid_interval"
+      },
+      {
+        "path": "/venueHours/weekly/5",
+        "code": "invalid_interval"
+      },
+      {
+        "path": "/venueHours/weekly/7",
+        "code": "overlapping_hours"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "dated exceptions",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato",
+          "exceptions": [
+            {
+              "date": "2026-12-31",
+              "closed": true
+            },
+            {
+              "date": "2026-12-31",
+              "closed": true
+            }
+          ]
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "tanaka"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      },
+      "venueHours": {
+        "exceptions": [
+          {
+            "date": "2026-12-29"
+          },
+          {
+            "date": "2026-12-30",
+            "closed": true,
+            "hours": [
+              {
+                "start": "10:00",
+                "end": "12:00"
+              }
+            ]
+          },
+          {
+            "date": "2026-12-31",
+            "closed": false
+          },
+          {
+            "date": "2027-01-04",
+            "closed": false,
+            "hours": [
+              {
+                "start": "10:00",
+                "end": "12:00"
+              },
+              {
+                "start": "11:00",
+                "end": "15:00"
+              }
+            ]
+          },
+          {
+            "date": "2027-01-04",
+            "closed": true
+          },
+          {
+            "date": "2027-02-30",
+            "closed": true
+          },
+          {
+            "date": "2027-01-05",
+            "hours": [
+              {
+                "start": "15:00",
+                "end": "13:00"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/resources/0/exceptions/1",
+        "code": "duplicate_date"
+      },
+      {
+        "path": "/venueHours/exceptions/0",
+        "code": "invalid_exception"
+      },
+      {
+        "path": "/venueHours/exceptions/1",
+        "code": "invalid_exception"
+      },
+      {
+        "path": "/venueHours/exceptions/2",
+        "code": "invalid_exception"
+      },
+      {
+        "path": "/venueHours/exceptions/3/hours/1",
+        "code": "overlapping_hours"
+      },
+      {
+        "path": "/venueHours/exceptions/4",
+        "code": "duplicate_date"
+      },
+      {
+        "path": "/venueHours/exceptions/5/date",
+        "code": "invalid_date"
+      },
+      {
+        "path": "/venueHours/exceptions/6/hours/0",
+        "code": "invalid_interval"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "location fields by type",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "online",
+          "meetingUrl": "https://meet.google.com/abc-defg-hij",
+          "instructions": "リンクからご参加ください。"
+        },
+        {
+          "key": "zoom",
+          "type": "online",
+          "label": "zoom",
+          "meetingUrl": "http://zoom.us/j/1"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "office",
+          "address": "大阪府大阪市北区梅田1-1-1",
+          "meetingUrl": "https://meet.google.com/x"
+        },
+        {
+          "key": "phone",
+          "type": "phone",
+          "label": "phone",
+          "address": "東京都",
+          "instructions": "お電話します。"
+        },
+        {
+          "key": "web",
+          "type": "online",
+          "label": "web",
+          "address": "大阪府"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/locations/1/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/2/meetingUrl",
+        "code": "location_field_not_allowed"
+      },
+      {
+        "path": "/locations/3/address",
+        "code": "location_field_not_allowed"
+      },
+      {
+        "path": "/locations/4/address",
+        "code": "location_field_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "meeting URLs must be absolute https URLs with a host",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online_0",
+          "type": "online",
+          "label": "online_0",
+          "meetingUrl": "https://"
+        },
+        {
+          "key": "online_1",
+          "type": "online",
+          "label": "online_1",
+          "meetingUrl": "HTTPS://meet.example.com"
+        },
+        {
+          "key": "online_2",
+          "type": "online",
+          "label": "online_2",
+          "meetingUrl": "https://meet example.com"
+        },
+        {
+          "key": "online_3",
+          "type": "online",
+          "label": "online_3",
+          "meetingUrl": "https://user@meet.example.com/x"
+        },
+        {
+          "key": "online_4",
+          "type": "online",
+          "label": "online_4",
+          "meetingUrl": "https://-bad.example.com"
+        },
+        {
+          "key": "online_5",
+          "type": "online",
+          "label": "online_5",
+          "meetingUrl": "https://meet.example.com/会議"
+        },
+        {
+          "key": "online_6",
+          "type": "online",
+          "label": "online_6",
+          "meetingUrl": "meet.example.com"
+        },
+        {
+          "key": "online_7",
+          "type": "online",
+          "label": "online_7",
+          "meetingUrl": "https://meet.example.com:123456"
+        },
+        {
+          "key": "online_8",
+          "type": "online",
+          "label": "online_8",
+          "meetingUrl": "https://meet.example.com/a b"
+        },
+        {
+          "key": "online_9",
+          "type": "online",
+          "label": "online_9",
+          "meetingUrl": "https:///path"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/locations/0/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/1/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/2/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/3/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/4/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/5/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/6/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/7/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/8/meetingUrl",
+        "code": "invalid_url"
+      },
+      {
+        "path": "/locations/9/meetingUrl",
+        "code": "invalid_url"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "valid meeting URLs",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online_0",
+          "type": "online",
+          "label": "online_0",
+          "meetingUrl": "https://zoom.us/j/123456789?pwd=abc"
+        },
+        {
+          "key": "online_1",
+          "type": "online",
+          "label": "online_1",
+          "meetingUrl": "https://meet.example.com:8443/room#top"
+        },
+        {
+          "key": "online_2",
+          "type": "online",
+          "label": "online_2",
+          "meetingUrl": "https://localhost"
+        },
+        {
+          "key": "online_3",
+          "type": "online",
+          "label": "online_3",
+          "meetingUrl": "https://teams.microsoft.com/l/meetup-join/19%3Ameeting"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "resource fields by kind",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "tanaka"
+        },
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "客席"
+        },
+        {
+          "key": "room_a",
+          "kind": "room",
+          "label": "会議室",
+          "capacity": 4
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "T1"
+        },
+        {
+          "key": "kit",
+          "kind": "equipment",
+          "label": "機材",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 4,
+            "max": 2
+          }
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/resources/2/capacity",
+        "code": "required_property"
+      },
+      {
+        "path": "/resources/3/capacity",
+        "code": "resource_field_not_allowed"
+      },
+      {
+        "path": "/resources/4/seats",
+        "code": "required_property"
+      },
+      {
+        "path": "/resources/5/seats",
+        "code": "resource_field_not_allowed"
+      },
+      {
+        "path": "/resources/6/seats",
+        "code": "min_exceeds_max"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "time_slot allows only appointment",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "yamada"
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 4
+          }
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 4,
+        "durationMinutes": 90,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/appointment",
+        "code": "required_property"
+      },
+      {
+        "path": "/party",
+        "code": "section_not_allowed"
+      },
+      {
+        "path": "/services",
+        "code": "section_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "service presentation allows only services; references in other sections are still checked",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 30,
+        "hostStrategy": "single",
+        "hostResourceKeys": [
+          "yamada"
+        ]
+      },
+      "party": {
+        "minSize": 1,
+        "maxSize": 2,
+        "durationMinutes": 60,
+        "strategy": "pool",
+        "poolResourceKey": "spa_room"
+      }
+    },
+    "errors": [
+      {
+        "path": "/appointment",
+        "code": "section_not_allowed"
+      },
+      {
+        "path": "/appointment/hostResourceKeys/0",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/party",
+        "code": "section_not_allowed"
+      },
+      {
+        "path": "/party/poolResourceKey",
+        "code": "resource_kind_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "party presentation needs party and allows no services",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "yamada"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/party",
+        "code": "required_property"
+      },
+      {
+        "path": "/services",
+        "code": "section_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "host references",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        },
+        {
+          "key": "room_a",
+          "kind": "room",
+          "label": "会議室"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "room_a",
+          "kimura"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/appointment/hostResourceKeys/1",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/appointment/hostResourceKeys/2",
+        "code": "unknown_resource"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "service requirement references",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "yamada"
+        },
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "kit",
+          "kind": "equipment",
+          "label": "機材"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "sato",
+                "kit"
+              ],
+              "count": 1
+            },
+            {
+              "resourceKeys": [
+                "t1",
+                "nobody",
+                "spa_room"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/services/0/requirements/0/resourceKeys/1",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/services/0/requirements/1/resourceKeys/0",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/services/0/requirements/1/resourceKeys/1",
+        "code": "unknown_resource"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a pool reference must name a pool",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 90,
+        "strategy": "pool",
+        "poolResourceKey": "t1"
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/poolResourceKey",
+        "code": "resource_kind_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "table and combination references",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t3",
+          "kind": "table",
+          "label": "t3",
+          "seats": {
+            "min": 2,
+            "max": 4
+          }
+        },
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 6,
+        "durationMinutes": 120,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1",
+          "seats",
+          "ghost"
+        ],
+        "combinations": [
+          {
+            "key": "c1",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          },
+          {
+            "key": "c2",
+            "resourceKeys": [
+              "t1",
+              "ghost2"
+            ],
+            "seats": {
+              "min": 5,
+              "max": 4
+            }
+          },
+          {
+            "key": "c3",
+            "resourceKeys": [
+              "t1",
+              "seats"
+            ],
+            "seats": {
+              "min": 2,
+              "max": 6
+            }
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/combinations/0/resourceKeys/1",
+        "code": "combination_table_not_listed"
+      },
+      {
+        "path": "/party/combinations/1/resourceKeys/1",
+        "code": "combination_table_not_listed"
+      },
+      {
+        "path": "/party/combinations/1/resourceKeys/1",
+        "code": "unknown_resource"
+      },
+      {
+        "path": "/party/combinations/1/seats",
+        "code": "min_exceeds_max"
+      },
+      {
+        "path": "/party/combinations/2/resourceKeys/1",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/party/tableResourceKeys/1",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/party/tableResourceKeys/2",
+        "code": "unknown_resource"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "references resolve to the first resource with a key",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "sato"
+        },
+        {
+          "key": "sato",
+          "kind": "room",
+          "label": "会議室"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "tanaka"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/resources/1/key",
+        "code": "duplicate_key"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a single host strategy takes one host and no visitor choice",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "single",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ],
+        "visitorChoosesHost": true
+      }
+    },
+    "errors": [
+      {
+        "path": "/appointment/hostResourceKeys",
+        "code": "single_host_count"
+      },
+      {
+        "path": "/appointment/visitorChoosesHost",
+        "code": "host_choice_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a single host",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "single",
+        "hostResourceKeys": [
+          "sato"
+        ],
+        "visitorChoosesHost": false
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "visitors may choose among available hosts",
+    "mode": "time_slot",
+    "presentation": null,
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ],
+        "visitorChoosesHost": true
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a requirement count cannot exceed its resources",
+    "mode": "business",
+    "presentation": "service",
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 2
+            },
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 2
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/services/0/requirements/0/count",
+        "code": "count_exceeds_resources"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "pool strategy fields",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        }
+      ],
+      "party": {
+        "minSize": 8,
+        "maxSize": 2,
+        "durationMinutes": 90,
+        "strategy": "pool",
+        "tableResourceKeys": [
+          "t1",
+          "t2"
+        ],
+        "combinations": [
+          {
+            "key": "c",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/party",
+        "code": "min_exceeds_max"
+      },
+      {
+        "path": "/party/combinations",
+        "code": "party_field_not_allowed"
+      },
+      {
+        "path": "/party/poolResourceKey",
+        "code": "required_property"
+      },
+      {
+        "path": "/party/tableResourceKeys",
+        "code": "party_field_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "tables strategy fields",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "resources": [
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        },
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 4
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 4,
+        "durationMinutes": 90,
+        "strategy": "tables",
+        "poolResourceKey": "seats"
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/poolResourceKey",
+        "code": "party_field_not_allowed"
+      },
+      {
+        "path": "/party/tableResourceKeys",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "combinations need tableResourceKeys to be checked for listing",
+    "mode": "business",
+    "presentation": "party",
+    "operations": {
+      "confirmationMode": "manual",
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 4,
+        "durationMinutes": 90,
+        "strategy": "tables",
+        "combinations": [
+          {
+            "key": "c",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/party/tableResourceKeys",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  }
+]

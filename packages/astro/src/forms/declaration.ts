@@ -2,7 +2,7 @@ import { normalize } from './answers.js';
 import { compareDecimal, toDecimal } from './decimal.js';
 import { DECLARATION, MAX_GROUP_DEPTH, MAX_NODES, nodeType, OPERATORS_BY_KIND, PLACEHOLDERS, UPLOAD_LIMITS, type AnswerKind } from './registry.js';
 import { assertContext, contextEntry, type QuestionContext } from './context.js';
-import { checkObject, checkShape, isPlainObject, type Issue } from './spec.js';
+import { checkObject, checkShape, isPlainObject, tidy, type Issue } from './spec.js';
 import { datetimeToSeconds, dateToDays, timeToSeconds } from './temporal.js';
 import { answerKind, flatten, isInput, type Entry, type FormDeclaration, type FormNode } from './tree.js';
 
@@ -96,7 +96,8 @@ function checkFields(fields: FormNode[], maxTotalBytes: number, context: Questio
   return byKey;
 }
 
-function checkNode(value: unknown, path: string, issues: Issue[]): void {
+/** Shape checker for one node (and, through groups, its children); the `nodes` hook of `checkShape`. */
+export function checkNode(value: unknown, path: string, issues: Issue[]): void {
   if (!isPlainObject(value)) return void issues.push({ path, code: 'invalid_type' });
   if (!('type' in value)) return void issues.push({ path: `${path}/type`, code: 'required_property' });
   const type = nodeType(value.type);
@@ -371,15 +372,4 @@ function checkSuccess(declaration: FormDeclaration, errors: Issue[]): void {
   const success = declaration.success;
   if (success.mode === 'message' && success.message === undefined) errors.push({ path: '/success/message', code: 'required_property' });
   if (success.mode === 'redirect' && success.redirectPath === undefined) errors.push({ path: '/success/redirectPath', code: 'required_property' });
-}
-
-/** Deduplicated and sorted by path, then code. */
-function tidy(issues: Issue[]): Issue[] {
-  const seen = new Map<string, Issue>();
-  for (const issue of issues) seen.set(`${issue.path}\u0000${issue.code}`, issue);
-  return [...seen.values()].sort((a, b) => (a.path === b.path ? cmp(a.code, b.code) : cmp(a.path, b.path)));
-}
-
-function cmp(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
 }

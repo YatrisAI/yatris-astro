@@ -1,0 +1,139 @@
+{
+  "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+  "contractVersion": 1,
+  "key": "salon",
+  "name": "ヘアサロンのご予約",
+  "locale": "ja",
+  "mode": "business",
+  "presentation": "service",
+  "identityFields": { "name": "name", "email": "email", "phone": "phone" },
+  "questions": [
+    { "key": "name", "type": "text", "label": "お名前", "required": true, "autocomplete": "name" },
+    { "key": "name_kana", "type": "text", "label": "フリガナ", "required": true, "preset": "katakana" },
+    { "key": "email", "type": "email", "label": "メールアドレス", "required": true, "autocomplete": "email" },
+    { "key": "phone", "type": "tel", "label": "電話番号", "required": true, "autocomplete": "tel" },
+    {
+      "key": "visit",
+      "type": "radio",
+      "label": "ご来店",
+      "required": true,
+      "options": [
+        { "value": "first", "label": "初めて" },
+        { "value": "repeat", "label": "2回目以降" }
+      ]
+    },
+    {
+      "key": "length_note",
+      "type": "help",
+      "text": "ロングヘアの方は、施術時間が長くなる場合があります。",
+      "visibleWhen": { "field": "booking.variant_key", "operator": "eq", "value": "long" }
+    },
+    {
+      "key": "health",
+      "type": "group",
+      "label": "アレルギー・肌のこと",
+      "visibleWhen": { "field": "booking.service_key", "operator": "in", "value": ["color", "head_spa"] },
+      "fields": [
+        {
+          "key": "allergy",
+          "type": "textarea",
+          "label": "アレルギーや肌の不安",
+          "help": "薬剤によるかぶれや、気になることがあればご記入ください。",
+          "required": false,
+          "rows": 4,
+          "sensitive": true
+        },
+        {
+          "key": "health_consent",
+          "type": "acceptance",
+          "label": "健康情報の取り扱い",
+          "required": true,
+          "consentText": "ご記入いただいたアレルギー等の情報は、施術の安全のためにのみ利用し、担当スタッフ以外には共有しません。",
+          "consentVersion": "2026-10",
+          "privacyPolicyPath": "/privacy/"
+        }
+      ]
+    },
+    { "key": "request", "type": "textarea", "label": "ご要望", "required": false, "rows": 3 }
+  ],
+  "copy": {
+    "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+  },
+  "operations": {
+    "timezone": "Asia/Tokyo",
+    "slotIntervalMinutes": 15,
+    "bookingHorizonDays": 60,
+    "minimumLeadMinutes": 180,
+    "holdMinutes": 5,
+    "confirmationMode": "automatic",
+    "cancelCutoffMinutes": 1440,
+    "rescheduleCutoffMinutes": 1440,
+    "reminderMinutesBefore": 1440,
+    "venueHours": {
+      "weekly": [
+        { "day": "tuesday", "start": "10:00", "end": "19:00" },
+        { "day": "wednesday", "start": "10:00", "end": "19:00" },
+        { "day": "thursday", "start": "10:00", "end": "19:00" },
+        { "day": "friday", "start": "10:00", "end": "20:00" },
+        { "day": "saturday", "start": "09:00", "end": "18:00" },
+        { "day": "sunday", "start": "09:00", "end": "18:00" }
+      ],
+      "exceptions": [{ "date": "2027-01-01", "closed": true }]
+    },
+    "locations": [
+      {
+        "key": "salon",
+        "type": "in_person",
+        "label": "表参道店",
+        "address": "東京都港区南青山5-1-1 青山ビル2階",
+        "instructions": "ご予約時間の5分前を目安にお越しください。"
+      }
+    ],
+    "resources": [
+      { "key": "yamada", "kind": "practitioner", "label": "山田" },
+      {
+        "key": "suzuki",
+        "kind": "practitioner",
+        "label": "鈴木",
+        "weeklyHours": [
+          { "day": "friday", "start": "12:00", "end": "20:00" },
+          { "day": "saturday", "start": "09:00", "end": "18:00" },
+          { "day": "sunday", "start": "09:00", "end": "18:00" }
+        ]
+      },
+      { "key": "spa_room", "kind": "room", "label": "スパルーム" }
+    ],
+    "services": [
+      {
+        "key": "cut",
+        "label": "カット",
+        "durationMinutes": 60,
+        "bufferAfterMinutes": 10,
+        "variants": [
+          { "key": "short", "label": "ショート", "durationMinutes": 45 },
+          { "key": "long", "label": "ロング", "durationMinutes": 75 }
+        ],
+        "requirements": [{ "resourceKeys": ["yamada", "suzuki"], "count": 1 }],
+        "visitorChoosesPractitioner": true
+      },
+      {
+        "key": "color",
+        "label": "カラー",
+        "durationMinutes": 90,
+        "bufferBeforeMinutes": 5,
+        "bufferAfterMinutes": 15,
+        "requirements": [{ "resourceKeys": ["yamada", "suzuki"], "count": 1 }],
+        "visitorChoosesPractitioner": true
+      },
+      {
+        "key": "head_spa",
+        "label": "ヘッドスパ",
+        "durationMinutes": 60,
+        "requirements": [
+          { "resourceKeys": ["yamada"], "count": 1 },
+          { "resourceKeys": ["spa_room"], "count": 1 }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,2215 @@
+[
+  {
+    "name": "consultation.json",
+    "setup": {
+      "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": false,
+          "autocomplete": "tel",
+          "help": "来社でのご相談の場合は、当日の連絡先としてご入力ください。",
+          "requiredWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          }
+        },
+        {
+          "key": "company",
+          "type": "text",
+          "label": "会社名",
+          "required": false,
+          "autocomplete": "organization"
+        },
+        {
+          "key": "topic",
+          "type": "radio",
+          "label": "ご相談内容",
+          "required": true,
+          "options": [
+            {
+              "value": "website",
+              "label": "ホームページ制作"
+            },
+            {
+              "value": "marketing",
+              "label": "集客・広告"
+            },
+            {
+              "value": "other",
+              "label": "その他"
+            }
+          ]
+        },
+        {
+          "key": "topic_detail",
+          "type": "textarea",
+          "label": "ご相談内容の詳細",
+          "required": false,
+          "rows": 5,
+          "requiredWhen": {
+            "field": "topic",
+            "operator": "eq",
+            "value": "other"
+          }
+        },
+        {
+          "key": "office_note",
+          "type": "help",
+          "text": "来社でのご相談は、受付でお名前をお伝えください。",
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          }
+        }
+      ],
+      "copy": {
+        "confirmedMessage": "ご予約が確定しました。確認メールをお送りしましたので、内容をご確認ください。"
+      },
+      "success": {
+        "redirectPath": "/consultation/thanks/"
+      },
+      "operations": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 30,
+        "bookingHorizonDays": 60,
+        "minimumLeadMinutes": 1440,
+        "holdMinutes": 10,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440,
+        "reminderMinutesBefore": 1440,
+        "venueHours": {
+          "weekly": [
+            {
+              "day": "monday",
+              "start": "10:00",
+              "end": "12:00"
+            },
+            {
+              "day": "monday",
+              "start": "13:00",
+              "end": "18:00"
+            },
+            {
+              "day": "tuesday",
+              "start": "10:00",
+              "end": "12:00"
+            },
+            {
+              "day": "tuesday",
+              "start": "13:00",
+              "end": "18:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "10:00",
+              "end": "12:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "13:00",
+              "end": "18:00"
+            },
+            {
+              "day": "thursday",
+              "start": "10:00",
+              "end": "12:00"
+            },
+            {
+              "day": "thursday",
+              "start": "13:00",
+              "end": "18:00"
+            },
+            {
+              "day": "friday",
+              "start": "10:00",
+              "end": "12:00"
+            },
+            {
+              "day": "friday",
+              "start": "13:00",
+              "end": "18:00"
+            }
+          ],
+          "exceptions": [
+            {
+              "date": "2026-12-29",
+              "closed": true
+            },
+            {
+              "date": "2026-12-30",
+              "closed": true
+            },
+            {
+              "date": "2026-12-31",
+              "closed": true
+            },
+            {
+              "date": "2027-01-04",
+              "hours": [
+                {
+                  "start": "13:00",
+                  "end": "17:00"
+                }
+              ]
+            }
+          ]
+        },
+        "locations": [
+          {
+            "key": "online",
+            "type": "online",
+            "label": "オンライン（Google Meet）",
+            "meetingUrl": "https://meet.google.com/abc-defg-hij",
+            "instructions": "開始時刻になりましたら、ご予約確定メールのリンクからご参加ください。"
+          },
+          {
+            "key": "office",
+            "type": "in_person",
+            "label": "大阪オフィス",
+            "address": "大阪府大阪市北区梅田1-1-1 梅田ビル5階",
+            "instructions": "5階受付でお名前をお伝えください。"
+          }
+        ],
+        "resources": [
+          {
+            "key": "sato",
+            "kind": "host",
+            "label": "佐藤",
+            "weeklyHours": [
+              {
+                "day": "monday",
+                "start": "10:00",
+                "end": "18:00"
+              },
+              {
+                "day": "wednesday",
+                "start": "10:00",
+                "end": "18:00"
+              },
+              {
+                "day": "friday",
+                "start": "10:00",
+                "end": "18:00"
+              }
+            ]
+          },
+          {
+            "key": "tanaka",
+            "kind": "host",
+            "label": "田中",
+            "exceptions": [
+              {
+                "date": "2027-01-04",
+                "closed": true
+              }
+            ]
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 60,
+          "bufferAfterMinutes": 15,
+          "hostStrategy": "one_available",
+          "hostResourceKeys": [
+            "sato",
+            "tanaka"
+          ],
+          "visitorChoosesHost": false
+        }
+      }
+    },
+    "operations": {
+      "timezone": "Asia/Tokyo",
+      "slotIntervalMinutes": 30,
+      "bookingHorizonDays": 60,
+      "minimumLeadMinutes": 1440,
+      "holdMinutes": 10,
+      "confirmationMode": "automatic",
+      "cancelCutoffMinutes": 1440,
+      "rescheduleCutoffMinutes": 1440,
+      "reminderMinutesBefore": 1440,
+      "venueHours": {
+        "weekly": [
+          {
+            "day": "monday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "monday",
+            "start": "13:00",
+            "end": "18:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "13:00",
+            "end": "18:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "13:00",
+            "end": "18:00"
+          },
+          {
+            "day": "thursday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "thursday",
+            "start": "13:00",
+            "end": "18:00"
+          },
+          {
+            "day": "friday",
+            "start": "10:00",
+            "end": "12:00"
+          },
+          {
+            "day": "friday",
+            "start": "13:00",
+            "end": "18:00"
+          }
+        ],
+        "exceptions": [
+          {
+            "date": "2026-12-29",
+            "closed": true
+          },
+          {
+            "date": "2026-12-30",
+            "closed": true
+          },
+          {
+            "date": "2026-12-31",
+            "closed": true
+          },
+          {
+            "date": "2027-01-04",
+            "hours": [
+              {
+                "start": "13:00",
+                "end": "17:00"
+              }
+            ]
+          }
+        ]
+      },
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン（Google Meet）",
+          "meetingUrl": "https://meet.google.com/abc-defg-hij",
+          "instructions": "開始時刻になりましたら、ご予約確定メールのリンクからご参加ください。"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "大阪オフィス",
+          "address": "大阪府大阪市北区梅田1-1-1 梅田ビル5階",
+          "instructions": "5階受付でお名前をお伝えください。"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤",
+          "weeklyHours": [
+            {
+              "day": "monday",
+              "start": "10:00",
+              "end": "18:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "10:00",
+              "end": "18:00"
+            },
+            {
+              "day": "friday",
+              "start": "10:00",
+              "end": "18:00"
+            }
+          ]
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中",
+          "exceptions": [
+            {
+              "date": "2027-01-04",
+              "closed": true
+            }
+          ]
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "bufferAfterMinutes": 15,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ],
+        "visitorChoosesHost": false
+      }
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "consultation",
+        "name": "無料相談のご予約",
+        "locale": "ja",
+        "mode": "time_slot",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:dbbbc2ba276df08bbc75c2e5606110dddc673a1d3a5260119b6a896ba821cb03"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": false,
+          "autocomplete": "tel",
+          "help": "来社でのご相談の場合は、当日の連絡先としてご入力ください。",
+          "requiredWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          }
+        },
+        {
+          "key": "company",
+          "type": "text",
+          "label": "会社名",
+          "required": false,
+          "autocomplete": "organization"
+        },
+        {
+          "key": "topic",
+          "type": "radio",
+          "label": "ご相談内容",
+          "required": true,
+          "options": [
+            {
+              "value": "website",
+              "label": "ホームページ制作"
+            },
+            {
+              "value": "marketing",
+              "label": "集客・広告"
+            },
+            {
+              "value": "other",
+              "label": "その他"
+            }
+          ]
+        },
+        {
+          "key": "topic_detail",
+          "type": "textarea",
+          "label": "ご相談内容の詳細",
+          "required": false,
+          "rows": 5,
+          "requiredWhen": {
+            "field": "topic",
+            "operator": "eq",
+            "value": "other"
+          }
+        },
+        {
+          "key": "office_note",
+          "type": "help",
+          "text": "来社でのご相談は、受付でお名前をお伝えください。",
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          }
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "copy": {
+        "confirmedMessage": "ご予約が確定しました。確認メールをお送りしましたので、内容をご確認ください。"
+      },
+      "success": {
+        "redirectPath": "/consultation/thanks/"
+      },
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 30,
+        "bookingHorizonDays": 60,
+        "minimumLeadMinutes": 1440,
+        "holdMinutes": 10,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440
+      },
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン（Google Meet）"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "大阪オフィス"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "visitorChoosesHost": false,
+        "hosts": []
+      },
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  },
+  {
+    "name": "salon.json",
+    "setup": {
+      "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "ヘアサロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "name_kana",
+          "type": "text",
+          "label": "フリガナ",
+          "required": true,
+          "preset": "katakana"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": true,
+          "autocomplete": "tel"
+        },
+        {
+          "key": "visit",
+          "type": "radio",
+          "label": "ご来店",
+          "required": true,
+          "options": [
+            {
+              "value": "first",
+              "label": "初めて"
+            },
+            {
+              "value": "repeat",
+              "label": "2回目以降"
+            }
+          ]
+        },
+        {
+          "key": "length_note",
+          "type": "help",
+          "text": "ロングヘアの方は、施術時間が長くなる場合があります。",
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "long"
+          }
+        },
+        {
+          "key": "health",
+          "type": "group",
+          "label": "アレルギー・肌のこと",
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "in",
+            "value": [
+              "color",
+              "head_spa"
+            ]
+          },
+          "fields": [
+            {
+              "key": "allergy",
+              "type": "textarea",
+              "label": "アレルギーや肌の不安",
+              "help": "薬剤によるかぶれや、気になることがあればご記入ください。",
+              "required": false,
+              "rows": 4,
+              "sensitive": true
+            },
+            {
+              "key": "health_consent",
+              "type": "acceptance",
+              "label": "健康情報の取り扱い",
+              "required": true,
+              "consentText": "ご記入いただいたアレルギー等の情報は、施術の安全のためにのみ利用し、担当スタッフ以外には共有しません。",
+              "consentVersion": "2026-10",
+              "privacyPolicyPath": "/privacy/"
+            }
+          ]
+        },
+        {
+          "key": "request",
+          "type": "textarea",
+          "label": "ご要望",
+          "required": false,
+          "rows": 3
+        }
+      ],
+      "copy": {
+        "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+      },
+      "operations": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 15,
+        "bookingHorizonDays": 60,
+        "minimumLeadMinutes": 180,
+        "holdMinutes": 5,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440,
+        "reminderMinutesBefore": 1440,
+        "venueHours": {
+          "weekly": [
+            {
+              "day": "tuesday",
+              "start": "10:00",
+              "end": "19:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "10:00",
+              "end": "19:00"
+            },
+            {
+              "day": "thursday",
+              "start": "10:00",
+              "end": "19:00"
+            },
+            {
+              "day": "friday",
+              "start": "10:00",
+              "end": "20:00"
+            },
+            {
+              "day": "saturday",
+              "start": "09:00",
+              "end": "18:00"
+            },
+            {
+              "day": "sunday",
+              "start": "09:00",
+              "end": "18:00"
+            }
+          ],
+          "exceptions": [
+            {
+              "date": "2027-01-01",
+              "closed": true
+            }
+          ]
+        },
+        "locations": [
+          {
+            "key": "salon",
+            "type": "in_person",
+            "label": "表参道店",
+            "address": "東京都港区南青山5-1-1 青山ビル2階",
+            "instructions": "ご予約時間の5分前を目安にお越しください。"
+          }
+        ],
+        "resources": [
+          {
+            "key": "yamada",
+            "kind": "practitioner",
+            "label": "山田"
+          },
+          {
+            "key": "suzuki",
+            "kind": "practitioner",
+            "label": "鈴木",
+            "weeklyHours": [
+              {
+                "day": "friday",
+                "start": "12:00",
+                "end": "20:00"
+              },
+              {
+                "day": "saturday",
+                "start": "09:00",
+                "end": "18:00"
+              },
+              {
+                "day": "sunday",
+                "start": "09:00",
+                "end": "18:00"
+              }
+            ]
+          },
+          {
+            "key": "spa_room",
+            "kind": "room",
+            "label": "スパルーム"
+          }
+        ],
+        "services": [
+          {
+            "key": "cut",
+            "label": "カット",
+            "durationMinutes": 60,
+            "bufferAfterMinutes": 10,
+            "variants": [
+              {
+                "key": "short",
+                "label": "ショート",
+                "durationMinutes": 45
+              },
+              {
+                "key": "long",
+                "label": "ロング",
+                "durationMinutes": 75
+              }
+            ],
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ],
+            "visitorChoosesPractitioner": true
+          },
+          {
+            "key": "color",
+            "label": "カラー",
+            "durationMinutes": 90,
+            "bufferBeforeMinutes": 5,
+            "bufferAfterMinutes": 15,
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ],
+            "visitorChoosesPractitioner": true
+          },
+          {
+            "key": "head_spa",
+            "label": "ヘッドスパ",
+            "durationMinutes": 60,
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada"
+                ],
+                "count": 1
+              },
+              {
+                "resourceKeys": [
+                  "spa_room"
+                ],
+                "count": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "operations": {
+      "timezone": "Asia/Tokyo",
+      "slotIntervalMinutes": 15,
+      "bookingHorizonDays": 60,
+      "minimumLeadMinutes": 180,
+      "holdMinutes": 5,
+      "confirmationMode": "automatic",
+      "cancelCutoffMinutes": 1440,
+      "rescheduleCutoffMinutes": 1440,
+      "reminderMinutesBefore": 1440,
+      "venueHours": {
+        "weekly": [
+          {
+            "day": "tuesday",
+            "start": "10:00",
+            "end": "19:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "10:00",
+            "end": "19:00"
+          },
+          {
+            "day": "thursday",
+            "start": "10:00",
+            "end": "19:00"
+          },
+          {
+            "day": "friday",
+            "start": "10:00",
+            "end": "20:00"
+          },
+          {
+            "day": "saturday",
+            "start": "09:00",
+            "end": "18:00"
+          },
+          {
+            "day": "sunday",
+            "start": "09:00",
+            "end": "18:00"
+          }
+        ],
+        "exceptions": [
+          {
+            "date": "2027-01-01",
+            "closed": true
+          }
+        ]
+      },
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "表参道店",
+          "address": "東京都港区南青山5-1-1 青山ビル2階",
+          "instructions": "ご予約時間の5分前を目安にお越しください。"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木",
+          "weeklyHours": [
+            {
+              "day": "friday",
+              "start": "12:00",
+              "end": "20:00"
+            },
+            {
+              "day": "saturday",
+              "start": "09:00",
+              "end": "18:00"
+            },
+            {
+              "day": "sunday",
+              "start": "09:00",
+              "end": "18:00"
+            }
+          ]
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "bufferAfterMinutes": 10,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ],
+          "visitorChoosesPractitioner": true
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "bufferBeforeMinutes": 5,
+          "bufferAfterMinutes": 15,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ],
+          "visitorChoosesPractitioner": true
+        },
+        {
+          "key": "head_spa",
+          "label": "ヘッドスパ",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            },
+            {
+              "resourceKeys": [
+                "spa_room"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "salon",
+        "name": "ヘアサロンのご予約",
+        "locale": "ja",
+        "mode": "business",
+        "presentation": "service",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:3bb73219cc4a561c8a35f3c7c276446456091cdd65cbd9959b6346e00bbeb684"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "name_kana",
+          "type": "text",
+          "label": "フリガナ",
+          "required": true,
+          "preset": "katakana"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": true,
+          "autocomplete": "tel"
+        },
+        {
+          "key": "visit",
+          "type": "radio",
+          "label": "ご来店",
+          "required": true,
+          "options": [
+            {
+              "value": "first",
+              "label": "初めて"
+            },
+            {
+              "value": "repeat",
+              "label": "2回目以降"
+            }
+          ]
+        },
+        {
+          "key": "length_note",
+          "type": "help",
+          "text": "ロングヘアの方は、施術時間が長くなる場合があります。",
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "long"
+          }
+        },
+        {
+          "key": "health",
+          "type": "group",
+          "label": "アレルギー・肌のこと",
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "in",
+            "value": [
+              "color",
+              "head_spa"
+            ]
+          },
+          "fields": [
+            {
+              "key": "allergy",
+              "type": "textarea",
+              "label": "アレルギーや肌の不安",
+              "help": "薬剤によるかぶれや、気になることがあればご記入ください。",
+              "required": false,
+              "rows": 4,
+              "sensitive": true
+            },
+            {
+              "key": "health_consent",
+              "type": "acceptance",
+              "label": "健康情報の取り扱い",
+              "required": true,
+              "consentText": "ご記入いただいたアレルギー等の情報は、施術の安全のためにのみ利用し、担当スタッフ以外には共有しません。",
+              "consentVersion": "2026-10",
+              "privacyPolicyPath": "/privacy/"
+            }
+          ]
+        },
+        {
+          "key": "request",
+          "type": "textarea",
+          "label": "ご要望",
+          "required": false,
+          "rows": 3
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "copy": {
+        "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+      },
+      "success": null,
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 15,
+        "bookingHorizonDays": 60,
+        "minimumLeadMinutes": 180,
+        "holdMinutes": 5,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440
+      },
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "表参道店"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "visitorChoosesPractitioner": true,
+          "practitioners": [
+            {
+              "key": "yamada",
+              "label": "山田"
+            },
+            {
+              "key": "suzuki",
+              "label": "鈴木"
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "variants": [],
+          "visitorChoosesPractitioner": true,
+          "practitioners": [
+            {
+              "key": "yamada",
+              "label": "山田"
+            },
+            {
+              "key": "suzuki",
+              "label": "鈴木"
+            }
+          ]
+        },
+        {
+          "key": "head_spa",
+          "label": "ヘッドスパ",
+          "durationMinutes": 60,
+          "variants": [],
+          "visitorChoosesPractitioner": false,
+          "practitioners": []
+        }
+      ],
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  },
+  {
+    "name": "restaurant.json",
+    "setup": {
+      "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "help": "6名様以上のご予約は、確認のためお電話することがあります。",
+          "required": false,
+          "autocomplete": "tel",
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        },
+        {
+          "key": "occasion",
+          "type": "select",
+          "label": "ご利用目的",
+          "required": false,
+          "prompt": "選択してください",
+          "options": [
+            {
+              "value": "meal",
+              "label": "お食事"
+            },
+            {
+              "value": "birthday",
+              "label": "誕生日・記念日"
+            },
+            {
+              "value": "business",
+              "label": "接待・会食"
+            }
+          ]
+        },
+        {
+          "key": "children",
+          "type": "number",
+          "label": "お子様の人数",
+          "required": false,
+          "validation": {
+            "min": 0,
+            "max": 8,
+            "step": 1
+          },
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "2"
+          }
+        },
+        {
+          "key": "allergies",
+          "type": "textarea",
+          "label": "食物アレルギー",
+          "help": "アレルギーのある食材をご記入ください。調理担当のみが確認します。",
+          "required": false,
+          "rows": 3,
+          "sensitive": true
+        }
+      ],
+      "copy": {
+        "pendingMessage": "ご予約リクエストを受け付けました。店舗で確認のうえ、12時間以内に確定のご連絡をいたします。",
+        "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+      },
+      "success": {
+        "redirectPath": "/reserve/thanks/"
+      },
+      "operations": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 30,
+        "bookingHorizonDays": 30,
+        "minimumLeadMinutes": 120,
+        "holdMinutes": 5,
+        "confirmationMode": "manual",
+        "approvalWindowMinutes": 720,
+        "cancelCutoffMinutes": 180,
+        "rescheduleCutoffMinutes": 180,
+        "reminderMinutesBefore": 1440,
+        "venueHours": {
+          "weekly": [
+            {
+              "day": "tuesday",
+              "start": "11:30",
+              "end": "14:00"
+            },
+            {
+              "day": "tuesday",
+              "start": "17:30",
+              "end": "22:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "11:30",
+              "end": "14:00"
+            },
+            {
+              "day": "wednesday",
+              "start": "17:30",
+              "end": "22:00"
+            },
+            {
+              "day": "thursday",
+              "start": "11:30",
+              "end": "14:00"
+            },
+            {
+              "day": "thursday",
+              "start": "17:30",
+              "end": "22:00"
+            },
+            {
+              "day": "friday",
+              "start": "11:30",
+              "end": "14:00"
+            },
+            {
+              "day": "friday",
+              "start": "17:30",
+              "end": "23:00"
+            },
+            {
+              "day": "saturday",
+              "start": "11:30",
+              "end": "23:00"
+            },
+            {
+              "day": "sunday",
+              "start": "11:30",
+              "end": "21:00"
+            }
+          ],
+          "exceptions": [
+            {
+              "date": "2026-12-31",
+              "hours": [
+                {
+                  "start": "11:30",
+                  "end": "15:00"
+                }
+              ]
+            },
+            {
+              "date": "2027-01-01",
+              "closed": true
+            }
+          ]
+        },
+        "locations": [
+          {
+            "key": "restaurant",
+            "type": "in_person",
+            "label": "梅田本店",
+            "address": "大阪府大阪市北区梅田2-2-2 グルメビル1階"
+          }
+        ],
+        "resources": [
+          {
+            "key": "t1",
+            "kind": "table",
+            "label": "テーブル1",
+            "seats": {
+              "min": 1,
+              "max": 2
+            }
+          },
+          {
+            "key": "t2",
+            "kind": "table",
+            "label": "テーブル2",
+            "seats": {
+              "min": 1,
+              "max": 2
+            }
+          },
+          {
+            "key": "t3",
+            "kind": "table",
+            "label": "テーブル3",
+            "seats": {
+              "min": 2,
+              "max": 4
+            }
+          },
+          {
+            "key": "t4",
+            "kind": "table",
+            "label": "個室",
+            "seats": {
+              "min": 4,
+              "max": 8
+            }
+          }
+        ],
+        "party": {
+          "minSize": 1,
+          "maxSize": 8,
+          "durationMinutes": 120,
+          "bufferAfterMinutes": 15,
+          "strategy": "tables",
+          "tableResourceKeys": [
+            "t1",
+            "t2",
+            "t3",
+            "t4"
+          ],
+          "combinations": [
+            {
+              "key": "t1_t2",
+              "resourceKeys": [
+                "t1",
+                "t2"
+              ],
+              "seats": {
+                "min": 3,
+                "max": 4
+              }
+            }
+          ]
+        }
+      }
+    },
+    "operations": {
+      "timezone": "Asia/Tokyo",
+      "slotIntervalMinutes": 30,
+      "bookingHorizonDays": 30,
+      "minimumLeadMinutes": 120,
+      "holdMinutes": 5,
+      "confirmationMode": "manual",
+      "approvalWindowMinutes": 720,
+      "cancelCutoffMinutes": 180,
+      "rescheduleCutoffMinutes": 180,
+      "reminderMinutesBefore": 1440,
+      "venueHours": {
+        "weekly": [
+          {
+            "day": "tuesday",
+            "start": "11:30",
+            "end": "14:00"
+          },
+          {
+            "day": "tuesday",
+            "start": "17:30",
+            "end": "22:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "11:30",
+            "end": "14:00"
+          },
+          {
+            "day": "wednesday",
+            "start": "17:30",
+            "end": "22:00"
+          },
+          {
+            "day": "thursday",
+            "start": "11:30",
+            "end": "14:00"
+          },
+          {
+            "day": "thursday",
+            "start": "17:30",
+            "end": "22:00"
+          },
+          {
+            "day": "friday",
+            "start": "11:30",
+            "end": "14:00"
+          },
+          {
+            "day": "friday",
+            "start": "17:30",
+            "end": "23:00"
+          },
+          {
+            "day": "saturday",
+            "start": "11:30",
+            "end": "23:00"
+          },
+          {
+            "day": "sunday",
+            "start": "11:30",
+            "end": "21:00"
+          }
+        ],
+        "exceptions": [
+          {
+            "date": "2026-12-31",
+            "hours": [
+              {
+                "start": "11:30",
+                "end": "15:00"
+              }
+            ]
+          },
+          {
+            "date": "2027-01-01",
+            "closed": true
+          }
+        ]
+      },
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "梅田本店",
+          "address": "大阪府大阪市北区梅田2-2-2 グルメビル1階"
+        }
+      ],
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "テーブル1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "テーブル2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t3",
+          "kind": "table",
+          "label": "テーブル3",
+          "seats": {
+            "min": 2,
+            "max": 4
+          }
+        },
+        {
+          "key": "t4",
+          "kind": "table",
+          "label": "個室",
+          "seats": {
+            "min": 4,
+            "max": 8
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 120,
+        "bufferAfterMinutes": 15,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1",
+          "t2",
+          "t3",
+          "t4"
+        ],
+        "combinations": [
+          {
+            "key": "t1_t2",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          }
+        ]
+      }
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "restaurant",
+        "name": "お席のご予約",
+        "locale": "ja",
+        "mode": "business",
+        "presentation": "party",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:bae748245d69fede25f4b927e2e8bfb8ef2e05dcc8eaf9b99e5e711983e718af"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "autocomplete": "name"
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "autocomplete": "email"
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "help": "6名様以上のご予約は、確認のためお電話することがあります。",
+          "required": false,
+          "autocomplete": "tel",
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        },
+        {
+          "key": "occasion",
+          "type": "select",
+          "label": "ご利用目的",
+          "required": false,
+          "prompt": "選択してください",
+          "options": [
+            {
+              "value": "meal",
+              "label": "お食事"
+            },
+            {
+              "value": "birthday",
+              "label": "誕生日・記念日"
+            },
+            {
+              "value": "business",
+              "label": "接待・会食"
+            }
+          ]
+        },
+        {
+          "key": "children",
+          "type": "number",
+          "label": "お子様の人数",
+          "required": false,
+          "validation": {
+            "min": "0",
+            "max": "8",
+            "step": "1"
+          },
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "2"
+          }
+        },
+        {
+          "key": "allergies",
+          "type": "textarea",
+          "label": "食物アレルギー",
+          "help": "アレルギーのある食材をご記入ください。調理担当のみが確認します。",
+          "required": false,
+          "rows": 3,
+          "sensitive": true
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "copy": {
+        "pendingMessage": "ご予約リクエストを受け付けました。店舗で確認のうえ、12時間以内に確定のご連絡をいたします。",
+        "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+      },
+      "success": {
+        "redirectPath": "/reserve/thanks/"
+      },
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 30,
+        "bookingHorizonDays": 30,
+        "minimumLeadMinutes": 120,
+        "holdMinutes": 5,
+        "confirmationMode": "manual",
+        "approvalWindowMinutes": 720,
+        "cancelCutoffMinutes": 180,
+        "rescheduleCutoffMinutes": 180
+      },
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "梅田本店"
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 120
+      },
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  },
+  {
+    "name": "policy defaults, manual approval and host choice",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "manual",
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 30,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "tanaka",
+          "sato"
+        ],
+        "visitorChoosesHost": true
+      }
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": null,
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "consultation",
+        "name": "無料相談のご予約",
+        "locale": "ja",
+        "mode": "time_slot",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:4766053306337941a7d20ad47c04a82b87d4381778bc566ee391a84dd76e5caf"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "copy": {},
+      "success": null,
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 15,
+        "bookingHorizonDays": 90,
+        "minimumLeadMinutes": 120,
+        "holdMinutes": 5,
+        "confirmationMode": "manual",
+        "approvalWindowMinutes": 1440,
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440
+      },
+      "locations": [],
+      "appointment": {
+        "durationMinutes": 30,
+        "visitorChoosesHost": true,
+        "hosts": [
+          {
+            "key": "tanaka",
+            "label": "田中"
+          },
+          {
+            "key": "sato",
+            "label": "佐藤"
+          }
+        ]
+      },
+      "turnstile": null,
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  },
+  {
+    "name": "service practitioners only when the visitor chooses",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "copy": {
+        "pendingMessage": "確認中です。"
+      },
+      "success": {
+        "redirectPath": "/salon/thanks/"
+      }
+    },
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "head_spa",
+          "label": "ヘッドスパ",
+          "durationMinutes": 60,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "suzuki",
+                "yamada"
+              ],
+              "count": 1
+            },
+            {
+              "resourceKeys": [
+                "spa_room"
+              ],
+              "count": 1
+            },
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ],
+          "visitorChoosesPractitioner": true
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "salon",
+        "name": "サロンのご予約",
+        "locale": "ja",
+        "mode": "business",
+        "presentation": "service",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:2e67aece9b35328c7d330671a774a95f41e0851541155d5619198572c8d02e77"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "copy": {
+        "pendingMessage": "確認中です。"
+      },
+      "success": {
+        "redirectPath": "/salon/thanks/"
+      },
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 15,
+        "bookingHorizonDays": 90,
+        "minimumLeadMinutes": 120,
+        "holdMinutes": 5,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440
+      },
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "services": [
+        {
+          "key": "head_spa",
+          "label": "ヘッドスパ",
+          "durationMinutes": 60,
+          "variants": [],
+          "visitorChoosesPractitioner": true,
+          "practitioners": [
+            {
+              "key": "suzuki",
+              "label": "鈴木"
+            },
+            {
+              "key": "yamada",
+              "label": "山田"
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "variants": [],
+          "visitorChoosesPractitioner": false,
+          "practitioners": []
+        }
+      ],
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  },
+  {
+    "name": "party with a capacity pool",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "automatic",
+      "resources": [
+        {
+          "key": "seats",
+          "kind": "pool",
+          "label": "seats",
+          "capacity": 30
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 90,
+        "strategy": "pool",
+        "poolResourceKey": "seats"
+      },
+      "timezone": "Asia/Tokyo",
+      "slotIntervalMinutes": 30,
+      "approvalWindowMinutes": 60
+    },
+    "meta": {
+      "version": 3,
+      "operationsRevision": 7,
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    },
+    "expected": {
+      "contractVersion": 1,
+      "setup": {
+        "key": "restaurant",
+        "name": "お席のご予約",
+        "locale": "ja",
+        "mode": "business",
+        "presentation": "party",
+        "version": 3,
+        "operationsRevision": 7,
+        "digest": "sha256:4656792ebebedff21177e0275605e2fa70784f9d91e11562a95b26d53dccda0f"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "copy": {},
+      "success": null,
+      "policies": {
+        "timezone": "Asia/Tokyo",
+        "slotIntervalMinutes": 30,
+        "bookingHorizonDays": 90,
+        "minimumLeadMinutes": 120,
+        "holdMinutes": 5,
+        "confirmationMode": "automatic",
+        "cancelCutoffMinutes": 1440,
+        "rescheduleCutoffMinutes": 1440
+      },
+      "locations": [],
+      "party": {
+        "minSize": 1,
+        "maxSize": 8,
+        "durationMinutes": 90
+      },
+      "turnstile": {
+        "siteKey": "1x00000000000000000000AA",
+        "action": "reservation"
+      },
+      "endpoints": {
+        "availability": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/availability",
+        "holds": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/holds",
+        "bookings": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/bookings",
+        "receipt": "https://book.yatris.jp/api/public/websites/42/reservations/consultation/receipt"
+      }
+    }
+  }
+]

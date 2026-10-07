@@ -93,7 +93,8 @@ export function requiredCapabilities(declaration: FormDeclaration): string[] {
   return [...caps].sort();
 }
 
-function projectNode(node: FormNode): FormNode {
+/** The public projection of one node: registry properties only, decimals canonical, quiz answers dropped. */
+export function projectNode(node: FormNode): FormNode {
   const type = nodeType(node.type)!;
   const out = projectValue({ kind: 'object', props: type.props }, node) as FormNode;
   if (node.type === 'quiz') {

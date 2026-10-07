@@ -1,0 +1,82 @@
+{
+  "apiErrors": {
+    "validation_failed": {
+      "status": [
+        422
+      ],
+      "message": "入力内容に誤りがあります。各項目をご確認ください。"
+    },
+    "version_changed": {
+      "status": [
+        409
+      ],
+      "message": "予約の内容が更新されました。空き状況と入力内容をご確認のうえ、もう一度お試しください。"
+    },
+    "hold_expired": {
+      "status": [
+        409
+      ],
+      "message": "仮押さえの有効期限が切れました。日時を選び直してください。"
+    },
+    "slot_unavailable": {
+      "status": [
+        409
+      ],
+      "message": "選択された日時は予約できなくなりました。別の日時をお選びください。"
+    },
+    "approval_window_closed": {
+      "status": [
+        409
+      ],
+      "message": "承認の受付期限を過ぎたため、この予約は確定できませんでした。"
+    },
+    "deadline_passed": {
+      "status": [
+        409
+      ],
+      "message": "変更・キャンセルの受付期限を過ぎています。お手数ですが、直接お問い合わせください。"
+    },
+    "calendar_unavailable": {
+      "status": [
+        503
+      ],
+      "message": "現在、空き状況を確認できません。しばらくしてから、もう一度お試しください。"
+    },
+    "rate_limited": {
+      "status": [
+        429
+      ],
+      "message": "アクセスが集中しています。しばらく時間をおいてから、もう一度お試しください。"
+    },
+    "verification_failed": {
+      "status": [
+        403
+      ],
+      "message": "送信の確認に失敗しました。もう一度お試しください。"
+    },
+    "temporarily_unavailable": {
+      "status": [
+        503
+      ],
+      "message": "現在、予約を受け付けられません。入力内容は保持されています。しばらくしてから、もう一度お試しください。"
+    },
+    "setup_unavailable": {
+      "status": [
+        404
+      ],
+      "message": "この予約ページは現在ご利用いただけません。"
+    },
+    "idempotency_conflict": {
+      "status": [
+        409
+      ],
+      "message": "送信内容を確認できませんでした。内容をご確認のうえ、改めて送信してください。"
+    },
+    "payload_too_large": {
+      "status": [
+        413
+      ],
+      "message": "送信できるサイズの上限を超えています。添付ファイルをご確認ください。"
+    }
+  }
+}
