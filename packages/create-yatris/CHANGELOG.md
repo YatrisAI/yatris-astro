@@ -1,5 +1,12 @@
 # create-yatris
 
+## 0.5.1
+
+### Patch Changes
+
+- Updated dependencies [bcd7f4e]
+  - @yatris/astro@0.5.1
+
 ## 0.5.0
 
 ### Minor Changes
