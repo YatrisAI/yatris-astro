@@ -304,7 +304,7 @@
     "name": "not an object",
     "mode": "time_slot",
     "presentation": null,
-    "operations": [],
+    "operations": "not an object",
     "errors": [
       {
         "path": "",

@@ -353,7 +353,7 @@ export const operationsFixtures: OperationsFixture[] = [
   }),
 
   // Shape
-  O('not an object', 'time_slot', [], [issue('', 'invalid_type')]),
+  O('not an object', 'time_slot', 'not an object', [issue('', 'invalid_type')]),
   O('no recipients, calendars or secrets', 'time_slot', appointmentOps({ recipients: ['owner@example.jp'], calendarId: 'primary' }), [
     issue('/calendarId', 'unknown_property'),
     issue('/recipients', 'unknown_property'),

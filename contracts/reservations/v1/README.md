@@ -301,7 +301,7 @@ Visitors manage a booking on a Yatris-hosted page reached by the management link
 
 ## 8. Consuming the fixtures from PHP
 
-YatrisCMS vendors this directory at a pinned `@yatris/astro` version, records its SHA-256 digests, and runs every fixture through the PHP twin. Read the fixtures as data; never execute them.
+YatrisCMS vendors this directory at a pinned `@yatris/astro` version, records its SHA-256 digests, and runs every fixture through the PHP twin. Read the fixtures as data; never execute them. PHP consumers decoding with `json_decode(..., true)` cannot tell an empty list `[]` from an empty object `{}`, so the fixtures never use `[]` where an object is expected (non-object cases use a string); an empty `{}` is treated as an object.
 
 | File | Entries | Check |
 | --- | --- | --- |

@@ -99,7 +99,7 @@ describe('operations fixtures', () => {
   });
 
   it('a seed reports exactly what the same live revision reports, under /operations', () => {
-    for (const fixture of operationsFixtures.filter((f) => f.mode === 'time_slot' && f.operations && !Array.isArray(f.operations))) {
+    for (const fixture of operationsFixtures.filter((f) => f.mode === 'time_slot')) {
       const result = validateSetup(setupOf('time_slot', { operations: fixture.operations }));
       expect(result.errors, fixture.name).toEqual(fixture.errors.map((i) => ({ ...i, path: `/operations${i.path}` })));
       expect(result.warnings, fixture.name).toEqual(fixture.warnings.map((i) => ({ ...i, path: `/operations${i.path}` })));
@@ -120,6 +120,11 @@ describe('fixture coverage', () => {
 
   it.each([...SEMANTIC_CODES, ...SHAPE_CODES])('error code %s appears in a fixture', (code) => expect(errors.has(code)).toBe(true));
   it.each(WARNING_CODES)('warning code %s appears in a fixture', (code) => expect(warnings.has(code)).toBe(true));
+
+  it('never uses [] where an object is expected (PHP cannot tell [] from {})', () => {
+    for (const f of setupFixtures) expect(Array.isArray(f.setup), f.name).toBe(false);
+    for (const f of operationsFixtures) expect(Array.isArray(f.operations), f.name).toBe(false);
+  });
 
   it('issue lists are deduplicated and sorted by path, then code', () => {
     for (const f of [...setupFixtures, ...operationsFixtures]) {
