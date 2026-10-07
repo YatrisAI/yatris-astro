@@ -5,6 +5,7 @@ import { doctor, formatReport } from './doctor/doctor.js';
 import { STAGES, type Stage } from './doctor/findings.js';
 import { FORMS_HELP, runForms } from './forms-command.js';
 import { MAIL_HELP, runMail } from './mail-command.js';
+import { RESERVATIONS_HELP, runReservations } from './reservations-command.js';
 import { resolveRemote, type RemoteOptions } from './yatris-remote.js';
 import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
@@ -81,6 +82,7 @@ Commands:
              update restores only the files it touched; it never commits.
              Run it as \`npm run yatris:update\`.
 ${FORMS_HELP}
+${RESERVATIONS_HELP}
 ${MAIL_HELP}
 
 Options:
@@ -114,6 +116,10 @@ export async function run(argv: string[], env: CliEnvironment = { cwd: process.c
 
   if (first === 'forms') {
     return runForms(rest, env.cwd, remoteOptions(env));
+  }
+
+  if (first === 'reservations') {
+    return runReservations(rest, env.cwd);
   }
 
   if (first === 'mail') {

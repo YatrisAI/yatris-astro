@@ -11,7 +11,7 @@ Product decisions behind it: YatrisCMS `YATRIS-RESERVATIONS-SPEC.md` and `YATRIS
 | `examples/consultation.json` | Time slot: online and in-person locations, two hosts, automatic confirmation. |
 | `examples/salon.json` | Business, service: two practitioners and a room, variants, a sensitive allergy question with consent. |
 | `examples/restaurant.json` | Business, party: tables with one combination, manual approval. |
-| `fixtures/*.json` | Shared fixtures. Every implementation must pass all of them. Generated from `packages/astro/test/reservations-fixtures.ts`, where the expectations are written by hand. |
+| `fixtures/*.json` | Shared fixtures. Every implementation must pass all of them. Generated from `packages/astro/test/reservations-fixtures.ts` and `reservations-theme-fixtures.ts`, where the expectations are written by hand. |
 
 The JavaScript reference implementation is `@yatris/astro/reservations` (`packages/astro/src/reservations/`). The PHP twin is YatrisCMS `App\Support\Reservations\Contract`. The JSON Schema serves editors and agents. **The validators are authoritative.** They add the semantic rules below that a JSON Schema cannot express.
 
@@ -266,6 +266,7 @@ Idempotency is scoped to the Website, setup and operation, persisted and checked
 - `state` is `confirmed` (automatic and secured), `pending_approval` (manual) or `confirming` (accepted; final steps such as a calendar recheck are still running; poll `receipt`). `approvalDeadline` appears only with `pending_approval`.
 - `success` is `{ "mode": "redirect", "path": <success.redirectPath> }` when the setup declares `success`, else `{ "mode": "message", "message": … }` with `copy.pendingMessage` or `copy.confirmedMessage` for the state, or a default Japanese message. The UI treats only a 2xx with `status: "accepted"` as success.
 - `receipt` is a scoped receipt token for this visitor's booking only.
+- `managementUrl` (optional) is the visitor's management page: an absolute URL on the booking origin, such as `https://book.yatris.jp/manage/<token>`. The outcome screen shows it as a link 「予約の確認・変更・キャンセル」 that opens in a new tab (`target="_blank"`, `rel="noopener noreferrer"`), never inside the iframe, with a note that it is also mailed and must be kept private. It keeps the booking manageable when mail fails. It is never part of a `postMessage`, and the UI ignores a value on any other origin.
 
 ### `GET receipt`
 
@@ -309,6 +310,7 @@ YatrisCMS vendors this directory at a pinned `@yatris/astro` version, records it
 | `operations.json` | `{ name, mode, presentation, operations, errors, warnings }` | `OperationsValidator::validate(operations, mode, presentation, '')` (live-revision form, prefix `""`), exactly, in order. |
 | `context.json` | `{ name, setup, operations, expected }` | `ReservationContext::for(setup, operations)` equals `expected` (`operations` may be `null`). |
 | `public.json` | `{ name, setup, operations, meta, expected }` | `ReservationPublicDefinition::definition(setup, operations, meta)` equals `expected`, digest included. |
+| `theme.json` | `{ validate: [{ name, theme, errors, normalized, encoded }], decode: [{ name, encoded, errors, theme }] }` | Theme validation returns exactly `errors` and, when valid, the `normalized` theme; encoding a valid theme gives exactly `encoded`. Decoding `encoded` returns exactly `errors` and `theme` (§10). |
 
 ## 9. Package exports (`@yatris/astro/reservations`)
 
@@ -324,6 +326,165 @@ These names are frozen for contract v1.
 | `reservationDigest(setup, operations)` (async), `reservationPublicContent(setup, operations)` | `ReservationPublicDefinition::digest` |
 | `RESERVATION_API_ERRORS` | `Messages::API_ERRORS` |
 | `setupJsonSchema()`, `SETUP_SCHEMA_ID` | — |
+| `validateTheme(value)` → `{ valid, errors, theme }`, `encodeTheme(theme)`, `decodeTheme(text)` → same | Theme validator and codec (§10) |
+| `THEME`, `THEME_COLOR_TOKENS`, `THEME_SPACINGS`, `THEME_COLOR_PATTERN`, `THEME_FONT_PATTERN`, `THEME_FONT_MAX_LENGTH`, `THEME_RADIUS_MAX`, `THEME_MAX_ENCODED_LENGTH` | Same constants |
+| `bookingPageUrl(input)`, `bookingEmbedUrl(input)`, `parseBookingOrigin(value)`, `isBookingOrigin`, `isWebOrigin`, `newInstanceId()`, `DEFAULT_BOOKING_ORIGIN`, `INSTANCE_PATTERN` | URL rules (§11) |
+| `validateBookingMessage(data, instance)`, `parseBookingMessage(event, { origin, frame, instance })`, `bookingMessage(instance, type, payload?)`, `isNavigatePath`, `BOOKING_MESSAGE_SOURCE`, `BOOKING_PROTOCOL_VERSION`, `BOOKING_MESSAGE_TYPES`, `BOOKING_STATUSES`, `MAX_MESSAGE_HEIGHT`, `MAX_NAVIGATE_PATH_LENGTH` | Messaging protocol (§11); the child builds messages it would pass |
 | `isValidTimezone`, `TIMEZONE_PATTERN`, `isHttpsUrl`, `HTTPS_URL_PATTERN`, `HOURS_TIME_PATTERN`, `SETUP_KEY_PATTERN`, `DEFAULT_POLICIES`, `SETUP`, `OPERATIONS`, `MODES`, `PRESENTATIONS`, `RESOURCE_KINDS`, `LOCATION_TYPES`, `WEEKDAYS` | — |
 
 `validateOperations` and `reservationContext` throw a `TypeError` for a `mode` outside `time_slot` / `business` or a `presentation` outside `party` / `service` / `null`: options are consumer configuration, not visitor input.
+
+## 10. Theme
+
+A Website themes its embedded booking page with a small set of validated tokens. There is no arbitrary CSS, no script and no font URL. The booking page also has a Yatris default theme; tokens override it for one embed.
+
+The theme is a JSON object. Every key is optional; unknown keys are `unknown_property`.
+
+| Key | Rule |
+| --- | --- |
+| `primary`, `onPrimary`, `background`, `surface`, `text`, `mutedText`, `border`, `error`, `focus` | `#RRGGBB` (`^#[0-9A-Fa-f]{6}$`), normalized to lowercase. No short form, no alpha, no names. |
+| `fontFamily`, `headingFontFamily` | A font stack, 1–200 code points, matching `THEME_FONT_PATTERN` (below). |
+| `spacing` | `compact`, `comfortable` or `spacious` |
+| `radius` | integer 0–24 (CSS pixels) |
+
+**Font stacks.** Comma-separated family names. Each item may have spaces around it and is either bare, or wrapped in straight double quotes. A name starts with a letter of any script (`\p{L}`), a combining mark (`\p{M}`), an ASCII digit or a hyphen, then continues with those characters or spaces. Nothing else can appear, so `url(`, semicolons, braces, backslashes, angle brackets, single quotes and quotes inside a name are all rejected:
+
+```text
+^ITEM(?:,ITEM)*$
+ITEM = (?: *"[\p{L}\p{M}0-9-][\p{L}\p{M}0-9 -]*" *| *[\p{L}\p{M}0-9-][\p{L}\p{M}0-9 -]*)
+```
+
+The pattern runs with Unicode semantics (JavaScript `u`, PHP `/u`). Stacks are used as given; they are not normalized.
+
+**Issues** use the forms shape codes: `invalid_type` (not an object; a wrong value type), `unknown_property`, `invalid_enum`, `pattern_mismatch`, `out_of_range`, `too_short` (an empty font stack, together with `pattern_mismatch`) and `too_long`. Issues are sorted by path, then code, as forms `tidy`.
+
+**Normalized theme.** Colours lowercase, keys sorted by UTF-16 code unit. `validateTheme(value)` returns `{ valid, errors, theme }`, `theme` being the normalized theme or `null`.
+
+**Encoding.** The `theme` query parameter is base64url without padding (RFC 4648 §5) of the UTF-8 canonical JSON (forms §6) of the normalized theme. PHP: `rtrim(strtr(base64_encode($json), '+/', '-_'), '=')`, with `$json` encoded as forms canonical JSON. The encoded string is at most **1023** characters (`THEME_MAX_ENCODED_LENGTH`); a theme that would be longer is invalid, `too_long` at path `""`. `encodeTheme(theme)` throws a `TypeError` for an invalid theme. Embeds omit the parameter when the theme has no tokens.
+
+**Decoding** (`decodeTheme(text)`, the booking page side): a non-string is `invalid_type`; longer than 1023 characters is `too_long`; anything that is not base64url (`[A-Za-z0-9_-]+`, no padding, length not ≡ 1 mod 4) of strict UTF-8 JSON is `invalid_encoding`, all at path `""`. The JSON need not be canonical. The decoded value is then validated as above. The booking page ignores an invalid theme entirely (it never applies part of one) and renders its default theme.
+
+The booking UI applies the tokens as CSS custom properties on its root (`--yb-primary`, `--yb-on-primary`, `--yb-background`, `--yb-surface`, `--yb-text`, `--yb-muted-text`, `--yb-border`, `--yb-error`, `--yb-focus`, `--yb-font-family`, `--yb-heading-font-family`, `--yb-radius` in `px`) and `data-yb-spacing`. Contrast is the author's responsibility (the yatris-reservation skill checks it); the contract validates syntax only.
+
+## 11. Embedding: URLs and the messaging protocol
+
+### URLs
+
+| URL | Form |
+| --- | --- |
+| Direct page (fallback link) | `{bookingOrigin}/book/{websiteId}/{setupKey}[?theme={encoded}]` |
+| Iframe | `{bookingOrigin}/book/{websiteId}/{setupKey}?embed=1&instance={instance}&parentOrigin={encodeURIComponent(parentOrigin)}[&theme={encoded}]` |
+
+- `bookingOrigin` is `https://book.yatris.jp`. For local development the Astro integration reads `YATRIS_BOOKING_ORIGIN`, which must be an origin only (no path, query, fragment or credentials) using `https:`, or `http:` on a loopback host (`localhost`, `*.localhost`, `127.x.x.x`, `[::1]`). Anything else fails the build.
+- `websiteId` is the public numeric Website id (as in forms public keys). `setupKey` uses `SETUP_KEY_PATTERN`.
+- `instance` is a random id per embed and per load, `^[A-Za-z0-9_-]{16,64}$` (`newInstanceId()`: 22 characters from 16 random bytes). A retry creates a new one.
+- `parentOrigin` is the embedding page's serialized origin (`location.origin`). The booking page must check it against the Website's registered embedding origins (and its `frame-ancestors` list) before posting anything, and use it as the exact `targetOrigin`.
+- The URL carries only these public values. No Delivery, MCP, OAuth or SMTP credential, no visitor data.
+
+The iframe is `sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"`: it can open new tabs (the management link) but cannot navigate the top window; redirects go through `navigate`. It has the `<ReservationEmbed title>` as its accessible title.
+
+### Messages, protocol version 1
+
+Messages go from the booking page (child) to the embedding page (parent) only. **The parent sends no messages in v1.** Every message is a plain object with exactly the envelope keys plus the payload keys of its type:
+
+```json
+{ "source": "yatris-booking", "version": 1, "instance": "<instance>", "type": "<type>", "...payload" }
+```
+
+| `type` | Payload | When | Parent action |
+| --- | --- | --- | --- |
+| `ready` | none | Once, after the booking UI has rendered its first step | Ends the loading state |
+| `height` | `height`: integer 1–20000 (CSS pixels) | Whenever the content height changes | Sets the iframe height, clamped to its own maximum (10000) |
+| `status` | `status`: `loading`, `ready`, `unavailable`, `error` or `submitted` | Lifecycle changes | `loading`/`ready`: state; `unavailable`: replaces the iframe with the unavailable message; `error` (the page cannot load or continue): replaces it with a retry; `submitted`: marks the embed (`data-yr-submitted`) |
+| `navigate` | `path`: a same-site path matching the forms path grammar (`PATH_PATTERN`), at most 500 code points | After an accepted booking whose setup declares `success.redirectPath` | Navigates its own window to the path |
+
+**Parent validation** (`parseBookingMessage(event, { origin, frame, instance })`): `event.origin` equals the configured booking origin exactly; `event.source` is the iframe's `contentWindow`; the data is a plain object; `source` is `"yatris-booking"`; `version` is the number `1`; `instance` equals this embed's instance; `type` is one of the four; the keys are exactly the envelope plus that type's payload; the payload passes the rules above. Anything else (another origin or window, an unknown type, a missing or extra key, a wrong value) is dropped silently.
+
+**Child rules** (`bookingMessage(instance, type, payload?)` builds and checks one): post with `parent.postMessage(message, parentOrigin)`, never `"*"`, and only when `embed=1`, a valid `instance` and a registered `parentOrigin` came with the URL. Post `status: loading` first, `ready` and `status: ready` after the first render, `height` on every size change (deduplicated), `status: unavailable` for an unknown, unpublished or disabled setup or an unsupported definition, `status: error` when the definition cannot load, `status: submitted` after an accepted booking, then `navigate` when the outcome is a redirect. **Messages never contain** answers, email addresses, names, receipt or hold tokens, the booking session, the management URL, dates or any other booking detail. Unknown future fields are not added to v1 messages; a new field or type is protocol version 2.
+
+## 12. Astro component, booking UI and CLI
+
+### `<ReservationEmbed>`
+
+```astro
+---
+import ReservationEmbed from '@yatris/astro/ReservationEmbed.astro';
+---
+<ReservationEmbed setupKey="consultation" />
+<ReservationEmbed setupKey="consultation" title="無料相談のご予約" theme={{ primary: '#4f46e5', onPrimary: '#ffffff', radius: 8, fontFamily: '"Noto Sans JP", sans-serif' }} class="my-embed" />
+```
+
+| Prop | Meaning |
+| --- | --- |
+| `setupKey` | The setup key (`src/reservations/<key>.json`). Required. |
+| `theme` | Theme tokens (§10). Validated at build time; an invalid theme fails the build with its paths and codes. |
+| `title` | The iframe title, single line, 1–200 characters. Default 「ご予約」. |
+| `class`, `id` | On the embed element. |
+
+Modes, decided at build time by the integration:
+
+| Mode | When | Embed |
+| --- | --- | --- |
+| `live` | A paired project (`.yatris/project.json` has `websiteId`) | Iframe (§11) with loading 「予約画面を読み込んでいます…」, unavailable 「現在、オンライン予約はご利用いただけません。」 and retry 「再読み込み」 states; the direct link 「予約ページを新しいタブで開く」 is always visible; a `<noscript>` note. If `ready` does not arrive within 20 seconds, the retry state shows. |
+| `preview` | `astro dev` **and** `YATRIS_RESERVATIONS_PREVIEW=1` | The booking UI in the page itself, on synthetic data (below) |
+| `unconfigured` | Anything else (an unpaired project) | The unavailable message only; no iframe, no request, never a fake booking |
+
+The page ships the embed element, a JSON configuration (mode, setup key, title, booking origin, Website id, encoded theme, direct URL) and a small parent script (`@yatris/astro/reservations/embed`). It holds no credential of any kind. Default styles: `components/ReservationEmbed.css`, every rule inside `:where()` (`yr-embed`, `yr-frame`, `yr-iframe`, `yr-status`, `yr-retry`, `yr-fallback`, `yr-fallback-link`, `yr-noscript`; `data-yr-state` is `loading`, `ready`, `unavailable` or `error`; `--yr-min-height`). A site with a Content-Security-Policy must allow the booking origin in `frame-src`.
+
+### Synthetic preview
+
+Set `YATRIS_RESERVATIONS_PREVIEW=1` for `astro dev` only, for example in `.env.development.local`. Each embed then runs the booking UI against `src/reservations/<setupKey>.json`:
+
+- The definition is the §5 public projection of the declaration with **synthetic operations**: the declaration's own seed where it has one, with every host relabelled 「架空の担当者A（サンプル）」, 「架空の担当者B（サンプル）」…, or a fixed sample (30 minutes, two sample hosts, automatic confirmation). Meeting URLs, addresses and instructions never reach the page.
+- Availability is generated in the browser from the seed's first host's or venue's weekly hours and exceptions (else weekdays 10:00–12:00 and 13:00–17:00), on the slot grid, after the lead time and within the horizon, with some slots shown as taken.
+- A prominent marker reads 「プレビュー：サンプルの空き状況です（実際の予約はできません）」, names the declaration file, and shows the request a live page would have sent. Holds and the booking are answered locally; nothing is sent anywhere, and a redirect outcome is described instead of followed.
+- An invalid or missing declaration shows its problem instead of a flow. This version previews `time_slot` setups; other modes show a notice.
+
+`astro build` **refuses** `YATRIS_RESERVATIONS_PREVIEW` (set in the environment or in `.env`/`.env.production`) with an error. A build never reads `src/reservations/` and resolves the preview module to `null`, so no declaration content, synthetic data, booking UI or preview code reaches `dist/`, and nothing synthetic reaches Yatris.
+
+### Booking UI (`@yatris/astro/booking/client`)
+
+The framework-free booking flow, shared by the hosted page on the booking origin and the preview. `mountBooking(root, config, options)` returns a `BookingController`.
+
+```ts
+type BookingConfig =
+  | {
+      mode: 'live';
+      setupKey: string;
+      definitionUrl: string; // https://book.yatris.jp/api/public/websites/{websiteId}/reservations/{setupKey}
+      endpoints?: { availability: string; holds: string; bookings: string; receipt: string } | null; // default: the definition's
+      bookingSession: string; // sent as X-Booking-Session on every POST (and the receipt GET)
+      turnstile?: { siteKey: string; action: string } | null; // default: the definition's
+      embed?: { instance: string; parentOrigin: string } | null; // from the iframe URL, after checking parentOrigin
+      theme?: ReservationTheme | null; // decoded and validated (§10)
+    }
+  | {
+      mode: 'preview';
+      setupKey: string;
+      source: string; // e.g. src/reservations/consultation.json
+      definition?: ReservationPublicDefinition;
+      synthetic?: { weeklyHours: HoursEntry[]; exceptions?: HoursException[] };
+      problem?: { message: string; issues: Issue[] };
+      theme?: ReservationTheme | null;
+    };
+// options: { fetch?, now?, navigate?, turnstile?, parent?, visitorTimeZone?, measureHeight?, receiptPollMs?, random? }
+```
+
+The `time_slot` flow is date → time → contact details and questions → review → outcome (`data-yb-step`: `date`, `time`, `details`, `review`, `outcome`):
+
+- **Date.** The location choice (`locations` only; `selection.locationKey`, preselected when there is one), the host choice when `visitorChoosesHost` (「指定しない」 leaves `hostKey` absent), and 14-day windows of dates within the horizon from `POST availability`. A different `operationsRevision` reloads the definition.
+- **Time.** Slot buttons in the display time zone, with the zone named. A switch offers the venue zone and the visitor's (when they differ); it changes labels only, and the UI always sends the server's own `start` string. Choosing a time acquires a hold (`POST holds` with `turnstileToken` and `replaceHoldToken` for the previous hold); a countdown shows while it lasts, and on expiry the UI returns to the times with fresh availability.
+- **Details.** The questions, drawn by the forms field renderer and validated with `validateSubmission` using `reservationContext` (operations unknown) and the held selection's values: `booking.location_key`, `booking.starts_at` (venue-local) and `booking.host_key` when the visitor chose one. Errors are summarized with links and focus moves to the first invalid field.
+- **Review.** Date and time (also in the venue zone when another is shown), duration, location, host label from the hold, every answer, the confirmation policy (automatic: 「送信すると予約が確定します。」; manual: a request that is not yet confirmed, with the approval window), and, when the start is inside `cancelCutoffMinutes` and/or `rescheduleCutoffMinutes`, that online cancellation and/or changes will not be possible. A Turnstile widget when the definition has one (a fresh token for the hold and for the booking).
+- **Submit.** `POST bookings` (multipart, §7) with one idempotency key per deliberate attempt, reused on a retry of the same answers and hold (network, `rate_limited`, `verification_failed`, `temporarily_unavailable`, `calendar_unavailable`). `hold_expired`, `slot_unavailable` and `approval_window_closed` return to the times with fresh availability; `version_changed` reloads the definition, keeps compatible answers and restarts from the dates; `validation_failed` shows the field errors.
+- **Outcome.** 「予約が確定しました」 (`confirmed`), 「予約リクエストを受け付けました（まだ確定していません）」 with the approval deadline (`pending_approval`), or 「予約を受け付けました（確定の処理中です）」 while `confirming` (the receipt is polled). The success message, and the management link when `managementUrl` is present (§7). A redirect outcome posts `navigate` when embedded, or calls `location.assign` on the direct page, only after acceptance. Answers are cleared.
+
+Focus moves to each step heading, every control is a native element reachable by keyboard, errors and status changes are announced (`role="alert"`, `role="status"`), and the layout works at phone width. Styles: `components/YatrisBooking.css` (`yb-*`, driven by the theme custom properties) with `components/YatrisForm.css` for the fields (`yf-*`). YatrisCMS vendors `dist/booking-client/*.js`, `dist/forms/*.js`, `dist/forms-client/*.js`, `dist/reservations/*.js` and both stylesheets.
+
+`booking.host_key` is known on the client only when the visitor chose the host; when Yatris assigns one, conditions on it are evaluated as empty in the browser, and the server's evaluation is authoritative.
+
+### CLI
+
+| Command | Behaviour |
+| --- | --- |
+| `yatris reservations validate [<path>…]` | Runs `validateSetup` on each declaration file, or every `*.json` (not `*.brief.json`) in each directory; default `src/reservations/`. Checks that the file name matches `key`, prints `path code` per error and warnings. Offline. Exits 0 when every declaration is valid (or there are none), 1 otherwise. |

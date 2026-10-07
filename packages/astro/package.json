@@ -73,10 +73,29 @@
       "types": "./dist/reservations/index.d.ts",
       "default": "./dist/reservations/index.js"
     },
+    "./reservations/mount": {
+      "types": "./dist/reservations-mount.d.ts",
+      "default": "./dist/reservations-mount.js"
+    },
+    "./reservations/embed": {
+      "types": "./dist/reservations-embed.d.ts",
+      "default": "./dist/reservations-embed.js"
+    },
+    "./booking/client": {
+      "types": "./dist/booking-client/index.d.ts",
+      "default": "./dist/booking-client/index.js"
+    },
+    "./booking/preview": {
+      "types": "./dist/booking-client/site-preview.d.ts",
+      "default": "./dist/booking-client/site-preview.js"
+    },
     "./contracts/forms/v1/*": "./contracts/forms/v1/*",
     "./contracts/reservations/v1/*": "./contracts/reservations/v1/*",
     "./YatrisHead.astro": "./components/YatrisHead.astro",
     "./YatrisForm.astro": "./components/YatrisForm.astro",
+    "./ReservationEmbed.astro": "./components/ReservationEmbed.astro",
+    "./YatrisForm.css": "./components/YatrisForm.css",
+    "./YatrisBooking.css": "./components/YatrisBooking.css",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
     "./virtual": {
       "types": "./components/virtual.d.ts"

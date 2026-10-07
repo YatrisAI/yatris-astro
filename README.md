@@ -57,6 +57,16 @@ error messages. Questions reuse the contact-form contract. The contract,
 semantics, wire formats and fixtures are documented in
 [`contracts/reservations/v1/README.md`](contracts/reservations/v1/README.md).
 
+A site places a booking page with `<ReservationEmbed setupKey="consultation" />`
+from `@yatris/astro/ReservationEmbed.astro`: an accessible iframe to the
+Yatris-hosted page on `book.yatris.jp`, themed through validated tokens, with
+loading, unavailable and retry states and a direct-link fallback. The iframe
+talks to the page through a versioned, origin-checked `postMessage` protocol.
+`astro dev` with `YATRIS_RESERVATIONS_PREVIEW=1` previews declarations locally
+against clearly labelled synthetic hosts and availability (builds refuse
+preview), and `yatris reservations validate` checks them offline. The booking
+flow itself is `@yatris/astro/booking/client`, shared with the hosted page.
+
 ## Development
 
 Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).

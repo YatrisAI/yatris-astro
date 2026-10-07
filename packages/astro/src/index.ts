@@ -6,6 +6,7 @@ import { assertFormsMode, declarationFiles, FORMS_DIR, formsEnv, formsRuntime, t
 import { loadMeasurement, withMeasurement } from './measurement-config.js';
 import { missingDestinations, registeredNavigation } from './navigation.js';
 import { previewBuild, writePreviewHeaders } from './preview.js';
+import { assertReservationsMode, bookingOrigin, RESERVATIONS_DIR, reservationsRuntime, type ReservationsRuntime } from './reservations-config.js';
 import { checkSchemaContract } from './schema-check.js';
 
 export type { YatrisOptions } from './config.js';
@@ -15,6 +16,8 @@ export type { NavigationItem } from './navigation.js';
 const VIRTUAL_CONFIG = 'virtual:yatris/config';
 const VIRTUAL_FORMS = 'virtual:yatris/forms';
 const VIRTUAL_FORMS_PREVIEW = 'virtual:yatris/forms-preview';
+const VIRTUAL_RESERVATIONS = 'virtual:yatris/reservations';
+const VIRTUAL_RESERVATIONS_PREVIEW = 'virtual:yatris/reservations-preview';
 
 interface Logger {
   warn(message: string): void;
@@ -59,6 +62,10 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
           ? { root: astroConfig.root, command, env: await formsEnv(astroConfig.root, command === 'dev' ? 'development' : 'production') }
           : null;
         const formsPreview = formsSource ? assertFormsMode(command, formsSource.env) : false;
+        // YatrisCMS#421: the same rule for reservations, and a bad
+        // YATRIS_BOOKING_ORIGIN stops the build here too
+        const reservationsPreview = formsSource ? assertReservationsMode(command, formsSource.env) : false;
+        if (formsSource) bookingOrigin(formsSource.env);
         // YatrisCMS#304: a paired revisioned site's production build fails
         // unless its schema lock matches the revision Yatris expects
         const schema = astroConfig ? await checkSchemaContract({ root: astroConfig.root, command }) : null;
@@ -73,6 +80,11 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
         if (formsPreview) logger?.info('forms: preview mode — <YatrisForm> shows src/forms/*.json locally and sends nothing');
         if (forms?.mode === 'unconfigured' && command === 'build' && astroConfig && declarationFiles(join(fileURLToPath(astroConfig.root), FORMS_DIR)).length) {
           logger?.warn(`forms: ${forms.reason}; any <YatrisForm> renders its unavailable state`);
+        }
+        const reservations: ReservationsRuntime | null = formsSource && !reservationsPreview ? reservationsRuntime(formsSource) : null;
+        if (reservationsPreview) logger?.info('reservations: preview mode — <ReservationEmbed> shows src/reservations/*.json with synthetic availability and sends nothing');
+        if (reservations?.mode === 'unconfigured' && command === 'build' && astroConfig && declarationFiles(join(fileURLToPath(astroConfig.root), RESERVATIONS_DIR)).length) {
+          logger?.warn(`reservations: ${reservations.reason}; any <ReservationEmbed> renders its unavailable state`);
         }
         updateConfig({
           vite: {
@@ -98,6 +110,26 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
                     return `export default ${JSON.stringify(await formsRuntime(formsSource))};`;
                   }
                   return `export default ${JSON.stringify(forms ?? { mode: 'unconfigured', timeZone: 'Asia/Tokyo', reason: 'the Yatris integration had no project root' })};`;
+                },
+              },
+              {
+                name: 'yatris:reservations',
+                resolveId: (id: string) => (id === VIRTUAL_RESERVATIONS || id === VIRTUAL_RESERVATIONS_PREVIEW ? `\0${id}` : undefined),
+                load(this: { addWatchFile?: (file: string) => void }, id: string) {
+                  if (id === `\0${VIRTUAL_RESERVATIONS_PREVIEW}`) {
+                    // Production builds get null here, so neither the booking UI nor synthetic data is bundled.
+                    return reservationsPreview
+                      ? `import '@yatris/astro/YatrisForm.css';\nimport '@yatris/astro/YatrisBooking.css';\nexport { default } from '@yatris/astro/booking/preview';`
+                      : 'export default null;';
+                  }
+                  if (id !== `\0${VIRTUAL_RESERVATIONS}`) return undefined;
+                  if (reservationsPreview && formsSource) {
+                    // Read the declarations on every load, so edits show up in dev.
+                    const dir = join(fileURLToPath(formsSource.root), RESERVATIONS_DIR);
+                    for (const name of declarationFiles(dir)) this.addWatchFile?.(join(dir, name));
+                    return `export default ${JSON.stringify(reservationsRuntime(formsSource))};`;
+                  }
+                  return `export default ${JSON.stringify(reservations ?? { mode: 'unconfigured', reason: 'the Yatris integration had no project root' })};`;
                 },
               },
             ],
