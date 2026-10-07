@@ -116,12 +116,31 @@ export function syntheticOperations(setup: ReservationSetup): ReservationOperati
   };
 }
 
-/** The hours synthetic availability follows: the first host's, else the venue's, else none (the fixed sample). */
-function syntheticHours(operations: ReservationOperations): { weeklyHours: HoursEntry[]; exceptions?: NonNullable<ReservationOperations['venueHours']>['exceptions'] } {
+/**
+ * The hours synthetic availability follows: the venue's weekly hours
+ * narrowed by the first host's (README §6: resource hours restrict venue
+ * hours), either alone when only one is seeded, else none (the fixed sample).
+ */
+export function syntheticHours(operations: ReservationOperations): { weeklyHours: HoursEntry[]; exceptions?: NonNullable<ReservationOperations['venueHours']>['exceptions'] } {
   const host = operations.resources?.find((r) => r.key === operations.appointment?.hostResourceKeys[0]);
-  const weeklyHours = host?.weeklyHours?.length ? host.weeklyHours : (operations.venueHours?.weekly ?? []);
+  const venue = operations.venueHours?.weekly ?? [];
+  const own = host?.weeklyHours ?? [];
+  const weeklyHours = venue.length && own.length ? intersectHours(venue, own) : venue.length ? venue : own;
   const exceptions = operations.venueHours?.exceptions;
   return { weeklyHours, ...(exceptions?.length ? { exceptions } : {}) };
+}
+
+function intersectHours(a: HoursEntry[], b: HoursEntry[]): HoursEntry[] {
+  const out: HoursEntry[] = [];
+  for (const x of a) {
+    for (const y of b) {
+      if (x.day !== y.day) continue;
+      const start = x.start > y.start ? x.start : y.start;
+      const end = x.end < y.end ? x.end : y.end;
+      if (start < end) out.push({ day: x.day, start, end });
+    }
+  }
+  return out;
 }
 
 /** Preview entries for every local declaration (`src/reservations/*.json`, not `*.brief.json`). */

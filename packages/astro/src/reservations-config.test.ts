@@ -5,7 +5,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { run } from './commands.js';
 import yatris from './index.js';
-import { assertReservationsMode, bookingOrigin, reservationsPreviewRequested, reservationsRuntime } from './reservations-config.js';
+import { assertReservationsMode, bookingOrigin, reservationsPreviewRequested, reservationsRuntime, syntheticHours } from './reservations-config.js';
 
 const examples = new URL('../../../contracts/reservations/v1/examples/', import.meta.url);
 
@@ -119,6 +119,21 @@ describe('reservations runtime', () => {
     expect(JSON.stringify(runtime)).not.toContain('meet.google.com');
     expect(load('virtual:yatris/reservations-preview')).toContain("from '@yatris/astro/booking/preview'");
     expect(load('virtual:yatris/reservations-preview')).toContain("import '@yatris/astro/YatrisBooking.css'");
+  });
+
+  it('synthetic hours narrow the venue hours by the first host', () => {
+    expect(
+      syntheticHours({
+        appointment: { durationMinutes: 30, hostStrategy: 'single', hostResourceKeys: ['a'] },
+        resources: [{ key: 'a', kind: 'host', label: 'A', weeklyHours: [{ day: 'monday', start: '11:00', end: '18:00' }] }],
+        venueHours: { weekly: [{ day: 'monday', start: '10:00', end: '12:00' }, { day: 'monday', start: '13:00', end: '17:00' }, { day: 'tuesday', start: '10:00', end: '17:00' }] },
+      }).weeklyHours,
+    ).toEqual([
+      { day: 'monday', start: '11:00', end: '12:00' },
+      { day: 'monday', start: '13:00', end: '17:00' },
+    ]);
+    expect(syntheticHours({ venueHours: { weekly: [{ day: 'friday', start: '09:00', end: '10:00' }] } }).weeklyHours).toEqual([{ day: 'friday', start: '09:00', end: '10:00' }]);
+    expect(syntheticHours({}).weeklyHours).toEqual([]);
   });
 
   it('dev without the flag uses the live or unconfigured runtime', () => {

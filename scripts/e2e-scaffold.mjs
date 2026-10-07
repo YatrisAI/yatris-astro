@@ -205,8 +205,7 @@ import ReservationEmbed from '@yatris/astro/ReservationEmbed.astro';
 `,
 );
 const reservationLeaks = () => {
-  const text = [...distFiles('.html'), ...distFiles('.js'), ...distFiles('.css')].join('
-');
+  const text = [...distFiles('.html'), ...distFiles('.js'), ...distFiles('.css')].join('\n');
   // Declaration-only text, private seed values, synthetic data, the booking UI and preview code
   const markers = ['来社でのご相談は', 'ご相談内容の詳細', '大阪府大阪市北区', 'meet.google.com', '架空の担当者', 'sample_host', 'プレビュー：サンプル', 'yatris-booking-preview', 'X-Booking-Session', 'yb-root', 'hp_website', 'YATRIS_MCP_TOKEN', 'YATRIS_DELIVERY_API_KEY', 'YATRIS_SMTP'];
   return markers.filter((m) => text.includes(m));
@@ -243,8 +242,7 @@ expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('fo
 rmSync(join(site, '.env'));
 refused = previewBuild({ YATRIS_RESERVATIONS_PREVIEW: '1' });
 expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('reservations preview only runs under `astro dev`'), 'a production build refuses the reservations preview');
-write('.env', 'YATRIS_RESERVATIONS_PREVIEW=1
-');
+write('.env', 'YATRIS_RESERVATIONS_PREVIEW=1\n');
 refused = previewBuild({});
 expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('reservations preview only runs under `astro dev`'), 'a production build refuses the reservations preview set in .env');
 rmSync(join(site, '.env'));

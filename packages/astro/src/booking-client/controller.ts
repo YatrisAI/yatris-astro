@@ -405,7 +405,8 @@ export class BookingController {
     const venue = this.definition!.policies.timezone;
     const visitor = this.options.visitorTimeZone === undefined ? browserTimeZone() : this.options.visitorTimeZone;
     if (!visitor || visitor === venue || !isTimeZone(visitor)) {
-      p.timeZone.replaceChildren(h('p', { class: 'yb-tz-note' }, UI.timesShownIn(timeZoneLabel(venue))));
+      // One zone only: the time step and the review name it.
+      p.timeZone.replaceChildren();
       return;
     }
     const id = `${this.prefix}-tz`;
@@ -436,7 +437,7 @@ export class BookingController {
       else li.removeAttribute('aria-current');
       li.classList.toggle('yb-step-done', i < index);
     });
-    p.timeZone.hidden = step === 'details' || step === 'outcome';
+    p.timeZone.hidden = !p.timeZone.hasChildNodes() || step === 'details' || step === 'outcome';
     this.setState(step === 'outcome' ? 'done' : 'ready');
     this.root.setAttribute('data-yb-step', step);
     this.updateHoldBar();
