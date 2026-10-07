@@ -1,0 +1,45 @@
+/*
+ * Minimal defaults for <ReservationEmbed> (YatrisCMS#421). Every rule sits
+ * inside :where(), so it has zero specificity and any site rule wins.
+ *
+ *   --yr-min-height   iframe height before the booking page reports its own
+ */
+
+:where(.yr-embed) {
+  --yr-min-height: 40rem;
+  display: grid;
+  gap: 0.75rem;
+}
+
+:where(.yr-embed [hidden]) {
+  display: none !important;
+}
+
+:where(.yr-iframe) {
+  display: block;
+  box-sizing: border-box;
+  inline-size: 100%;
+  block-size: var(--yr-min-height);
+  border: 0;
+  color-scheme: normal;
+}
+
+:where(.yr-status, .yr-fallback, .yr-noscript) {
+  margin: 0;
+}
+
+:where(.yr-retry) {
+  font: inherit;
+  margin-inline-start: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+:where(.yr-retry:focus-visible, .yr-fallback-link:focus-visible) {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}

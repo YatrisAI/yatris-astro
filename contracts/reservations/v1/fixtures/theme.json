@@ -1,0 +1,623 @@
+{
+  "validate": [
+    {
+      "name": "empty theme",
+      "theme": {},
+      "errors": [],
+      "normalized": {},
+      "encoded": "e30"
+    },
+    {
+      "name": "one colour, uppercase normalized to lowercase",
+      "theme": {
+        "primary": "#1A2B3C"
+      },
+      "errors": [],
+      "normalized": {
+        "primary": "#1a2b3c"
+      },
+      "encoded": "eyJwcmltYXJ5IjoiIzFhMmIzYyJ9"
+    },
+    {
+      "name": "every token, keys sorted",
+      "theme": {
+        "radius": 8,
+        "spacing": "comfortable",
+        "primary": "#4F46E5",
+        "onPrimary": "#FFFFFF",
+        "background": "#ffffff",
+        "surface": "#F8FAFC",
+        "text": "#0F172A",
+        "mutedText": "#64748B",
+        "border": "#E2E8F0",
+        "error": "#B91C1C",
+        "focus": "#2563EB",
+        "fontFamily": "\"Noto Sans JP\", \"ヒラギノ角ゴ ProN\", Meiryo, sans-serif",
+        "headingFontFamily": "serif"
+      },
+      "errors": [],
+      "normalized": {
+        "background": "#ffffff",
+        "border": "#e2e8f0",
+        "error": "#b91c1c",
+        "focus": "#2563eb",
+        "fontFamily": "\"Noto Sans JP\", \"ヒラギノ角ゴ ProN\", Meiryo, sans-serif",
+        "headingFontFamily": "serif",
+        "mutedText": "#64748b",
+        "onPrimary": "#ffffff",
+        "primary": "#4f46e5",
+        "radius": 8,
+        "spacing": "comfortable",
+        "surface": "#f8fafc",
+        "text": "#0f172a"
+      },
+      "encoded": "eyJiYWNrZ3JvdW5kIjoiI2ZmZmZmZiIsImJvcmRlciI6IiNlMmU4ZjAiLCJlcnJvciI6IiNiOTFjMWMiLCJmb2N1cyI6IiMyNTYzZWIiLCJmb250RmFtaWx5IjoiXCJOb3RvIFNhbnMgSlBcIiwgXCLjg5Ljg6njgq7jg47op5LjgrQgUHJvTlwiLCBNZWlyeW8sIHNhbnMtc2VyaWYiLCJoZWFkaW5nRm9udEZhbWlseSI6InNlcmlmIiwibXV0ZWRUZXh0IjoiIzY0NzQ4YiIsIm9uUHJpbWFyeSI6IiNmZmZmZmYiLCJwcmltYXJ5IjoiIzRmNDZlNSIsInJhZGl1cyI6OCwic3BhY2luZyI6ImNvbWZvcnRhYmxlIiwic3VyZmFjZSI6IiNmOGZhZmMiLCJ0ZXh0IjoiIzBmMTcyYSJ9"
+    },
+    {
+      "name": "radius bounds and compact spacing",
+      "theme": {
+        "radius": 0,
+        "spacing": "compact"
+      },
+      "errors": [],
+      "normalized": {
+        "radius": 0,
+        "spacing": "compact"
+      },
+      "encoded": "eyJyYWRpdXMiOjAsInNwYWNpbmciOiJjb21wYWN0In0"
+    },
+    {
+      "name": "radius 24 and spacious spacing",
+      "theme": {
+        "radius": 24,
+        "spacing": "spacious"
+      },
+      "errors": [],
+      "normalized": {
+        "radius": 24,
+        "spacing": "spacious"
+      },
+      "encoded": "eyJyYWRpdXMiOjI0LCJzcGFjaW5nIjoic3BhY2lvdXMifQ"
+    },
+    {
+      "name": "bare family names with hyphens and digits",
+      "theme": {
+        "fontFamily": "system-ui, -apple-system, Segoe UI, M PLUS 1p"
+      },
+      "errors": [],
+      "normalized": {
+        "fontFamily": "system-ui, -apple-system, Segoe UI, M PLUS 1p"
+      },
+      "encoded": "eyJmb250RmFtaWx5Ijoic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBTZWdvZSBVSSwgTSBQTFVTIDFwIn0"
+    },
+    {
+      "name": "a 200-character font stack",
+      "theme": {
+        "fontFamily": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "errors": [],
+      "normalized": {
+        "fontFamily": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "encoded": "eyJmb250RmFtaWx5IjoiYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEifQ"
+    },
+    {
+      "name": "not an object",
+      "theme": "primary",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_type"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "null",
+      "theme": null,
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_type"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "unknown key",
+      "theme": {
+        "css": "body{}"
+      },
+      "errors": [
+        {
+          "path": "/css",
+          "code": "unknown_property"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "three-digit colour",
+      "theme": {
+        "primary": "#fff"
+      },
+      "errors": [
+        {
+          "path": "/primary",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "named colour",
+      "theme": {
+        "text": "red"
+      },
+      "errors": [
+        {
+          "path": "/text",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "colour with a non-hex digit",
+      "theme": {
+        "border": "#12345g"
+      },
+      "errors": [
+        {
+          "path": "/border",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "colour with alpha",
+      "theme": {
+        "surface": "#11223344"
+      },
+      "errors": [
+        {
+          "path": "/surface",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "colour as a number",
+      "theme": {
+        "focus": 123456
+      },
+      "errors": [
+        {
+          "path": "/focus",
+          "code": "invalid_type"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with url(",
+      "theme": {
+        "fontFamily": "url(https://example.com/font.woff2)"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with a semicolon",
+      "theme": {
+        "fontFamily": "serif; color: red"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with braces",
+      "theme": {
+        "fontFamily": "serif}body{color:red"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with a backslash",
+      "theme": {
+        "fontFamily": "\\66 ont"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with angle brackets",
+      "theme": {
+        "headingFontFamily": "</style><script>"
+      },
+      "errors": [
+        {
+          "path": "/headingFontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with single quotes",
+      "theme": {
+        "fontFamily": "'Noto Sans JP', sans-serif"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with an unbalanced quote",
+      "theme": {
+        "fontFamily": "\"Noto Sans JP, sans-serif"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with an empty item",
+      "theme": {
+        "fontFamily": "Arial,,serif"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font with a quote inside a name",
+      "theme": {
+        "fontFamily": "Noto\"Sans"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "empty font",
+      "theme": {
+        "fontFamily": ""
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "pattern_mismatch"
+        },
+        {
+          "path": "/fontFamily",
+          "code": "too_short"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font of 201 characters",
+      "theme": {
+        "fontFamily": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      "errors": [
+        {
+          "path": "/fontFamily",
+          "code": "too_long"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "unknown spacing",
+      "theme": {
+        "spacing": "large"
+      },
+      "errors": [
+        {
+          "path": "/spacing",
+          "code": "invalid_enum"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "radius above 24",
+      "theme": {
+        "radius": 25
+      },
+      "errors": [
+        {
+          "path": "/radius",
+          "code": "out_of_range"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "negative radius",
+      "theme": {
+        "radius": -1
+      },
+      "errors": [
+        {
+          "path": "/radius",
+          "code": "out_of_range"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "fractional radius",
+      "theme": {
+        "radius": 4.5
+      },
+      "errors": [
+        {
+          "path": "/radius",
+          "code": "invalid_type"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "radius as a string",
+      "theme": {
+        "radius": "4"
+      },
+      "errors": [
+        {
+          "path": "/radius",
+          "code": "invalid_type"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "several problems, sorted by path",
+      "theme": {
+        "text": "blue",
+        "radius": 99,
+        "css": "x",
+        "primary": "#000"
+      },
+      "errors": [
+        {
+          "path": "/css",
+          "code": "unknown_property"
+        },
+        {
+          "path": "/primary",
+          "code": "pattern_mismatch"
+        },
+        {
+          "path": "/radius",
+          "code": "out_of_range"
+        },
+        {
+          "path": "/text",
+          "code": "pattern_mismatch"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "encoded theme over 1023 characters",
+      "theme": {
+        "fontFamily": "ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
+        "headingFontFamily": "ああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ"
+      },
+      "errors": [
+        {
+          "path": "",
+          "code": "too_long"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    }
+  ],
+  "decode": [
+    {
+      "name": "canonical encoding",
+      "encoded": "eyJwcmltYXJ5IjoiIzFhMmIzYyIsInJhZGl1cyI6Nn0",
+      "errors": [],
+      "theme": {
+        "primary": "#1a2b3c",
+        "radius": 6
+      }
+    },
+    {
+      "name": "non-canonical JSON is accepted and normalized",
+      "encoded": "eyAicmFkaXVzIjogNiwgInByaW1hcnkiOiAiIzFBMkIzQyIgfQ",
+      "errors": [],
+      "theme": {
+        "primary": "#1a2b3c",
+        "radius": 6
+      }
+    },
+    {
+      "name": "Japanese font stack",
+      "encoded": "eyJmb250RmFtaWx5IjoiXCLjg5Ljg6njgq7jg47op5LjgrQgUHJvTlwiLCBzYW5zLXNlcmlmIn0",
+      "errors": [],
+      "theme": {
+        "fontFamily": "\"ヒラギノ角ゴ ProN\", sans-serif"
+      }
+    },
+    {
+      "name": "not a string",
+      "encoded": 42,
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_type"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "empty string",
+      "encoded": "",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "padding is not allowed",
+      "encoded": "e30=",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "standard base64 alphabet is not allowed",
+      "encoded": "eyJmb250RmFtaWx5IjoiPz8/In0",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "impossible length",
+      "encoded": "e30xx",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "not UTF-8",
+      "encoded": "e_99",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "not JSON",
+      "encoded": "cHJpbWFyeT0jZmZmZmZm",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_encoding"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "JSON that is not an object",
+      "encoded": "IiNmZmZmZmYi",
+      "errors": [
+        {
+          "path": "",
+          "code": "invalid_type"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "unknown key",
+      "encoded": "eyJjc3MiOiJib2R5e30ifQ",
+      "errors": [
+        {
+          "path": "/css",
+          "code": "unknown_property"
+        }
+      ],
+      "theme": null
+    },
+    {
+      "name": "longer than 1023 characters",
+      "encoded": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "errors": [
+        {
+          "path": "",
+          "code": "too_long"
+        }
+      ],
+      "theme": null
+    }
+  ]
+}

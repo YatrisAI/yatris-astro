@@ -41,7 +41,7 @@ for (const pkg of packed) {
   }
   expect(!files.some((f) => f.endsWith('.test.js') || f.startsWith('src/')), `${pkg.name} tarball ships no sources or tests`);
   if (pkg.name === '@yatris/astro') {
-    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro', 'components/YatrisForm.astro', 'components/YatrisForm.css', 'dist/forms-client/index.js', 'dist/forms-client/preview.js']) {
+    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro', 'components/YatrisForm.astro', 'components/YatrisForm.css', 'dist/forms-client/index.js', 'dist/forms-client/preview.js', 'components/ReservationEmbed.astro', 'components/ReservationEmbed.css', 'components/YatrisBooking.css', 'dist/booking-client/index.js', 'dist/booking-client/site-preview.js', 'dist/reservations-embed.js', 'dist/reservations-mount.js', 'contracts/reservations/v1/fixtures/theme.json']) {
       expect(files.includes(component), `@yatris/astro tarball contains ${component}`);
     }
     // `yatris update` seeds a missing .env.example from the release's own template
@@ -75,6 +75,9 @@ expect(capabilities === '1.contact', 'the forms renderer and mount helper import
 expect(sh('npm exec --offline -- yatris forms validate', appDir).includes('no declarations'), 'yatris forms validate runs');
 const reservation = sh(`node --input-type=module -e "import { validateSetup } from '@yatris/astro/reservations'; import { readFileSync } from 'node:fs'; const setup = JSON.parse(readFileSync(new URL(import.meta.resolve('@yatris/astro/contracts/reservations/v1/examples/salon.json')), 'utf8')); console.log(validateSetup(setup).valid)"`, appDir);
 expect(reservation === 'true', 'the reservation contract and its examples import from the installed package');
+const embed = sh(`node --input-type=module -e "import { encodeTheme, bookingEmbedUrl } from '@yatris/astro/reservations'; import { reservationEmbedConfig } from '@yatris/astro/reservations/mount'; import { mountBooking } from '@yatris/astro/booking/client'; const c = reservationEmbedConfig({ mode: 'live', bookingOrigin: 'https://book.yatris.jp', websiteId: 1, }, { setupKey: 'consultation', theme: { radius: 4 } }); console.log(typeof mountBooking, c.directUrl === 'https://book.yatris.jp/book/1/consultation?theme=' + encodeTheme({ radius: 4 }), bookingEmbedUrl({ origin: c.bookingOrigin, websiteId: 1, setupKey: 'consultation', instance: 'abcdefghijklmnop', parentOrigin: 'https://example.jp' }).includes('embed=1'))"`, appDir);
+expect(embed === 'function true true', 'the reservation embed, theme contract and booking client import from the installed package');
+expect(sh('npm exec --offline -- yatris reservations validate', appDir).includes('no declarations'), 'yatris reservations validate runs');
 
 // A site scaffolded by the installed create-yatris (files only) carries the
 // contact-form skill in both agent locations and the root guidance, and the

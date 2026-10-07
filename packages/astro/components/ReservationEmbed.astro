@@ -1,0 +1,59 @@
+---
+// A Yatris booking page, embedded (YatrisCMS#421). A paired build renders an
+// iframe to the hosted booking page on book.yatris.jp, with a direct link as
+// the fallback; the iframe reports readiness, height, status and safe
+// navigation through the versioned postMessage protocol.
+//
+//   <ReservationEmbed setupKey="consultation" />
+//   <ReservationEmbed setupKey="consultation" title="無料相談のご予約" theme={{ primary: '#4f46e5', radius: 8 }} />
+//
+// Theme tokens and the protocol: contracts/reservations/v1/README.md "Embedding".
+// Local preview: astro dev with YATRIS_RESERVATIONS_PREVIEW=1 (never in a build).
+import runtime from 'virtual:yatris/reservations';
+import { reservationEmbedConfig, serializeEmbedConfig, type ReservationEmbedProps } from '@yatris/astro/reservations/mount';
+import './ReservationEmbed.css';
+
+interface Props extends ReservationEmbedProps {
+  class?: string;
+  id?: string;
+}
+
+const { class: className, id, ...props } = Astro.props;
+const config = reservationEmbedConfig(runtime, props);
+const initialState = config.mode === 'unconfigured' ? 'unavailable' : 'loading';
+---
+
+<div
+  class:list={['yr-embed', className]}
+  id={id}
+  data-yatris-booking={config.setupKey}
+  data-yr-mode={config.mode}
+  data-yr-state={initialState}
+>
+  {config.mode !== 'unconfigured' && <script is:inline type="application/json" data-yr-config set:html={serializeEmbedConfig(config)} />}
+  {
+    config.mode === 'live' && (
+      <>
+        <p class="yr-status" role="status">予約画面を読み込んでいます…</p>
+        <div class="yr-frame" />
+        <noscript>
+          <p class="yr-noscript">予約画面の表示には JavaScript が必要です。下のリンクから予約ページを開いてください。</p>
+        </noscript>
+        <p class="yr-fallback">
+          <a class="yr-fallback-link" href={config.directUrl} target="_blank" rel="noopener">予約ページを新しいタブで開く</a>
+        </p>
+      </>
+    )
+  }
+  {config.mode === 'preview' && <div class="yr-preview-mount" />}
+  {config.mode === 'unconfigured' && <p class="yr-status yr-unavailable" role="status">現在、オンライン予約はご利用いただけません。</p>}
+</div>
+
+<script>
+  import { mountEmbeds } from '@yatris/astro/reservations/embed';
+  import preview from 'virtual:yatris/reservations-preview';
+
+  mountEmbeds(preview);
+  // Sites using Astro's client router mount embeds on every page swap.
+  document.addEventListener('astro:page-load', () => mountEmbeds(preview));
+</script>
