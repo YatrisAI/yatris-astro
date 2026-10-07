@@ -128,6 +128,17 @@ describe('the yatris-contact-form skill', () => {
     expect(secrets).toContain('Never ask for SMTP credentials in chat');
   });
 
+  it('teaches synchronization: the drift scenario, every plan operation and the exit codes (YatrisCMS#392)', () => {
+    const scenarios = read('references/scenarios.md');
+    expect(scenarios).toContain('## I. Existing form changed in Yatris (drift)');
+    for (const op of ['remote_drift', 'conflict', 'accept_remote', 'adopt_required', 'update_draft']) expect(scenarios).toContain(op);
+    const commands = read('references/commands.md');
+    for (const op of ['create', 'update_draft', 'noop', 'accept_remote', 'remote_drift', 'conflict', 'adopt_required', 'invalid']) expect(commands).toContain(`\`${op}\``);
+    for (const code of ['0', '1', '2', '3', '4', '5', '69', '75']) expect(commands).toContain(`| \`${code}\` |`);
+    expect(commands).toContain('`backend_unavailable`');
+    expect(read('SKILL.md')).not.toMatch(/exit 69 and change nothing|not available yet/);
+  });
+
   it('documents every decision id the example brief uses', () => {
     const interview = read('references/interview.md');
     for (const id of Object.keys(exampleBrief().decisions)) {

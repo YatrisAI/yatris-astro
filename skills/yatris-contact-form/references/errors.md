@@ -60,8 +60,12 @@ every case:
 
 | Signal | Meaning | Report as |
 | --- | --- | --- |
-| `yatris forms plan/apply/pull` exit 69 | Synchronization not in this release | "Yatris staff import and publish the form; repository sync arrives in a later release." |
-| `yatris mail sync` unknown command | The SMTP helper is not in this release | "Customer SMTP: the Website Owner enters it on the Connections page when available, or staff import it with the env-file helper once released." |
+| `yatris forms plan/apply/pull` exit 69 | This Yatris does not offer form synchronization yet | "Yatris staff import and publish the form in the builder." |
+| exit 75 (`backend_unavailable`) | Yatris could not be reached | "Synchronization pending: Yatris was unreachable." Never treat it as "no forms". |
+| exit 5 | No `YATRIS_MCP_TOKEN`, or it was refused | "Synchronization pending: needs a staff credential." Never search for a token. |
+| exit 4 | The site is not paired | "Pairing" pending. |
+| exit 2 / 3 | Drift, conflict, or a stale plan | Reconcile (`scenarios.md`, scenario I) or plan again. Never force. |
+| `yatris mail sync` exit 69 | This Yatris cannot import mail profiles yet | "Customer SMTP: the Website Owner enters it on the Connections page (メールの連携)." |
 | Live page shows the unavailable state | Site unpaired, or the form is not published in Yatris yet | "Pairing" or "Staff publication" pending. Not a bug to work around. |
 | The Yatris MCP is not connected or has no form tools | Remote state cannot be read | Say so; never guess whether the form exists in Yatris. |
 | A live form shows a retry button | The definition request failed (network or Yatris down) | Temporary outage; the renderer retries on request. Do not add a fallback. |

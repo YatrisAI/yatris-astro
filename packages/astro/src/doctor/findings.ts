@@ -1,4 +1,8 @@
-export type Severity = 'error' | 'warning';
+/**
+ * `unverified`: a check that could not run (Yatris offline, unpaired, no
+ * credential). It never fails the doctor and is never reported as passed.
+ */
+export type Severity = 'error' | 'warning' | 'unverified';
 
 /** The lifecycle stages `yatris doctor` knows. Only `scaffold` is implemented so far. */
 export const STAGES = ['scaffold'] as const;

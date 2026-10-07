@@ -34,8 +34,9 @@ Expected:
 
 ## B. Yatris backend unavailable
 
-Same request, but `yatris forms plan` exits 69, `yatris mail sync` is an
-unknown command and the Yatris MCP has no form tools (or is not connected).
+Same request, but `yatris forms plan` exits 69 (Yatris lacks the form
+tools), 75 (`backend_unavailable`) or 5 (no credential), and the Yatris MCP
+is not connected.
 
 Expected:
 
@@ -44,8 +45,9 @@ Expected:
   fake success is added "for now", even if the user asks for a quick
   temporary solution. Explain that the form shows an unavailable state until
   Yatris publishes it, which is the intended behaviour.
-- No retry loop on exit 69. The report names the sync, publication and mail
-  steps as pending in Yatris and says local preview is design evidence only.
+- No retry loop on exit 69, at most one later retry on 75, and no hunting
+  for a token on 5. The report names the sync, publication and mail steps as
+  pending in Yatris and says local preview is design evidence only.
 
 ## C. Resuming an interview
 
@@ -99,8 +101,43 @@ requiredness). Do not extend the function. Removing it is part of the
 approved change; on a live site, coordinate the cutover with Yatris staff so
 no inquiry is lost or sent twice.
 
-## Existing form changed in Yatris (drift)
+## I. Existing form changed in Yatris (drift)
 
-Added with repository synchronization (YatrisCMS C1, #392). Until then:
-when a form may already exist in Yatris, ask staff for the current
-definition before editing the declaration, and say so in the report.
+*"お問い合わせフォームに「会社名」欄を追加して。"* The site is paired,
+`src/forms/contact.json` and `.yatris/forms.lock.json` exist, and since the
+last sync a staff member edited the form in the Yatris builder (published, or
+saved as an unpublished draft). The work order allows saving drafts to
+Yatris and writing `src/forms/` and `.yatris/forms.lock.json`.
+
+Expected:
+
+1. Before editing, run `npx yatris forms plan`. It exits `2` with
+   `contact: remote_drift`: Yatris changed since the last sync. Do not edit
+   the declaration yet and do not try to force anything.
+2. Bring Yatris's version in: `npx yatris forms pull contact` for a
+   published change. If the plan shows an unpublished draft (the published
+   pull still reports drift), say so and ask staff; only staff ask for
+   `npx yatris forms pull contact --draft`. Pull writes the file only because
+   it has no local edits.
+3. Re-run `plan`: `noop`. Now make the requested change (confirm the new
+   field's requiredness as usual), `forms validate`, preview.
+4. `plan` shows `update_draft` with the changed paths; show it to the user,
+   then `npx yatris forms apply --plan .yatris/forms.plan.json`. Report
+   "draft saved, publication pending" with the review URL; never "published".
+5. Commit the declaration and the lock together.
+
+Variants:
+
+- **Already edited locally before planning:** `plan` says `conflict`
+  (exit 2) and `pull` refuses (exit 2) rather than overwrite the edit. Move
+  the edited file aside, pull, re-apply the change to the pulled file, and
+  plan again. Nothing merges automatically; never delete either side's work.
+- **Local file already equals Yatris** (`accept_remote`): `pull contact`
+  records the baseline without writing anything to Yatris.
+- **No lock but the form exists in Yatris** (`adopt_required`): never apply
+  over it. Move a differing local file aside, `pull contact`, then continue
+  from step 3.
+- **Exit 3 on apply:** declarations or Yatris changed after the plan. Plan
+  again and review.
+- **Exit 5 or 75:** stop the synchronization part, finish the offline work,
+  and report the Yatris step as pending; never guess the remote state.

@@ -1,14 +1,14 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { declarationFiles, FORMS_DIR } from './forms-config.js';
-import { validateDeclaration } from './forms/declaration.js';
+import { FORMS_DIR } from './forms-config.js';
+import { scanDeclarations, scanLines } from './forms-local.js';
+import { applyForms, DEFAULT_PLAN_PATH, planForms, pullForms } from './forms-sync.js';
+import { EXIT, TOKEN_ENV, type RemoteOptions } from './yatris-remote.js';
 
 /**
- * `yatris forms …` (YatrisCMS#380, spec §13). `validate` checks every
- * declaration offline. Synchronization with Yatris (`plan`, `apply`, `pull`)
- * is not available yet; those commands say so and exit with
- * EXIT_UNAVAILABLE, never with a fake success (decisions §9).
+ * `yatris forms …` (YatrisCMS#380, #392, spec §13). `validate` checks every
+ * declaration offline. `plan`, `apply` and `pull` synchronize them with
+ * Yatris drafts through the Product MCP (forms-sync.ts); exit codes are
+ * EXIT in yatris-remote.ts and contract README §9.
  */
 
 export interface FormsCommandResult {
@@ -17,34 +17,61 @@ export interface FormsCommandResult {
   stderr: string;
 }
 
-/** sysexits EX_UNAVAILABLE: the command exists but its service does not yet. */
-export const EXIT_UNAVAILABLE = 69;
+/** sysexits EX_UNAVAILABLE: Yatris does not offer the capability (yet). */
+export const EXIT_UNAVAILABLE = EXIT.unavailable;
 
 export const FORMS_HELP = `  forms validate [--dir=src/forms]
              Check every form declaration (src/forms/*.json, not *.brief.json)
              against the contact-form contract: schema, conditions and mail
              templates. Offline; exits 1 on any error.
-  forms plan | apply | pull
-             Contact-form synchronization with Yatris. Not available yet: it
-             arrives in a later release, and these exit ${EXIT_UNAVAILABLE} without
-             touching anything.`;
+  forms plan [--json] [--out=${DEFAULT_PLAN_PATH}]
+             Validate, then ask Yatris for a read-only comparison of each
+             declaration with the last sync (.yatris/forms.lock.json) and the
+             current Yatris draft and publication. Writes only the plan file.
+  forms apply --plan=<file> [--json]
+             Save the planned declarations as Yatris drafts, atomically, if no
+             declaration changed since the plan. Never publishes: a person
+             reviews and publishes in Yatris. Updates .yatris/forms.lock.json.
+  forms pull [<key>…] [--draft] [--json]
+             Write the published Yatris definitions into src/forms/ (--draft:
+             the unpublished drafts, a staff operation), only where no local
+             edit would be lost, and record the baseline.
+             plan, apply and pull need a paired repository and ${TOKEN_ENV}.
+             Exit codes: 0 ok, 1 invalid input, 2 reconciliation required,
+             3 stale plan or revision conflict, 4 not paired, 5 credentials,
+             69 not offered by Yatris, 75 backend_unavailable.`;
 
-const SYNC_ACTIONS = ['plan', 'apply', 'pull'];
-
-export function runForms(argv: string[], cwd: string): FormsCommandResult {
+export async function runForms(argv: string[], cwd: string, remote: RemoteOptions = {}): Promise<FormsCommandResult> {
   const [action, ...rest] = argv;
 
   if (action === 'validate') return validateForms(rest, cwd);
 
-  if (action !== undefined && SYNC_ACTIONS.includes(action)) {
-    return {
-      code: EXIT_UNAVAILABLE,
-      stdout: '',
-      stderr: `yatris forms ${action}: contact-form synchronization with Yatris is not available yet; it arrives in a later release of @yatris/astro. Nothing was compared, written or sent. Check declarations offline with \`yatris forms validate\`; until synchronization ships, Yatris staff import a declaration through the internal form builder.`,
-    };
+  if (action === 'plan' || action === 'apply' || action === 'pull') {
+    let parsed;
+    try {
+      parsed = parseArgs({
+        args: rest,
+        allowPositionals: action === 'pull',
+        options: {
+          json: { type: 'boolean', default: false },
+          ...(action === 'plan' ? { out: { type: 'string' as const } } : {}),
+          ...(action === 'apply' ? { plan: { type: 'string' as const } } : {}),
+          ...(action === 'pull' ? { draft: { type: 'boolean' as const, default: false } } : {}),
+        },
+      });
+    } catch (error) {
+      return { code: EXIT.invalid, stdout: '', stderr: `yatris forms ${action}: ${(error as Error).message}\n\nUsage:\n${FORMS_HELP}` };
+    }
+    const values = parsed.values as { json: boolean; out?: string; plan?: string; draft?: boolean };
+    if (action === 'plan') return planForms(cwd, { ...remote, json: values.json, out: values.out });
+    if (action === 'apply') {
+      if (!values.plan) return { code: EXIT.invalid, stdout: '', stderr: `yatris forms apply: --plan=<file> is required (the file \`yatris forms plan\` wrote, by default ${DEFAULT_PLAN_PATH}).` };
+      return applyForms(cwd, { ...remote, json: values.json, plan: values.plan });
+    }
+    return pullForms(cwd, { ...remote, json: values.json, draft: values.draft, keys: parsed.positionals });
   }
 
-  return { code: 1, stdout: '', stderr: `yatris forms: unknown action "${action ?? ''}"\n\nUsage:\n${FORMS_HELP}` };
+  return { code: EXIT.invalid, stdout: '', stderr: `yatris forms: unknown action "${action ?? ''}"\n\nUsage:\n${FORMS_HELP}` };
 }
 
 function validateForms(argv: string[], cwd: string): FormsCommandResult {
@@ -54,42 +81,15 @@ function validateForms(argv: string[], cwd: string): FormsCommandResult {
   } catch (error) {
     return { code: 1, stdout: '', stderr: `yatris forms validate: ${(error as Error).message}` };
   }
-  const dir = resolve(cwd, values.dir ?? FORMS_DIR);
-  const shown = relative(cwd, dir).replaceAll('\\', '/') || '.';
-  if (!existsSync(dir)) {
-    if (values.dir !== undefined) return { code: 1, stdout: '', stderr: `yatris forms validate: ${shown} does not exist.` };
-    return { code: 0, stdout: `forms: no declarations (${shown}/ does not exist).`, stderr: '' };
+  const scan = scanDeclarations(cwd, values.dir ?? FORMS_DIR);
+  if (!scan.exists) {
+    if (values.dir !== undefined) return { code: 1, stdout: '', stderr: `yatris forms validate: ${scan.shown} does not exist.` };
+    return { code: 0, stdout: `forms: no declarations (${scan.shown}/ does not exist).`, stderr: '' };
   }
-  const files = declarationFiles(dir);
-  if (files.length === 0) return { code: 0, stdout: `forms: no declarations in ${shown}/.`, stderr: '' };
+  if (scan.total === 0) return { code: 0, stdout: `forms: no declarations in ${scan.shown}/.`, stderr: '' };
 
-  const lines: string[] = [];
-  let invalid = 0;
-  for (const name of files) {
-    const path = `${shown}/${name}`;
-    let value: unknown;
-    try {
-      value = JSON.parse(readFileSync(join(dir, name), 'utf8'));
-    } catch (error) {
-      invalid++;
-      lines.push(`✖ ${path}: invalid_json ${(error as Error).message}`);
-      continue;
-    }
-    const result = validateDeclaration(value);
-    const errors = [...result.errors];
-    const key = (value as { key?: unknown })?.key;
-    const expected = name.slice(0, -'.json'.length);
-    // The declaration lives at src/forms/<key>.json (contract README §1).
-    if (result.valid && key !== expected) errors.push({ path: '/key', code: 'filename_mismatch' });
-    if (errors.length) {
-      invalid++;
-      lines.push(`✖ ${path}: ${errors.length} error${errors.length === 1 ? '' : 's'}`);
-      for (const issue of errors) lines.push(`    ${issue.path || '/'} ${issue.code}${issue.code === 'filename_mismatch' ? ` (key must be "${expected}")` : ''}`);
-    } else {
-      lines.push(`✔ ${path}: valid (${String(key)})`);
-    }
-    for (const issue of result.warnings) lines.push(`  ⚠ ${path}: ${issue.path || '/'} ${issue.code}`);
-  }
-  const summary = `${files.length} declaration${files.length === 1 ? '' : 's'}, ${invalid} invalid`;
+  const lines = scanLines(scan);
+  const invalid = scan.invalid.length;
+  const summary = `${scan.total} declaration${scan.total === 1 ? '' : 's'}, ${invalid} invalid`;
   return invalid ? { code: 1, stdout: '', stderr: `${lines.join('\n')}\n${summary}` } : { code: 0, stdout: `${lines.join('\n')}\n${summary}`, stderr: '' };
 }
