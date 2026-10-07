@@ -19,7 +19,7 @@ const REQUIRED_PATHS = [
   'src/scripts/alpine.ts',
 ];
 
-export const BUILT_IN_SKILLS = ['tailwindcss-development', 'alpinejs-development', 'yatris-contact-form'];
+export const BUILT_IN_SKILLS = ['tailwindcss-development', 'alpinejs-development', 'yatris-contact-form', 'yatris-reservation'];
 export const SKILL_LOCATIONS = ['.agents/skills', '.claude/skills'];
 
 /** Checks the repository contract of a scaffold-stage managed site. */

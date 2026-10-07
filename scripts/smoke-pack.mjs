@@ -48,7 +48,7 @@ for (const pkg of packed) {
     expect(files.includes('template/.env.example'), '@yatris/astro tarball contains the template .env.example');
   }
   // Both packages carry the skill pack: create-yatris scaffolds it, `yatris update` delivers it
-  for (const file of ['skills/yatris-contact-form/SKILL.md', 'skills/yatris-contact-form/references/brief.schema.json', 'template/AGENTS.md']) {
+  for (const file of ['skills/yatris-contact-form/SKILL.md', 'skills/yatris-contact-form/references/brief.schema.json', 'skills/yatris-reservation/SKILL.md', 'skills/yatris-reservation/references/brief.schema.json', 'template/AGENTS.md']) {
     expect(files.includes(file), `${pkg.name} tarball contains ${file}`);
   }
   if (pkg.name === 'create-yatris') {
@@ -85,6 +85,9 @@ const skillMd = ['.agents/skills', '.claude/skills'].map((location) => readFileS
 expect(skillMd[0] === skillMd[1] && skillMd[0].includes('name: yatris-contact-form'), 'the scaffold has the yatris-contact-form skill for Codex and Claude Code');
 const agents = readFileSync(resolve(scaffolded, 'AGENTS.md'), 'utf8');
 expect(agents.includes('Contact and inquiry forms always use Yatris') && agents.includes('`yatris-contact-form`'), 'the scaffold AGENTS.md sends contact forms to Yatris and the skill');
+const reservationMd = ['.agents/skills', '.claude/skills'].map((location) => readFileSync(resolve(scaffolded, location, 'yatris-reservation/SKILL.md'), 'utf8'));
+expect(reservationMd[0] === reservationMd[1] && reservationMd[0].includes('name: yatris-reservation'), 'the scaffold has the yatris-reservation skill for Codex and Claude Code');
+expect(agents.includes('Reservations always use Yatris') && agents.includes('`yatris-reservation`'), 'the scaffold AGENTS.md sends reservations to Yatris and the skill');
 const examples = readFileSync(resolve(scaffolded, '.claude/skills/yatris-contact-form/references/examples.md'), 'utf8').replace(/\r\n/g, '\n');
 mkdirSync(resolve(scaffolded, 'src/forms'), { recursive: true });
 writeFileSync(resolve(scaffolded, 'src/forms/contact.json'), /```json\n([\s\S]*?)```/.exec(examples)[1]);

@@ -42,6 +42,17 @@ entirely the site's own.
   third-party form service, no self-written SMTP sender. Not even as a
   stopgap while a Yatris step is pending; report what is pending instead.
   Never ask for, read or store SMTP credentials.
+- **Reservations always use Yatris**: a setup declaration in
+  `src/reservations/<key>.json` shown by
+  `<ReservationEmbed setupKey="<key>" />` from `@yatris/astro`, the
+  Yatris-hosted booking page. Follow the `yatris-reservation` skill, which
+  starts with a short interview that adapts to the booking mode (time slot,
+  service or party). Never add a third-party booking widget or link
+  (TimeRex, Calendly and the like) or a custom booking backend (a form,
+  Function or Worker that takes bookings). Not even as a stopgap; report
+  what is pending instead. Never invent hosts, hours, capacity or the
+  confirmation choice, never write recipient addresses into the
+  repository, and never ask for SMTP, OAuth or provider credentials.
 - **No runtime CDNs.** Install every framework and plugin as a pinned npm
   dependency.
 

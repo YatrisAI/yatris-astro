@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { validateDeclaration } from './forms/declaration.js';
 import { INPUT_TYPES } from './forms/registry.js';
 import { managedBlock } from './platform-lock.js';
+import { schemaErrors, type Json } from '../test/json-schema-subset.js';
 
 /**
  * The canonical `yatris-contact-form` skill (YatrisCMS#381): its layout, the
@@ -22,68 +23,6 @@ function skillFiles(): string[] {
     .filter((entry) => entry.isFile())
     .map((entry) => relative(skillDir, join(entry.parentPath, entry.name)).replaceAll('\\', '/'))
     .sort();
-}
-
-type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
-type Schema = Record<string, Json> | boolean;
-
-/**
- * A minimal JSON Schema (2020-12) evaluator for exactly the keywords the brief
- * schema uses. Any other keyword throws, so the schema cannot quietly rely on
- * something this test does not check.
- */
-function schemaErrors(schema: Schema, value: Json, root: Record<string, Json>, path = ''): string[] {
-  if (schema === true) return [];
-  if (schema === false) return [`${path}: false`];
-  const supported = ['$schema', 'title', 'description', '$defs', '$ref', 'type', 'const', 'enum', 'minLength', 'maxLength', 'pattern', 'items', 'uniqueItems', 'required', 'properties', 'additionalProperties', 'propertyNames', 'not', 'if', 'then', 'else'];
-  for (const keyword of Object.keys(schema)) if (!supported.includes(keyword)) throw new Error(`unsupported keyword ${keyword}`);
-  const errors: string[] = [];
-  const same = (a: Json, b: Json) => JSON.stringify(a) === JSON.stringify(b);
-  const isObject = (v: Json): v is { [key: string]: Json } => typeof v === 'object' && v !== null && !Array.isArray(v);
-
-  if (typeof schema.$ref === 'string') {
-    const target = schema.$ref.replace(/^#\//, '').split('/').reduce<Json>((node, part) => (node as Record<string, Json>)[part], root);
-    errors.push(...schemaErrors(target as Schema, value, root, path));
-  }
-  if (schema.type !== undefined) {
-    const types: Record<string, (v: Json) => boolean> = {
-      object: isObject,
-      array: Array.isArray,
-      string: (v) => typeof v === 'string',
-      integer: Number.isInteger,
-      number: (v) => typeof v === 'number',
-      boolean: (v) => typeof v === 'boolean',
-      null: (v) => v === null,
-    };
-    if (!types[schema.type as string](value)) return [...errors, `${path}: type`];
-  }
-  if ('const' in schema && !same(schema.const, value)) errors.push(`${path}: const`);
-  if (Array.isArray(schema.enum) && !schema.enum.some((option) => same(option, value))) errors.push(`${path}: enum`);
-  if (typeof value === 'string') {
-    const length = [...value].length;
-    if (typeof schema.minLength === 'number' && length < schema.minLength) errors.push(`${path}: minLength`);
-    if (typeof schema.maxLength === 'number' && length > schema.maxLength) errors.push(`${path}: maxLength`);
-    if (typeof schema.pattern === 'string' && !new RegExp(schema.pattern, 'u').test(value)) errors.push(`${path}: pattern`);
-  }
-  if (Array.isArray(value)) {
-    if (schema.items !== undefined) value.forEach((item, i) => errors.push(...schemaErrors(schema.items as Schema, item, root, `${path}/${i}`)));
-    if (schema.uniqueItems === true && new Set(value.map((item) => JSON.stringify(item))).size !== value.length) errors.push(`${path}: uniqueItems`);
-  }
-  if (isObject(value)) {
-    const properties = (schema.properties ?? {}) as Record<string, Schema>;
-    for (const key of (schema.required ?? []) as string[]) if (!(key in value)) errors.push(`${path}/${key}: required`);
-    for (const [key, item] of Object.entries(value)) {
-      if (schema.propertyNames !== undefined) errors.push(...schemaErrors(schema.propertyNames as Schema, key, root, `${path}/${key}#name`));
-      if (key in properties) errors.push(...schemaErrors(properties[key], item, root, `${path}/${key}`));
-      else if (schema.additionalProperties !== undefined) errors.push(...schemaErrors(schema.additionalProperties as Schema, item, root, `${path}/${key}`));
-    }
-  }
-  if (schema.not !== undefined && schemaErrors(schema.not as Schema, value, root, path).length === 0) errors.push(`${path}: not`);
-  if (schema.if !== undefined) {
-    const branch = schemaErrors(schema.if as Schema, value, root, path).length === 0 ? schema.then : schema.else;
-    if (branch !== undefined) errors.push(...schemaErrors(branch as Schema, value, root, path));
-  }
-  return errors;
 }
 
 const briefSchema = JSON.parse(read('references/brief.schema.json')) as Record<string, Json>;
@@ -121,6 +60,10 @@ describe('the yatris-contact-form skill', () => {
     expect(skill).toContain('at most three questions');
     expect(interview).toContain('`form.confirm_step`'); // 入力→確認→完了 (decisions §3)
     expect(interview).toContain('`fields.kana_preset`'); // kana preset (decisions §3)
+    // The forms `sensitive` marker (contract §1 "Sensitive questions"), which reservation intake reuses
+    expect(interview).toContain('`fields.sensitive`');
+    expect(read('references/fields.md')).toMatch(/## Sensitive answers[\s\S]*`sensitive: true`[\s\S]*`sensitive_placeholder`/);
+    expect(read('references/errors.md')).toContain('`sensitive_placeholder`');
     expect(skill).toMatch(/only seeds a new form/); // recipients as initial value (decisions §6)
     const secrets = read('references/secrets.md');
     expect(secrets).toContain('Connections page'); // decisions §5

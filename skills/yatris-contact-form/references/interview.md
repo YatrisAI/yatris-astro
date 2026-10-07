@@ -35,6 +35,7 @@ own brief.
 | `fields.<key>.validation` | no | Limits, placeholders, defaults, only where they matter. | Name ≤ 100, message ≤ 5000 characters with a remaining-character counter. |
 | `fields.kana_preset` | yes, if a name field exists | Is a reading (フリガナ) field wanted, and in katakana or hiragana? It uses the `text` field's `preset`, which also converts what visitors type. | Katakana, optional. |
 | `form.confirm_step` | yes | Should visitors see a 入力→確認→完了 confirmation screen before sending? | Off for short forms; on for long forms or ones with attachments. |
+| `fields.sensitive` | yes, if a field asks for health or similarly private information | Which answers stay with the business only? They get `sensitive: true` (`fields.md`, "Sensitive answers") and are left out of mail. | Health and similar answers only; ask for no more than needed. |
 
 Fold the furigana choice into the field-list proposal ("フリガナ（カタカナ）")
 so the fields round stays at three questions.
