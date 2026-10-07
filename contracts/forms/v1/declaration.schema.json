@@ -381,6 +381,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "placeholder": {
           "type": "string",
           "minLength": 1,
@@ -491,6 +494,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "placeholder": {
           "type": "string",
           "minLength": 1,
@@ -573,6 +579,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "placeholder": {
           "type": "string",
           "minLength": 1,
@@ -643,6 +652,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "placeholder": {
@@ -716,6 +728,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "placeholder": {
@@ -803,6 +818,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "placeholder": {
           "type": "string",
           "minLength": 1,
@@ -867,6 +885,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "default": {
@@ -936,6 +957,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "default": {
@@ -1009,6 +1033,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "default": {
           "type": "string",
           "minLength": 1,
@@ -1080,6 +1107,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "default": {
           "type": "string",
           "minLength": 1,
@@ -1149,6 +1179,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "options": {
@@ -1231,6 +1264,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "options": {
@@ -1330,6 +1366,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "options": {
           "type": "array",
           "items": {
@@ -1406,6 +1445,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "default": {
           "type": "boolean"
         }
@@ -1449,6 +1491,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "options": {
@@ -1548,6 +1593,9 @@
         "required": {
           "type": "boolean"
         },
+        "sensitive": {
+          "type": "boolean"
+        },
         "consentText": {
           "type": "string",
           "minLength": 1,
@@ -1610,6 +1658,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "validation": {
@@ -1684,6 +1735,9 @@
           "$ref": "#/$defs/condition"
         },
         "required": {
+          "type": "boolean"
+        },
+        "sensitive": {
           "type": "boolean"
         },
         "default": {

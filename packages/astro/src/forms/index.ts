@@ -23,8 +23,9 @@ export {
   type NodeTypeName,
   type UploadKind,
 } from './registry.js';
-export { validateDeclaration, type DeclarationResult } from './declaration.js';
-export { compare, evaluateActivity, isEmptyValue, type Activity, type AnswerValue } from './conditions.js';
+export { validateDeclaration, validateQuestions, type DeclarationResult, type QuestionsOptions } from './declaration.js';
+export { compare, evaluateActivity, isEmptyValue, type Activity, type ActivityOptions, type AnswerValue } from './conditions.js';
+export { CONTEXT_KEY_PATTERN, CONTEXT_KINDS, type ContextEntry, type ContextKind, type QuestionContext } from './context.js';
 export {
   normalizeQuizAnswer,
   uploadKindAllowed,

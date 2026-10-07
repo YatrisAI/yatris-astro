@@ -73,6 +73,8 @@ const common = {
   visibleWhen: condition,
   requiredWhen: condition,
   required: bool,
+  // Marks an answer that consumers must keep off every outbound surface (README "Sensitive questions").
+  sensitive: bool,
 };
 const display = { key: KEY, type: common.type, visibleWhen: condition };
 

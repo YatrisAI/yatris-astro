@@ -1,4 +1,5 @@
 import { evaluateActivity, isEmptyValue, type AnswerValue } from './conditions.js';
+import type { QuestionContext } from './context.js';
 import { compareDecimal, onStep, toDecimal } from './decimal.js';
 import { UPLOAD_KINDS, UPLOAD_LIMITS, type UploadKind } from './registry.js';
 import {
@@ -61,6 +62,13 @@ export interface ValidationOptions {
    * working from a public definition has no answers to check against.
    */
   checkQuiz?: boolean;
+  /** Read-only system inputs conditions may reference (README "Question context"). */
+  context?: QuestionContext;
+  /**
+   * Their values, supplied by the consumer. Visitor answers can never set
+   * them: an `answers` key with a dot is always `undeclared_field`.
+   */
+  contextValues?: Record<string, AnswerValue>;
 }
 
 export interface SubmissionResult {
@@ -102,7 +110,7 @@ export function validateSubmission(declaration: FormDeclaration, input: Submissi
   for (const [key, n] of normalized) values[key] = n.error ? undefined : n.value;
 
   // 2. Activity and requiredness from the effective values.
-  const { active, required } = evaluateActivity(declaration, values);
+  const { active, required } = evaluateActivity(declaration, values, { context: options.context, contextValues: options.contextValues });
   const activeSet = new Set(active);
   const requiredSet = new Set(required);
 
