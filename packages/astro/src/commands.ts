@@ -3,6 +3,9 @@ import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { doctor, formatReport } from './doctor/doctor.js';
 import { STAGES, type Stage } from './doctor/findings.js';
+import { FORMS_HELP, runForms } from './forms-command.js';
+import { MAIL_HELP, runMail } from './mail-command.js';
+import { resolveRemote, type RemoteOptions } from './yatris-remote.js';
 import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
 import { LOCK_PATH, projectWebsiteId, readLock, readManifest, syncInstructions, syncSchema, verifySchema } from './schema.js';
@@ -32,14 +35,27 @@ export interface CliEnvironment {
   log?: (line: string) => void;
   /** Release source and hand-over for `yatris update` (tests). */
   update?: Pick<UpdateEnvironment, 'source' | 'delegate'>;
+  /** Environment variables for Yatris MCP commands (YATRIS_MCP_TOKEN, SMTP); defaults to process.env. */
+  environment?: Record<string, string | undefined>;
+  /** Replaces the Yatris MCP HTTP transport (tests). */
+  mcpTransport?: RemoteOptions['transport'];
+  /** Delay between MCP transport retries (tests pass 0). */
+  retryDelayMs?: number;
+}
+
+function remoteOptions(env: CliEnvironment): RemoteOptions {
+  return { environment: env.environment, fetch: env.fetch, transport: env.mcpTransport, retryDelayMs: env.retryDelayMs };
 }
 
 const HELP = `Usage: yatris <command>
 
 Commands:
-  doctor --stage=scaffold [--json] [--no-build] [--dist=dist]
+  doctor --stage=scaffold [--json] [--no-build] [--dist=dist] [--offline]
              Check the site against the Yatris managed-site contract. Builds
              the site first unless --no-build, then audits the build output.
+             Contact forms: declarations, <YatrisForm> mounts, thanks routes,
+             renderer capabilities and, when paired with YATRIS_MCP_TOKEN set
+             and not --offline, Yatris readiness (otherwise "unverified").
   schema status
              Show the schema revision this repository is locked to.
   schema sync --manifest=<file>
@@ -64,6 +80,8 @@ Commands:
              change). Locally edited managed files stop the update. A failed
              update restores only the files it touched; it never commits.
              Run it as \`npm run yatris:update\`.
+${FORMS_HELP}
+${MAIL_HELP}
 
 Options:
   --version  Print the package and Yatris platform versions
@@ -92,6 +110,14 @@ export async function run(argv: string[], env: CliEnvironment = { cwd: process.c
 
   if (first === 'connect') {
     return runConnect(rest, env);
+  }
+
+  if (first === 'forms') {
+    return runForms(rest, env.cwd, remoteOptions(env));
+  }
+
+  if (first === 'mail') {
+    return runMail(rest, env.cwd, remoteOptions(env));
   }
 
   if (first === 'update') {
@@ -194,6 +220,7 @@ async function runDoctor(argv: string[], env: CliEnvironment): Promise<CliResult
         json: { type: 'boolean', default: false },
         build: { type: 'boolean', default: true },
         dist: { type: 'string', default: 'dist' },
+        offline: { type: 'boolean', default: false },
       },
     }));
   } catch (error) {
@@ -215,6 +242,7 @@ async function runDoctor(argv: string[], env: CliEnvironment): Promise<CliResult
     manifest: readPlatformManifest(env.manifestUrl),
     dist: values.dist,
     build: values.build ? (env.build ?? (() => npmBuild(env.cwd))) : undefined,
+    forms: values.offline ? {} : { remote: () => resolveRemote(env.cwd, remoteOptions(env)) },
   });
 
   return {

@@ -1,6 +1,6 @@
 {
   "name": "@yatris/astro",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Yatris Astro integration, build contract and the yatris CLI for Yatris-managed websites.",
   "license": "MIT",
   "type": "module",
@@ -53,7 +53,25 @@
       "types": "./dist/pairing.d.ts",
       "default": "./dist/pairing.js"
     },
+    "./forms": {
+      "types": "./dist/forms/index.d.ts",
+      "default": "./dist/forms/index.js"
+    },
+    "./forms/client": {
+      "types": "./dist/forms-client/index.d.ts",
+      "default": "./dist/forms-client/index.js"
+    },
+    "./forms/preview": {
+      "types": "./dist/forms-client/preview.d.ts",
+      "default": "./dist/forms-client/preview.js"
+    },
+    "./forms/mount": {
+      "types": "./dist/forms-mount.d.ts",
+      "default": "./dist/forms-mount.js"
+    },
+    "./contracts/forms/v1/*": "./contracts/forms/v1/*",
     "./YatrisHead.astro": "./components/YatrisHead.astro",
+    "./YatrisForm.astro": "./components/YatrisForm.astro",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
     "./virtual": {
       "types": "./components/virtual.d.ts"
@@ -70,7 +88,8 @@
     "components",
     "platform.json",
     "template",
-    "skills"
+    "skills",
+    "contracts"
   ],
   "peerDependencies": {
     "astro": "^7.3.5"

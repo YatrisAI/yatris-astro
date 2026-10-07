@@ -1,0 +1,81 @@
+{
+  "$schema": "https://yatris.jp/schemas/forms/v1/declaration.schema.json",
+  "contractVersion": 1,
+  "key": "contact",
+  "name": "お問い合わせ",
+  "locale": "ja",
+  "fields": [
+    {
+      "key": "name",
+      "type": "text",
+      "label": "お名前",
+      "required": true,
+      "autocomplete": "name",
+      "validation": { "maxLength": 100 }
+    },
+    {
+      "key": "email",
+      "type": "email",
+      "label": "メールアドレス",
+      "required": true,
+      "autocomplete": "email"
+    },
+    {
+      "key": "customer_type",
+      "type": "radio",
+      "label": "お問い合わせ区分",
+      "required": true,
+      "options": [
+        { "value": "individual", "label": "個人" },
+        { "value": "business", "label": "法人" }
+      ]
+    },
+    {
+      "key": "company",
+      "type": "text",
+      "label": "会社名",
+      "required": true,
+      "visibleWhen": { "field": "customer_type", "operator": "eq", "value": "business" },
+      "validation": { "maxLength": 200 }
+    },
+    {
+      "key": "message",
+      "type": "textarea",
+      "label": "お問い合わせ内容",
+      "required": true,
+      "validation": { "minLength": 1, "maxLength": 5000 },
+      "characterCount": "remaining"
+    },
+    {
+      "key": "consent",
+      "type": "acceptance",
+      "label": "個人情報の取り扱いに同意する",
+      "required": true,
+      "consentText": "お問い合わせへの回答のために入力内容を利用します。",
+      "privacyPolicyPath": "/privacy/"
+    }
+  ],
+  "submit": { "label": "送信する", "pendingLabel": "送信中…" },
+  "success": {
+    "mode": "redirect",
+    "message": "お問い合わせを受け付けました。",
+    "redirectPath": "/contact/thanks/"
+  },
+  "mail": {
+    "notification": {
+      "to": ["contact@example.jp"],
+      "replyToField": "email",
+      "subject": "【お問い合わせ】{{form.name}}",
+      "body": "{{submission.answers}}",
+      "attachmentFields": []
+    },
+    "thankYou": {
+      "enabled": true,
+      "toField": "email",
+      "subject": "お問い合わせありがとうございます",
+      "body": "{{field.name}} 様\nお問い合わせを受け付けました。",
+      "replyToAddress": "contact@example.jp"
+    }
+  },
+  "smtp": { "source": "website_profile" }
+}

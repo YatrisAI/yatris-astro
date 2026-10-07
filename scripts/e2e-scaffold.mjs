@@ -63,6 +63,11 @@ expect(
   'Claude Code and Codex MCP configs are generated from the Yatris descriptor',
 );
 expect(!/bearer|authorization|token/i.test(read('.mcp.json') + read('.codex/config.toml').replace(/^#.*$/gm, '')), 'the MCP configs hold no credential');
+expect(
+  read('AGENTS.md').includes('Contact and inquiry forms always use Yatris') &&
+    ['.agents/skills', '.claude/skills'].every((location) => sha(`${location}/yatris-contact-form/SKILL.md`) === sha('.agents/skills/yatris-contact-form/SKILL.md') && existsSync(join(site, location, 'yatris-contact-form/references/brief.schema.json'))),
+  'the new site tells agents to use Yatris for contact forms and ships the yatris-contact-form skill to both agents (YatrisCMS#381)',
+);
 
 const html = read('dist/index.html');
 expect(html.includes('<html lang="ja">') && html.includes('<title>ホーム</title>'), 'home page has a language and a title');
@@ -146,6 +151,73 @@ write('src/layouts/BaseLayout.astro', layout);
 write('astro.config.mjs', config);
 sh('npm run build', site);
 expect(doctor().report.ok, 'the restored site passes again');
+
+// Contact forms (YatrisCMS#380): the renderer ships; the declaration, quiz
+// answers, recipients and the preview never reach dist/.
+mkdirSync(join(site, 'src/forms'), { recursive: true });
+write('src/forms/full-coverage.json', readFileSync(join(root, 'contracts/forms/v1/examples/full-coverage.json'), 'utf8'));
+write(
+  'src/pages/contact.astro',
+  `---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import YatrisForm from '@yatris/astro/YatrisForm.astro';
+---
+<BaseLayout page={{ title: 'お問い合わせ' }}>
+  <h1>お問い合わせ</h1>
+  <YatrisForm form="full-coverage" hidden={{ source: 'e2e' }} classes={{ submit: 'px-4' }} />
+</BaseLayout>
+`,
+);
+const formLeaks = () => {
+  const text = [...distFiles('.html'), ...distFiles('.js'), ...distFiles('.css')].join('\n');
+  // Recipients, quiz answers, mail templates, declaration-only text and preview code
+  const markers = ['contact@example.jp', 'fujisan', 'ふじさん', '{{submission.answers}}', '全項目サンプル', 'ご来店希望日時', 'yatris-forms-preview-module', 'プレビュー表示'];
+  return markers.filter((m) => text.includes(m));
+};
+sh('npm run build', site);
+let contactHtml = read('dist/contact/index.html');
+expect(contactHtml.includes('data-yatris-form="full-coverage"') && contactHtml.includes('data-yf-mode="unconfigured"'), 'an unpaired build renders the form mount in its unavailable mode, not a preview');
+expect(contactHtml.includes('<noscript>') && contactHtml.includes('JavaScript が必要です'), 'the form explains itself when JavaScript is disabled');
+expect(/<script[^>]+type="module"[^>]*src="\/_astro\//.test(contactHtml) && distFiles('.js').some((js) => js.includes('data-yatris-form')), 'the page loads the bundled form renderer');
+expect(distFiles('.css').some((css) => css.includes('.yf-field')), 'the default form styles are in the built CSS');
+let leaked = formLeaks();
+expect(leaked.length === 0, `dist/ holds no declaration content, quiz answer, recipient or preview code${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
+expect(doctor().report.ok, 'doctor passes a site with a form');
+
+const previewBuild = (extraEnv) => spawnSync('npm run build', { cwd: site, shell: true, encoding: 'utf8', env: { ...env, ...extraEnv } });
+let refused = previewBuild({ YATRIS_FORMS_PREVIEW: '1' });
+expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('forms preview only runs under `astro dev`'), 'a production build refuses forms preview mode');
+write('.env', 'YATRIS_FORMS_PREVIEW=1\n');
+refused = previewBuild({});
+expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('forms preview only runs under `astro dev`'), 'a production build refuses forms preview set in .env');
+rmSync(join(site, '.env'));
+
+// Paired: the mount names the public key and the Yatris definition URL. A
+// stand-in answers the schema check a paired build makes; nothing else.
+const yatrisPort = 4900 + Math.floor(Math.random() * 300);
+const fakeYatris = spawn(
+  process.execPath,
+  ['-e', "require('http').createServer((q,s)=>{const ok=q.url==='/api/v1/sites/42/schema';s.writeHead(ok?200:404,{'content-type':'application/json'});s.end(ok?JSON.stringify({contractVersion:1,websiteId:42,schemaMode:'immediate'}):'{}')}).listen(+process.argv[1],'127.0.0.1')", String(yatrisPort)],
+  { stdio: 'ignore' },
+);
+process.on('exit', () => fakeYatris.kill());
+await new Promise((resolve) => setTimeout(resolve, 500));
+const projectBefore = read('.yatris/project.json');
+const yatrisOrigin = `http://127.0.0.1:${yatrisPort}`;
+write('.yatris/project.json', JSON.stringify({ ...JSON.parse(projectBefore), websiteId: 42, site: { name: 'e2e', url: null, timezone: 'Asia/Tokyo' }, deliveryEndpoint: `${yatrisOrigin}/api/v1/delivery/42` }, null, 2));
+const paired = spawnSync('npm run build', { cwd: site, shell: true, encoding: 'utf8', env: { ...env, YATRIS_MEASUREMENT: 'off' } });
+expect(paired.status === 0, `a paired site with a form builds${paired.status === 0 ? '' : `\n${paired.stdout}\n${paired.stderr}`}`);
+contactHtml = read('dist/contact/index.html');
+expect(
+  contactHtml.includes('data-yf-mode="live"') && contactHtml.includes('"publicKey":"42.full-coverage"') && contactHtml.includes(`"definitionUrl":"${yatrisOrigin}/api/v1/forms/42.full-coverage"`),
+  'a paired build points the mount at <origin>/api/v1/forms/<websiteId>.<formKey>',
+);
+leaked = formLeaks();
+expect(leaked.length === 0, `a paired dist/ holds no declaration content either${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
+fakeYatris.kill();
+write('.yatris/project.json', projectBefore);
+for (const path of ['src/forms', 'src/pages/contact.astro']) rmSync(join(site, path), { recursive: true });
+sh('npm run build', site);
 
 // Delivery API loader, against a local stand-in for the Delivery API. The
 // settings come from the site's ignored .env file, as they would locally.

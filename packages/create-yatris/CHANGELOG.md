@@ -1,5 +1,19 @@
 # create-yatris
 
+## 0.5.0
+
+### Minor Changes
+
+- 40b1a61: Add the built-in `yatris-contact-form` skill (YatrisCMS#381). Agents building or changing a contact or inquiry form run a short adaptive interview (purpose and placement, fields with explicitly confirmed requiredness, conditions, files and consent, client notification, visitor email, mail source, submission result, review; at most three questions a round), record it in a resumable `src/forms/<key>.brief.json` whose decisions are `confirmed`, `delegated` or `unresolved` (shape in the skill's `references/brief.schema.json`), then write the declaration, mount `<YatrisForm>`, validate, preview and report the Yatris import, publication and mail steps still pending. The skill never asks for SMTP credentials and explains both provisioning routes: the Website Owner on the dashboard's Connections page, or staff with the env-file helper. References cover the field registry, examples, condition grammar, commands and exit codes, error handling, secrets and scenarios. The managed `AGENTS.md` block now says contact forms always use Yatris and forbids Cloudflare Functions, `mailto:` forms, third-party form services and self-written SMTP senders, even as stopgaps. New sites get the skill from `create-yatris`; existing sites get it, and the new guidance, from `yatris update`. `yatris doctor` treats it as a built-in skill.
+
+### Patch Changes
+
+- Updated dependencies [40b1a61]
+- Updated dependencies [39345f2]
+- Updated dependencies [1dbd213]
+- Updated dependencies [5188f20]
+  - @yatris/astro@0.5.0
+
 ## 0.4.0
 
 ### Minor Changes

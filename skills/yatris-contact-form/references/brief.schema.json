@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Yatris contact-form interview brief, version 1",
+  "description": "src/forms/<key>.brief.json: the resumable record of a contact-form interview. Non-secret; never holds credentials or visitor data.",
+  "type": "object",
+  "required": ["briefVersion", "form", "stage", "decisions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string", "maxLength": 500 },
+    "briefVersion": { "const": 1 },
+    "form": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
+    "stage": { "enum": ["interviewing", "reviewed", "implemented"] },
+    "updated": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "decisions": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9_]*(\\.[a-z0-9_]+)*$", "maxLength": 100 },
+      "additionalProperties": { "$ref": "#/$defs/decision" }
+    },
+    "pending": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["pairing", "yatris_import", "staff_publication", "recipient_confirmation", "mail_setup", "privacy_page"] }
+    }
+  },
+  "$defs": {
+    "decision": {
+      "type": "object",
+      "required": ["topic", "status", "summary"],
+      "additionalProperties": false,
+      "properties": {
+        "topic": {
+          "enum": [
+            "purpose_placement",
+            "fields",
+            "conditions",
+            "files_consent",
+            "client_notification",
+            "visitor_email",
+            "mail_source",
+            "submission_result",
+            "review"
+          ]
+        },
+        "status": { "enum": ["confirmed", "delegated", "unresolved"] },
+        "summary": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "value": {},
+        "recommendation": {},
+        "source": { "enum": ["user", "repository", "yatris"] },
+        "note": { "type": "string", "maxLength": 2000 }
+      },
+      "if": { "properties": { "status": { "const": "unresolved" } } },
+      "then": { "not": { "required": ["value"] } },
+      "else": { "required": ["value", "source"] }
+    }
+  }
+}

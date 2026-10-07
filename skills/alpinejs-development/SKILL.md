@@ -12,6 +12,8 @@ description: Client-side interaction rules for this Yatris-managed Astro site us
   needs reactive state that HTML cannot express.
 - Do not add React, Vue or another hydrated framework unless a documented
   requirement needs it.
+- Contact and inquiry forms are not hand-built: they use `<YatrisForm>`.
+  Follow the `yatris-contact-form` skill.
 
 ## Structure
 
