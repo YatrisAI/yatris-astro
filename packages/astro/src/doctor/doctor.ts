@@ -3,6 +3,7 @@ import { join, relative } from 'node:path';
 import type { PlatformManifest } from '../platform.js';
 import { auditHtml } from './audit.js';
 import { findCredentials, type Finding, type Stage } from './findings.js';
+import { checkForms, type FormsDoctorOptions } from './forms.js';
 import { lintSource } from './lint.js';
 import { checkStructure } from './structure.js';
 
@@ -14,6 +15,8 @@ export interface DoctorOptions {
   dist: string;
   /** Runs the production build; resolves to its exit code and combined output. */
   build?: () => Promise<{ code: number; output: string }>;
+  /** Contact-form checks; without `remote`, Yatris readiness is reported as unverified. */
+  forms?: FormsDoctorOptions;
 }
 
 export interface DoctorReport {
@@ -33,6 +36,8 @@ export async function doctor(options: DoctorOptions): Promise<DoctorReport> {
   for (const file of files(join(root, 'src'), SOURCE)) {
     findings.push(...lintSource(rel(root, file), readFileSync(file, 'utf8')));
   }
+
+  findings.push(...(await checkForms(root, options.forms)));
 
   if (options.build) {
     const { code, output } = await options.build();
@@ -57,14 +62,18 @@ export async function doctor(options: DoctorOptions): Promise<DoctorReport> {
 export function formatReport(report: DoctorReport): string {
   const errors = report.findings.filter((f) => f.severity === 'error');
   const warnings = report.findings.filter((f) => f.severity === 'warning');
-  const line = (f: Finding) => `  ${f.severity === 'error' ? '✖' : '⚠'} ${f.code}${f.file ? ` ${f.file}` : ''}: ${f.message}`;
+  const unverified = report.findings.filter((f) => f.severity === 'unverified');
+  const line = (f: Finding) => `  ${f.severity === 'error' ? '✖' : f.severity === 'warning' ? '⚠' : '?'} ${f.code}${f.file ? ` ${f.file}` : ''}: ${f.message}`;
+  // Unverified remote checks are named in the summary, never counted as passed
+  const pending = unverified.length ? `; ${unverified.length} remote check(s) unverified` : '';
   return [
     `yatris doctor --stage=${report.stage}`,
     ...errors.map(line),
     ...warnings.map(line),
+    ...unverified.map(line),
     report.ok
-      ? `✔ passed${warnings.length ? ` with ${warnings.length} warning(s)` : ''}`
-      : `✖ failed: ${errors.length} error(s), ${warnings.length} warning(s)`,
+      ? `✔ passed${unverified.length ? ' local checks' : ''}${warnings.length ? ` with ${warnings.length} warning(s)` : ''}${pending}`
+      : `✖ failed: ${errors.length} error(s), ${warnings.length} warning(s)${pending}`,
   ].join('\n');
 }
 

@@ -413,4 +413,67 @@ The default stylesheet (`components/YatrisForm.css`) puts every rule inside `:wh
 | Command | Behaviour |
 | --- | --- |
 | `yatris forms validate [--dir=src/forms]` | Runs `validateDeclaration` on every `*.json` (not `*.brief.json`), checks the file name matches `key`, prints `path code` findings and warnings. Offline. Exits 1 on any error. |
-| `yatris forms plan`, `apply`, `pull` | Synchronization with Yatris is not available yet. They say so, touch nothing and exit 69 (`EX_UNAVAILABLE`). |
+| `yatris forms plan`, `apply`, `pull` | Synchronization with Yatris drafts; see §9. |
+| `yatris mail sync --env-file <path>` | Imports customer SMTP settings as a pending Website mail profile; see §9. |
+| `yatris doctor` | Also checks declarations, `<YatrisForm>` mounts, redirect thanks routes, renderer capabilities and Yatris readiness; see §9. |
+
+## 9. Synchronization
+
+The repository declaration and the Yatris builder are two authoring paths for one form (decisions §4). `@yatris/astro` synchronizes them through Product MCP tools, for the exact Website in `.yatris/project.json`, at the server `.yatris/mcp.json` names (`YATRIS_MCP_URL` overrides it). The credential is a bearer in `YATRIS_MCP_TOKEN` (a Yatris MCP service token or a sign-in access token for an authorized staff account), read from the environment only and never written or printed. Yatris computes every digest; the CLI stores what Yatris returns.
+
+| Command | Behaviour |
+| --- | --- |
+| `yatris forms plan [--json] [--out=<file>]` | Validates every declaration locally first (invalid: exit 1, nothing sent), then calls `plan_contact_forms` with each declaration and its baseline from the lock. Read-only in Yatris. Prints each form's operation, changed paths and remote revisions. When the plan is applicable and writes something, it writes the plan file (default `.yatris/forms.plan.json`, gitignored; never under `public/`, `src/` or `dist/`): Website, plan token and expiry, operations, and each declaration's path and SHA-256. No declaration text, recipients or secrets. |
+| `yatris forms apply --plan=<file> [--json]` | Refuses an expired or non-applicable plan, and any declaration added, removed or changed since the plan (exit 3, nothing sent). Otherwise calls `apply_contact_forms` once with a fresh idempotency key, reused on a transport retry. Yatris applies all forms atomically to **drafts** and never publishes; the CLI says publication is pending and prints review URLs. Updates the lock. |
+| `yatris forms pull [<key>…] [--draft] [--json]` | Writes the published definitions (`--draft`: the unpublished drafts, an explicit staff operation) to `src/forms/<key>.json` only when the file is absent or unchanged since its baseline. A file that already equals the remote definition (recipients aside) only advances the baseline: the explicit "accept remote" path, with no remote write. Any other local file is refused and left untouched (exit 2). Records which state was pulled. |
+| `yatris mail sync --env-file=<path> [--json]` | Reads the §11.2 variables (`YATRIS_SMTP_HOST`, `_PORT`, `_SECURITY` `starttls` or `tls`, required explicitly, `_USERNAME`, `_PASSWORD`, `YATRIS_MAIL_FROM_ADDRESS`, `_FROM_NAME`, optional `YATRIS_MAIL_REPLY_TO_ADDRESS`) in-process from the file, then this shell's environment. All `YATRIS_SMTP_*` empty: sends nothing, exit 0. Partial: exit 1 naming the missing variables. Otherwise one `import_mail_profile` call (idempotency key reused on retry) creates a pending profile to test and activate on the Yatris メールの連携 page. No value is ever printed, logged, written or echoed in an error. It never removes a profile, and form sync never touches mail settings. |
+
+**Drift matrix** (spec §4.1), as `plan` reports it:
+
+| Local vs baseline | Remote vs baseline | Operation | Next step |
+| --- | --- | --- | --- |
+| same | same | `noop` | — |
+| changed | same | `update_draft` | `apply` |
+| same | changed (draft or publication) | `remote_drift` | `pull` (`--draft` for a staff draft), then plan again |
+| changed | changed | `conflict` | Reconcile by hand; nothing merges |
+| equals current remote | changed | `accept_remote` | `pull <key>` advances the baseline without a remote write |
+| no baseline | absent | `create` | `apply` |
+| no baseline | exists | `adopt_required` | Move a differing local file aside, `pull <key>` |
+| Yatris rejects it | — | `invalid` | Fix the issues shown |
+
+A pull of the published version while Yatris holds unpublished draft changes records no draft revision, so the draft keeps showing as drift and an update can never overwrite it. `mail.notification.to` only seeds a new form; remote definitions never contain it, and sync never changes dashboard-managed recipients. Deleting a declaration never archives a form.
+
+**Lock** `.yatris/forms.lock.json`, committed, written only by `apply` and `pull`:
+
+```json
+{
+  "contractVersion": 1,
+  "websiteId": 42,
+  "forms": {
+    "contact": {
+      "state": "draft",
+      "digest": "sha256:…",
+      "draft_revision": 4,
+      "published_version": 2,
+      "declaration_sha256": "sha256:…"
+    }
+  }
+}
+```
+
+`digest`, `draft_revision` and `published_version` are what Yatris returned; `state` is the state the baseline is (`draft` after `apply` or `pull --draft`, `published` after `pull`); `declaration_sha256` is the local file's hash at that moment. Never edit it by hand. The ordinary hosted-agent write boundary is `src/`; a work order that runs `apply` or `pull` must name `.yatris/forms.lock.json` as an exact extra path.
+
+**Exit codes** of `plan`, `apply`, `pull` and `mail sync`:
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Success; the plan is applicable (or there is nothing to do); no forms in Yatris is a success for `pull` |
+| `1` | Invalid input: a declaration, an argument, a plan file, an incomplete env file, or Yatris answered `validation` |
+| `2` | Reconciliation required: `remote_drift`, `conflict`, `adopt_required` or `invalid` in the plan, or a pull refused to overwrite local edits |
+| `3` | Stale: the plan expired or no longer matches the declarations, or Yatris answered `conflict`, `plan_expired`, `plan_mismatch` or `revision_conflict` |
+| `4` | Not paired (`yatris connect`) |
+| `5` | No `YATRIS_MCP_TOKEN`, or Yatris refused it |
+| `69` | Yatris does not offer the capability (unknown tool, or `unavailable`) |
+| `75` | `backend_unavailable`: network failure, HTTP 5xx or 429, after retries |
+
+**Doctor.** `yatris doctor` fails on an invalid declaration, a literal `<YatrisForm form="x">` without `src/forms/x.json`, a `success.redirectPath` with no page under `src/pages/`, a capability the renderer lacks (`requiredCapabilities` versus `SUPPORTED_CAPABILITIES`) and a lock for another Website. Paired with a credential, it reads `get_contact_form_readiness` per form and warns about forms missing in Yatris, unpublished forms and blocking readiness items. Offline (`--offline`), unpaired, without a credential or when Yatris is unreachable, it reports the remote checks as `unverified`, never as passed.

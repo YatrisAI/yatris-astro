@@ -22,9 +22,12 @@ inquiry also lands in the dashboard inbox regardless of mail.
    enters the SMTP settings on the Website's Connections page in the Yatris
    dashboard, tests them and activates them. Approvers and Editors cannot.
 2. **Env-file helper (Yatris staff).** Staff put the settings in the site's
-   ignored `.env` and run `npx yatris mail sync --env-file .env`. The helper
-   reads the file itself, signs in to Yatris and imports the settings
-   encrypted. Variable names:
+   ignored `.env` and run `npx yatris mail sync --env-file .env` with their
+   own Yatris credential in the environment. The helper reads the file
+   itself, imports the settings encrypted as a **pending** profile and
+   prints only a redacted result; a person then sends a test and activates
+   it on the メールの連携 page. All `YATRIS_SMTP_*` empty means nothing is
+   sent; it never removes a profile. Variable names:
 
    ```dotenv
    YATRIS_SMTP_HOST=
@@ -37,11 +40,10 @@ inquiry also lands in the dashboard inbox regardless of mail.
    YATRIS_MAIL_REPLY_TO_ADDRESS=
    ```
 
-Both arrive with Yatris mail provisioning, after this release. If the
-Connections page has no SMTP section yet, or `yatris mail sync` is an
-unknown command, record the chosen route as the intent (`mail.source`,
-`mail.provisioning` in the brief), add `mail_setup` to `pending` and report
-it. Never substitute a different route.
+You do not run either route yourself. Record the chosen route as the intent
+(`mail.source`, `mail.provisioning` in the brief), add `mail_setup` to
+`pending` and report it. If the Connections page has no SMTP section yet,
+or `yatris mail sync` exits 69, say so; never substitute a different route.
 
 Ordinary form work never changes mail settings: a missing `.env` or a form
 sync never removes a configured profile.

@@ -207,16 +207,19 @@ describe('yatris forms', () => {
     expect(network).not.toHaveBeenCalled();
   });
 
-  for (const action of ['plan', 'apply', 'pull']) {
-    it(`${action} says synchronization is unavailable and exits ${EXIT_UNAVAILABLE}`, async () => {
+  for (const action of ['plan', 'pull']) {
+    it(`${action} in an unpaired repository exits 4 without touching the network`, async () => {
       const network = vi.spyOn(globalThis, 'fetch');
-      const result = await run(['forms', action], { cwd: site().root });
-      expect(result.code).toBe(EXIT_UNAVAILABLE);
-      expect(result.stdout).toBe('');
-      expect(result.stderr).toContain('synchronization with Yatris is not available yet');
+      const result = await run(['forms', action], { cwd: site().root, environment: { YATRIS_MCP_TOKEN: 'x' } });
+      expect(result.code).toBe(4);
+      expect(result.stderr).toContain('not paired');
       expect(network).not.toHaveBeenCalled();
     });
   }
+
+  it(`keeps exit ${EXIT_UNAVAILABLE} for capabilities Yatris does not offer`, () => {
+    expect(EXIT_UNAVAILABLE).toBe(69);
+  });
 
   it('an unknown action fails and the help lists the forms commands', async () => {
     expect((await run(['forms', 'sync'], { cwd: process.cwd() })).code).toBe(1);
