@@ -1,0 +1,2377 @@
+[
+  {
+    "name": "minimal time_slot setup",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "minimal business service setup",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "minimal business party setup",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "time_slot setup with an operations seed",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "online",
+            "type": "online",
+            "label": "オンライン"
+          },
+          {
+            "key": "office",
+            "type": "in_person",
+            "label": "本社"
+          }
+        ],
+        "resources": [
+          {
+            "key": "sato",
+            "kind": "host",
+            "label": "佐藤"
+          },
+          {
+            "key": "tanaka",
+            "kind": "host",
+            "label": "田中"
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 60,
+          "hostStrategy": "one_available",
+          "hostResourceKeys": [
+            "sato",
+            "tanaka"
+          ]
+        }
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "service setup with an operations seed",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "salon",
+            "type": "in_person",
+            "label": "本店"
+          }
+        ],
+        "resources": [
+          {
+            "key": "yamada",
+            "kind": "practitioner",
+            "label": "山田"
+          },
+          {
+            "key": "suzuki",
+            "kind": "practitioner",
+            "label": "鈴木"
+          },
+          {
+            "key": "spa_room",
+            "kind": "room",
+            "label": "スパルーム"
+          }
+        ],
+        "services": [
+          {
+            "key": "cut",
+            "label": "カット",
+            "durationMinutes": 60,
+            "variants": [
+              {
+                "key": "short",
+                "label": "ショート",
+                "durationMinutes": 45
+              },
+              {
+                "key": "long",
+                "label": "ロング",
+                "durationMinutes": 75
+              }
+            ],
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          },
+          {
+            "key": "color",
+            "label": "カラー",
+            "durationMinutes": 90,
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "party setup with an operations seed",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "manual",
+        "locations": [
+          {
+            "key": "restaurant",
+            "type": "in_person",
+            "label": "本店"
+          }
+        ],
+        "resources": [
+          {
+            "key": "t1",
+            "kind": "table",
+            "label": "t1",
+            "seats": {
+              "min": 1,
+              "max": 2
+            }
+          },
+          {
+            "key": "t2",
+            "kind": "table",
+            "label": "t2",
+            "seats": {
+              "min": 1,
+              "max": 2
+            }
+          },
+          {
+            "key": "t3",
+            "kind": "table",
+            "label": "t3",
+            "seats": {
+              "min": 2,
+              "max": 4
+            }
+          }
+        ],
+        "party": {
+          "minSize": 1,
+          "maxSize": 6,
+          "durationMinutes": 120,
+          "strategy": "tables",
+          "tableResourceKeys": [
+            "t1",
+            "t2",
+            "t3"
+          ],
+          "combinations": [
+            {
+              "key": "t1_t2",
+              "resourceKeys": [
+                "t1",
+                "t2"
+              ],
+              "seats": {
+                "min": 3,
+                "max": 4
+              }
+            }
+          ]
+        }
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "copy and success",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "copy": {
+        "pendingMessage": "受け付けました。\n確認後にご連絡します。",
+        "confirmedMessage": "確定しました。"
+      },
+      "success": {
+        "redirectPath": "/thanks/"
+      }
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a seed without confirmationMode is a warning",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "locations": [
+          {
+            "key": "online",
+            "type": "online",
+            "label": "オンライン"
+          },
+          {
+            "key": "office",
+            "type": "in_person",
+            "label": "本社"
+          }
+        ],
+        "resources": [
+          {
+            "key": "sato",
+            "kind": "host",
+            "label": "佐藤"
+          },
+          {
+            "key": "tanaka",
+            "kind": "host",
+            "label": "田中"
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 60,
+          "hostStrategy": "one_available",
+          "hostResourceKeys": [
+            "sato",
+            "tanaka"
+          ]
+        }
+      }
+    },
+    "errors": [],
+    "warnings": [
+      {
+        "path": "/operations/confirmationMode",
+        "code": "confirmation_mode_missing"
+      }
+    ]
+  },
+  {
+    "name": "not an object",
+    "setup": "consultation",
+    "errors": [
+      {
+        "path": "",
+        "code": "invalid_type"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "missing required properties",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja"
+    },
+    "errors": [
+      {
+        "path": "/identityFields",
+        "code": "required_property"
+      },
+      {
+        "path": "/mode",
+        "code": "required_property"
+      },
+      {
+        "path": "/questions",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "recipients are never declared",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "recipients": [
+        "owner@example.jp"
+      ]
+    },
+    "errors": [
+      {
+        "path": "/recipients",
+        "code": "unknown_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "unsupported contract version",
+    "setup": {
+      "contractVersion": 2,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/contractVersion",
+        "code": "out_of_range"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "setup key grammar",
+    "setup": {
+      "contractVersion": 1,
+      "key": "Consultation_1",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/key",
+        "code": "pattern_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "name length and line rules",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "あああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/name",
+        "code": "too_long"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a multi-line name",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談\nのご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/name",
+        "code": "pattern_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "only Japanese is supported",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "en",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/locale",
+        "code": "invalid_enum"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "unknown mode",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "walk_in",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/mode",
+        "code": "invalid_enum"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "unknown presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "table",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/presentation",
+        "code": "invalid_enum"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "wrong property types",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": 42,
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": "name",
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields",
+        "code": "invalid_type"
+      },
+      {
+        "path": "/name",
+        "code": "invalid_type"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "identity fields shape",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "mail": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "required_property"
+      },
+      {
+        "path": "/identityFields/mail",
+        "code": "unknown_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "identity field key grammar",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "Name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/name",
+        "code": "pattern_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "empty question list",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": []
+    },
+    "errors": [
+      {
+        "path": "/questions",
+        "code": "too_short"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "question shape issues use /questions paths",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "colour",
+          "type": "color",
+          "label": "c",
+          "required": false
+        },
+        {
+          "key": "memo",
+          "type": "textarea",
+          "label": "m"
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/questions/2/type",
+        "code": "unknown_node_type"
+      },
+      {
+        "path": "/questions/3/required",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "copy and success shapes",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "copy": {
+        "pendingMessage": "あああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああああ",
+        "note": "x"
+      },
+      "success": {}
+    },
+    "errors": [
+      {
+        "path": "/copy/note",
+        "code": "unknown_property"
+      },
+      {
+        "path": "/copy/pendingMessage",
+        "code": "too_long"
+      },
+      {
+        "path": "/success/redirectPath",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "success redirect path grammar",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "success": {
+        "redirectPath": "thanks"
+      }
+    },
+    "errors": [
+      {
+        "path": "/success/redirectPath",
+        "code": "pattern_mismatch"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "seed shape issues use /operations paths and skip every semantic rule",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "presentation": "party",
+      "operations": {
+        "slotIntervalMinutes": 7,
+        "holdMinutes": 60,
+        "recipients": []
+      }
+    },
+    "errors": [
+      {
+        "path": "/operations/holdMinutes",
+        "code": "out_of_range"
+      },
+      {
+        "path": "/operations/recipients",
+        "code": "unknown_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "business mode needs a presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/presentation",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "time_slot takes no presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "presentation": "service"
+    },
+    "errors": [
+      {
+        "path": "/presentation",
+        "code": "presentation_not_allowed"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a business seed without presentation skips the mode-section rules",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "salon",
+            "type": "in_person",
+            "label": "本店"
+          }
+        ],
+        "resources": [
+          {
+            "key": "yamada",
+            "kind": "practitioner",
+            "label": "山田"
+          },
+          {
+            "key": "suzuki",
+            "kind": "practitioner",
+            "label": "鈴木"
+          },
+          {
+            "key": "spa_room",
+            "kind": "room",
+            "label": "スパルーム"
+          }
+        ],
+        "services": [
+          {
+            "key": "cut",
+            "label": "カット",
+            "durationMinutes": 60,
+            "variants": [
+              {
+                "key": "short",
+                "label": "ショート",
+                "durationMinutes": 45
+              },
+              {
+                "key": "long",
+                "label": "ロング",
+                "durationMinutes": 75
+              }
+            ],
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          },
+          {
+            "key": "color",
+            "label": "カラー",
+            "durationMinutes": 90,
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 30,
+          "hostStrategy": "single",
+          "hostResourceKeys": [
+            "yamada"
+          ]
+        }
+      }
+    },
+    "errors": [
+      {
+        "path": "/operations/appointment/hostResourceKeys/0",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/presentation",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "identity fields must name inputs of the right type",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": false
+        },
+        {
+          "key": "email",
+          "type": "text",
+          "label": "メール",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "type": "email",
+          "label": "電話",
+          "required": false
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/name",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/phone",
+        "code": "identity_field_invalid"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "name and email must be unconditional, through every ancestor group",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "requiredWhen": {
+            "field": "booking.starts_at",
+            "operator": "isNotEmpty"
+          }
+        },
+        {
+          "key": "outer",
+          "type": "group",
+          "label": "連絡先",
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          },
+          "fields": [
+            {
+              "key": "inner",
+              "type": "group",
+              "fields": [
+                {
+                  "key": "email",
+                  "type": "email",
+                  "label": "メールアドレス",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/name",
+        "code": "identity_field_invalid"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a conditionally visible name or an optional email",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true,
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "online"
+          }
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": false
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/name",
+        "code": "identity_field_invalid"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "identity fields inside an unconditional group",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "contact",
+          "type": "group",
+          "label": "連絡先",
+          "fields": [
+            {
+              "key": "name",
+              "type": "text",
+              "label": "お名前",
+              "required": true
+            },
+            {
+              "key": "email",
+              "type": "email",
+              "label": "メールアドレス",
+              "required": true
+            }
+          ]
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "unknown identity keys",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "full_name",
+        "email": "mail",
+        "phone": "tel"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/name",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/phone",
+        "code": "identity_field_invalid"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "sensitive identity fields are invalid",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true,
+          "sensitive": true
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": false,
+          "sensitive": true
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/identityFields/email",
+        "code": "identity_field_invalid"
+      },
+      {
+        "path": "/identityFields/phone",
+        "code": "identity_field_invalid"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "phone may be optional and conditional",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email",
+        "phone": "phone"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "電話番号",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "a context key outside the mode is an unknown reference",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "menu",
+          "type": "text",
+          "label": "menu",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/questions/2/visibleWhen/field",
+        "code": "unknown_reference"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "party size only exists for party presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "kids",
+          "type": "text",
+          "label": "kids",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "3"
+          }
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/questions/2/visibleWhen/field",
+        "code": "unknown_reference"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "service and variant keys are checked against the seed",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "perm_notes",
+          "type": "text",
+          "label": "perm_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "perm"
+          }
+        },
+        {
+          "key": "long_notes",
+          "type": "text",
+          "label": "long_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "long"
+          }
+        },
+        {
+          "key": "extra_notes",
+          "type": "text",
+          "label": "extra_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "extra_long"
+          }
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "salon",
+            "type": "in_person",
+            "label": "本店"
+          }
+        ],
+        "resources": [
+          {
+            "key": "yamada",
+            "kind": "practitioner",
+            "label": "山田"
+          },
+          {
+            "key": "suzuki",
+            "kind": "practitioner",
+            "label": "鈴木"
+          },
+          {
+            "key": "spa_room",
+            "kind": "room",
+            "label": "スパルーム"
+          }
+        ],
+        "services": [
+          {
+            "key": "cut",
+            "label": "カット",
+            "durationMinutes": 60,
+            "variants": [
+              {
+                "key": "short",
+                "label": "ショート",
+                "durationMinutes": 45
+              },
+              {
+                "key": "long",
+                "label": "ロング",
+                "durationMinutes": 75
+              }
+            ],
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          },
+          {
+            "key": "color",
+            "label": "カラー",
+            "durationMinutes": 90,
+            "requirements": [
+              {
+                "resourceKeys": [
+                  "yamada",
+                  "suzuki"
+                ],
+                "count": 1
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": [
+      {
+        "path": "/questions/2/visibleWhen/value",
+        "code": "invalid_condition_value"
+      },
+      {
+        "path": "/questions/4/visibleWhen/value",
+        "code": "invalid_condition_value"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "without a seed any service or variant key is accepted",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "perm_notes",
+          "type": "text",
+          "label": "perm_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "perm"
+          }
+        },
+        {
+          "key": "long_notes",
+          "type": "text",
+          "label": "long_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "long"
+          }
+        },
+        {
+          "key": "extra_notes",
+          "type": "text",
+          "label": "extra_notes",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.variant_key",
+            "operator": "eq",
+            "value": "extra_long"
+          }
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "host and location keys are checked against the seed",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.host_key",
+            "operator": "eq",
+            "value": "sato"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.host_key",
+            "operator": "in",
+            "value": [
+              "tanaka",
+              "kimura"
+            ]
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "office"
+          }
+        },
+        {
+          "key": "d",
+          "type": "text",
+          "label": "d",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.location_key",
+            "operator": "eq",
+            "value": "home"
+          }
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "online",
+            "type": "online",
+            "label": "オンライン"
+          },
+          {
+            "key": "office",
+            "type": "in_person",
+            "label": "本社"
+          }
+        ],
+        "resources": [
+          {
+            "key": "sato",
+            "kind": "host",
+            "label": "佐藤"
+          },
+          {
+            "key": "tanaka",
+            "kind": "host",
+            "label": "田中"
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 60,
+          "hostStrategy": "one_available",
+          "hostResourceKeys": [
+            "sato",
+            "tanaka"
+          ]
+        }
+      }
+    },
+    "errors": [
+      {
+        "path": "/questions/3/visibleWhen/value",
+        "code": "invalid_condition_value"
+      },
+      {
+        "path": "/questions/5/visibleWhen/value",
+        "code": "invalid_condition_value"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "booking context operators and values",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "contains",
+            "value": "6"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.starts_at",
+            "operator": "gte",
+            "value": "tomorrow"
+          }
+        },
+        {
+          "key": "g",
+          "type": "group",
+          "label": "g",
+          "fields": [
+            {
+              "key": "c",
+              "type": "text",
+              "label": "c",
+              "required": false,
+              "visibleWhen": {
+                "field": "booking.host_key",
+                "operator": "eq",
+                "value": "sato"
+              }
+            }
+          ]
+        },
+        {
+          "key": "d",
+          "type": "text",
+          "label": "d",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.starts_at",
+            "operator": "gte",
+            "value": "2026-12-01T18:00"
+          }
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/questions/2/visibleWhen/operator",
+        "code": "invalid_operator"
+      },
+      {
+        "path": "/questions/3/visibleWhen/value",
+        "code": "invalid_condition_value"
+      },
+      {
+        "path": "/questions/4/fields/0/visibleWhen/field",
+        "code": "unknown_reference"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "duplicate question keys use /questions paths",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "memo",
+          "type": "text",
+          "label": "memo",
+          "required": false
+        },
+        {
+          "key": "memo",
+          "type": "text",
+          "label": "memo",
+          "required": false
+        }
+      ]
+    },
+    "errors": [
+      {
+        "path": "/questions/3/key",
+        "code": "duplicate_key"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "sensitive questions may carry conditions",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        },
+        {
+          "key": "allergy",
+          "type": "textarea",
+          "label": "アレルギー",
+          "required": false,
+          "sensitive": true,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "color"
+          }
+        }
+      ]
+    },
+    "errors": [],
+    "warnings": []
+  },
+  {
+    "name": "seed semantics use /operations paths",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic",
+        "locations": [
+          {
+            "key": "online",
+            "type": "online",
+            "label": "オンライン"
+          },
+          {
+            "key": "office",
+            "type": "in_person",
+            "label": "本社"
+          }
+        ],
+        "resources": [
+          {
+            "key": "sato",
+            "kind": "host",
+            "label": "佐藤"
+          },
+          {
+            "key": "tanaka",
+            "kind": "host",
+            "label": "田中"
+          }
+        ],
+        "appointment": {
+          "durationMinutes": 60,
+          "hostStrategy": "one_available",
+          "hostResourceKeys": [
+            "sato",
+            "tanaka"
+          ]
+        },
+        "timezone": "Asia/Nowhere",
+        "slotIntervalMinutes": 25,
+        "party": {
+          "minSize": 1,
+          "maxSize": 2,
+          "durationMinutes": 60,
+          "strategy": "pool",
+          "poolResourceKey": "sato"
+        }
+      }
+    },
+    "errors": [
+      {
+        "path": "/operations/party",
+        "code": "section_not_allowed"
+      },
+      {
+        "path": "/operations/party/poolResourceKey",
+        "code": "resource_kind_mismatch"
+      },
+      {
+        "path": "/operations/slotIntervalMinutes",
+        "code": "invalid_slot_interval"
+      },
+      {
+        "path": "/operations/timezone",
+        "code": "invalid_timezone"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a time_slot seed needs an appointment",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "automatic"
+      }
+    },
+    "errors": [
+      {
+        "path": "/operations/appointment",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  },
+  {
+    "name": "a party seed needs a party section",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "operations": {
+        "confirmationMode": "manual"
+      }
+    },
+    "errors": [
+      {
+        "path": "/operations/party",
+        "code": "required_property"
+      }
+    ],
+    "warnings": []
+  }
+]

@@ -48,6 +48,15 @@ them. The contract, renderer, styling classes, CLI and exit codes are
 documented in
 [`contracts/forms/v1/README.md`](contracts/forms/v1/README.md).
 
+## Reservations
+
+`@yatris/astro/reservations` holds reservation contract v1: the setup
+declaration (`src/reservations/<key>.json`) and operations validators, the
+`booking.*` question context, the public definition projection and the API
+error messages. Questions reuse the contact-form contract. The contract,
+semantics, wire formats and fixtures are documented in
+[`contracts/reservations/v1/README.md`](contracts/reservations/v1/README.md).
+
 ## Development
 
 Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).

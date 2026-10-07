@@ -12,7 +12,8 @@ export const SCHEMA_ID = 'https://yatris.jp/schemas/forms/v1/declaration.schema.
 
 type Json = Record<string, unknown>;
 
-function emit(spec: PropSpec): Json {
+/** The JSON Schema of one property spec; `nodes`, `condition` and `decimal` refer to `formsSchemaDefs()`. */
+export function emit(spec: PropSpec): Json {
   switch (spec.kind) {
     case 'string': {
       if (spec.enum) return { type: 'string', enum: [...spec.enum] };
@@ -56,7 +57,7 @@ function emit(spec: PropSpec): Json {
   }
 }
 
-function objectSchema(props: Record<string, PropSpec>, required: readonly string[], extra: Json = {}): Json {
+export function objectSchema(props: Record<string, PropSpec>, required: readonly string[], extra: Json = {}): Json {
   const properties: Json = {};
   for (const [key, spec] of Object.entries(props)) properties[key] = emit(spec);
   Object.assign(properties, extra);
@@ -68,9 +69,6 @@ function nodeSchema(name: string, type: NodeType): Json {
 }
 
 export function declarationJsonSchema(): Json {
-  const nodeDefs: Json = {};
-  for (const name of NODE_TYPE_NAMES) nodeDefs[`node_${name}`] = nodeSchema(name, NODE_TYPES[name]);
-  const scalar = [{ type: 'string', maxLength: 500 }, { type: 'number' }, { type: 'boolean' }];
   return {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: SCHEMA_ID,
@@ -78,36 +76,44 @@ export function declarationJsonSchema(): Json {
     description:
       'Generated from the @yatris/astro forms registry; do not edit. Semantic rules (unique keys, references, operators, cycles, defaults, mail fields, placeholders) are enforced by the Yatris validators, not by this schema.',
     ...objectSchema(DECLARATION.props, DECLARATION.required),
-    $defs: {
-      decimal: { oneOf: [{ type: 'number' }, { type: 'string', pattern: DECIMAL_PATTERN }] },
-      node: { oneOf: NODE_TYPE_NAMES.map((name) => ({ $ref: `#/$defs/node_${name}` })) },
-      ...nodeDefs,
-      condition: {
-        oneOf: [
-          ...(['all', 'any'] as const).map((k) => ({
-            type: 'object',
-            properties: { [k]: { type: 'array', items: { $ref: '#/$defs/condition' }, minItems: 1, maxItems: MAX_CONDITION_BRANCHES } },
-            required: [k],
-            additionalProperties: false,
-          })),
-          { type: 'object', properties: { not: { $ref: '#/$defs/condition' } }, required: ['not'], additionalProperties: false },
-          {
-            type: 'object',
-            properties: {
-              field: { type: 'string' },
-              operator: { type: 'string', enum: [...CONDITION_OPERATORS] },
-              value: {
-                oneOf: [
-                  ...scalar,
-                  { type: 'array', minItems: 1, maxItems: MAX_CONDITION_LIST, items: { oneOf: [{ type: 'string', maxLength: 500 }, { type: 'number' }] } },
-                ],
-              },
+    $defs: formsSchemaDefs(),
+  };
+}
+
+/** The `$defs` any schema embedding form nodes needs: `decimal`, `node`, `node_<type>` and `condition`. */
+export function formsSchemaDefs(): Json {
+  const nodeDefs: Json = {};
+  for (const name of NODE_TYPE_NAMES) nodeDefs[`node_${name}`] = nodeSchema(name, NODE_TYPES[name]);
+  const scalar = [{ type: 'string', maxLength: 500 }, { type: 'number' }, { type: 'boolean' }];
+  return {
+    decimal: { oneOf: [{ type: 'number' }, { type: 'string', pattern: DECIMAL_PATTERN }] },
+    node: { oneOf: NODE_TYPE_NAMES.map((name) => ({ $ref: `#/$defs/node_${name}` })) },
+    ...nodeDefs,
+    condition: {
+      oneOf: [
+        ...(['all', 'any'] as const).map((k) => ({
+          type: 'object',
+          properties: { [k]: { type: 'array', items: { $ref: '#/$defs/condition' }, minItems: 1, maxItems: MAX_CONDITION_BRANCHES } },
+          required: [k],
+          additionalProperties: false,
+        })),
+        { type: 'object', properties: { not: { $ref: '#/$defs/condition' } }, required: ['not'], additionalProperties: false },
+        {
+          type: 'object',
+          properties: {
+            field: { type: 'string' },
+            operator: { type: 'string', enum: [...CONDITION_OPERATORS] },
+            value: {
+              oneOf: [
+                ...scalar,
+                { type: 'array', minItems: 1, maxItems: MAX_CONDITION_LIST, items: { oneOf: [{ type: 'string', maxLength: 500 }, { type: 'number' }] } },
+              ],
             },
-            required: ['field', 'operator'],
-            additionalProperties: false,
           },
-        ],
-      },
+          required: ['field', 'operator'],
+          additionalProperties: false,
+        },
+      ],
     },
   };
 }

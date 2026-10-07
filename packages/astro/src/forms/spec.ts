@@ -153,4 +153,15 @@ function checkConditionValueShape(value: unknown, path: string, issues: Issue[])
   if (!scalar(value)) issues.push({ path, code: 'invalid_type' });
 }
 
+/** Deduplicated and sorted by path, then code (UTF-16 code unit order). */
+export function tidy(issues: Issue[]): Issue[] {
+  const seen = new Map<string, Issue>();
+  for (const issue of issues) seen.set(`${issue.path}\u0000${issue.code}`, issue);
+  return [...seen.values()].sort((a, b) => (a.path === b.path ? cmp(a.code, b.code) : cmp(a.path, b.path)));
+}
+
+function cmp(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
 export { DECIMAL_PATTERN, LINE_PATTERN, MULTILINE_PATTERN };

@@ -73,6 +73,8 @@ expect(name === '@yatris/astro', 'integration imports from the installed package
 const capabilities = sh(`node --input-type=module -e "import { SUPPORTED_CAPABILITIES } from '@yatris/astro/forms/client'; import { formMountConfig } from '@yatris/astro/forms/mount'; console.log(SUPPORTED_CAPABILITIES.includes('confirm_step') && formMountConfig({ mode: 'live', origin: 'https://app.yatris.jp', websiteId: 1, timeZone: 'Asia/Tokyo' }, { form: 'contact' }).publicKey)"`, appDir);
 expect(capabilities === '1.contact', 'the forms renderer and mount helper import from the installed package');
 expect(sh('npm exec --offline -- yatris forms validate', appDir).includes('no declarations'), 'yatris forms validate runs');
+const reservation = sh(`node --input-type=module -e "import { validateSetup } from '@yatris/astro/reservations'; import { readFileSync } from 'node:fs'; const setup = JSON.parse(readFileSync(new URL(import.meta.resolve('@yatris/astro/contracts/reservations/v1/examples/salon.json')), 'utf8')); console.log(validateSetup(setup).valid)"`, appDir);
+expect(reservation === 'true', 'the reservation contract and its examples import from the installed package');
 
 // A site scaffolded by the installed create-yatris (files only) carries the
 // contact-form skill in both agent locations and the root guidance, and the

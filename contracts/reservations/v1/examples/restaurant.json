@@ -1,0 +1,110 @@
+{
+  "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+  "contractVersion": 1,
+  "key": "restaurant",
+  "name": "お席のご予約",
+  "locale": "ja",
+  "mode": "business",
+  "presentation": "party",
+  "identityFields": { "name": "name", "email": "email", "phone": "phone" },
+  "questions": [
+    { "key": "name", "type": "text", "label": "お名前", "required": true, "autocomplete": "name" },
+    { "key": "email", "type": "email", "label": "メールアドレス", "required": true, "autocomplete": "email" },
+    {
+      "key": "phone",
+      "type": "tel",
+      "label": "電話番号",
+      "help": "6名様以上のご予約は、確認のためお電話することがあります。",
+      "required": false,
+      "autocomplete": "tel",
+      "requiredWhen": { "field": "booking.party_size", "operator": "gte", "value": "6" }
+    },
+    {
+      "key": "occasion",
+      "type": "select",
+      "label": "ご利用目的",
+      "required": false,
+      "prompt": "選択してください",
+      "options": [
+        { "value": "meal", "label": "お食事" },
+        { "value": "birthday", "label": "誕生日・記念日" },
+        { "value": "business", "label": "接待・会食" }
+      ]
+    },
+    {
+      "key": "children",
+      "type": "number",
+      "label": "お子様の人数",
+      "required": false,
+      "validation": { "min": 0, "max": 8, "step": 1 },
+      "visibleWhen": { "field": "booking.party_size", "operator": "gte", "value": "2" }
+    },
+    {
+      "key": "allergies",
+      "type": "textarea",
+      "label": "食物アレルギー",
+      "help": "アレルギーのある食材をご記入ください。調理担当のみが確認します。",
+      "required": false,
+      "rows": 3,
+      "sensitive": true
+    }
+  ],
+  "copy": {
+    "pendingMessage": "ご予約リクエストを受け付けました。店舗で確認のうえ、12時間以内に確定のご連絡をいたします。",
+    "confirmedMessage": "ご予約が確定しました。ご来店をお待ちしております。"
+  },
+  "success": { "redirectPath": "/reserve/thanks/" },
+  "operations": {
+    "timezone": "Asia/Tokyo",
+    "slotIntervalMinutes": 30,
+    "bookingHorizonDays": 30,
+    "minimumLeadMinutes": 120,
+    "holdMinutes": 5,
+    "confirmationMode": "manual",
+    "approvalWindowMinutes": 720,
+    "cancelCutoffMinutes": 180,
+    "rescheduleCutoffMinutes": 180,
+    "reminderMinutesBefore": 1440,
+    "venueHours": {
+      "weekly": [
+        { "day": "tuesday", "start": "11:30", "end": "14:00" },
+        { "day": "tuesday", "start": "17:30", "end": "22:00" },
+        { "day": "wednesday", "start": "11:30", "end": "14:00" },
+        { "day": "wednesday", "start": "17:30", "end": "22:00" },
+        { "day": "thursday", "start": "11:30", "end": "14:00" },
+        { "day": "thursday", "start": "17:30", "end": "22:00" },
+        { "day": "friday", "start": "11:30", "end": "14:00" },
+        { "day": "friday", "start": "17:30", "end": "23:00" },
+        { "day": "saturday", "start": "11:30", "end": "23:00" },
+        { "day": "sunday", "start": "11:30", "end": "21:00" }
+      ],
+      "exceptions": [
+        { "date": "2026-12-31", "hours": [{ "start": "11:30", "end": "15:00" }] },
+        { "date": "2027-01-01", "closed": true }
+      ]
+    },
+    "locations": [
+      {
+        "key": "restaurant",
+        "type": "in_person",
+        "label": "梅田本店",
+        "address": "大阪府大阪市北区梅田2-2-2 グルメビル1階"
+      }
+    ],
+    "resources": [
+      { "key": "t1", "kind": "table", "label": "テーブル1", "seats": { "min": 1, "max": 2 } },
+      { "key": "t2", "kind": "table", "label": "テーブル2", "seats": { "min": 1, "max": 2 } },
+      { "key": "t3", "kind": "table", "label": "テーブル3", "seats": { "min": 2, "max": 4 } },
+      { "key": "t4", "kind": "table", "label": "個室", "seats": { "min": 4, "max": 8 } }
+    ],
+    "party": {
+      "minSize": 1,
+      "maxSize": 8,
+      "durationMinutes": 120,
+      "bufferAfterMinutes": 15,
+      "strategy": "tables",
+      "tableResourceKeys": ["t1", "t2", "t3", "t4"],
+      "combinations": [{ "key": "t1_t2", "resourceKeys": ["t1", "t2"], "seats": { "min": 3, "max": 4 } }]
+    }
+  }
+}

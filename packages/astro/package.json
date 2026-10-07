@@ -69,7 +69,12 @@
       "types": "./dist/forms-mount.d.ts",
       "default": "./dist/forms-mount.js"
     },
+    "./reservations": {
+      "types": "./dist/reservations/index.d.ts",
+      "default": "./dist/reservations/index.js"
+    },
     "./contracts/forms/v1/*": "./contracts/forms/v1/*",
+    "./contracts/reservations/v1/*": "./contracts/reservations/v1/*",
     "./YatrisHead.astro": "./components/YatrisHead.astro",
     "./YatrisForm.astro": "./components/YatrisForm.astro",
     "./YatrisBodyStart.astro": "./components/YatrisBodyStart.astro",
