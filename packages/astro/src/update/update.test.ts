@@ -202,6 +202,38 @@ describe('applying an update', () => {
     expect(Object.keys(readPlatformLock(site)!.managed)).toEqual(expect.arrayContaining(skillFiles));
   });
 
+  it('delivers the yatris-reservation skill and its guidance to a site scaffolded before it existed (YatrisCMS#422)', async () => {
+    // The site as a release without the skill scaffolded it: contact forms, no reservations
+    const older = mkdtempSync(join(tmpdir(), 'yatris-update-older-'));
+    cpSync(join(repo, 'skills'), join(older, 'skills'), { recursive: true, filter: (path) => !path.includes('yatris-reservation') });
+    const agents = readFileSync(join(repo, 'template/AGENTS.md'), 'utf8');
+    writeFileSync(join(older, 'AGENTS.md'), agents.replace(/- \*\*Reservations always use Yatris[\s\S]*?(?=- \*\*No runtime CDNs)/, ''));
+    rmSync(site, { recursive: true, force: true });
+    site = scaffold({ skillsDir: join(older, 'skills'), agentsTemplate: join(older, 'AGENTS.md') });
+    rmSync(older, { recursive: true, force: true });
+    expect(read('AGENTS.md')).not.toContain('yatris-reservation');
+    expect(read('AGENTS.md')).toContain('`yatris-contact-form`');
+
+    const withSkill = { skillsDir: join(repo, 'skills'), agentsTemplate: join(repo, 'template/AGENTS.md') };
+    const skillFiles = Object.keys(managedArtifacts(withSkill, current.mcp.url)).filter((key) => key.includes('/yatris-reservation/'));
+    const plan = planUpdate(site, readPlatformLock(site)!, next, withSkill);
+
+    expect(skillFiles).toEqual(
+      expect.arrayContaining(['.agents/skills/yatris-reservation/SKILL.md', '.claude/skills/yatris-reservation/SKILL.md', '.agents/skills/yatris-reservation/references/brief.schema.json', '.claude/skills/yatris-reservation/references/brief.schema.json']),
+    );
+    expect(plan.conflicts).toEqual([]);
+    expect(plan.files.filter((f) => f.kind === 'add').map((f) => f.key)).toEqual(expect.arrayContaining(skillFiles));
+    expect(plan.files.find((f) => f.key === AGENTS_BLOCK)?.kind).toBe('update');
+
+    const exec = fakeExec();
+    expect(await applyUpdate(site, plan, next, '@yatris/astro@0.1.0', { exec: exec.fn, log: () => {} })).toEqual({ ok: true });
+    for (const key of skillFiles) expect(read(key), key).toBe(readFileSync(join(repo, 'skills', key.replace(/^\.(agents|claude)\/skills\//, '')), 'utf8').replace(/\r\n/g, '\n'));
+    expect(read('AGENTS.md')).toContain('**Reservations always use Yatris**');
+    expect(read('AGENTS.md')).toContain('`yatris-reservation`');
+    expect(read('AGENTS.md')).toContain('お客様固有のメモ');
+    expect(Object.keys(readPlatformLock(site)!.managed)).toEqual(expect.arrayContaining(skillFiles));
+  });
+
   it('restores exactly the files it touched when verification fails', async () => {
     const before = new Map(['package.json', 'package-lock.json', PLATFORM_LOCK_PATH, 'AGENTS.md', '.claude/skills/alpinejs-development/SKILL.md'].map((p) => [p, read(p)]));
     const exec = fakeExec(/npm run doctor/);

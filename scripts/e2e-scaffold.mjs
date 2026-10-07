@@ -68,6 +68,26 @@ expect(
     ['.agents/skills', '.claude/skills'].every((location) => sha(`${location}/yatris-contact-form/SKILL.md`) === sha('.agents/skills/yatris-contact-form/SKILL.md') && existsSync(join(site, location, 'yatris-contact-form/references/brief.schema.json'))),
   'the new site tells agents to use Yatris for contact forms and ships the yatris-contact-form skill to both agents (YatrisCMS#381)',
 );
+const reservationSkill = readdirSync(join(root, 'skills/yatris-reservation'), { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => join(entry.parentPath, entry.name).slice(join(root, 'skills/yatris-reservation').length + 1).replaceAll('\\', '/'));
+const sourceSha = (file) => createHash('sha256').update(readFileSync(join(root, 'skills/yatris-reservation', file))).digest('hex');
+expect(
+  read('AGENTS.md').includes('Reservations always use Yatris') &&
+    read('AGENTS.md').includes('`yatris-reservation`') &&
+    reservationSkill.length >= 10 &&
+    ['.agents/skills', '.claude/skills'].every((location) => reservationSkill.every((file) => existsSync(join(site, location, 'yatris-reservation', file)) && sha(`${location}/yatris-reservation/${file}`) === sourceSha(file))),
+  `the new site tells agents to use Yatris for reservations and ships all ${reservationSkill.length} yatris-reservation skill files to both agents, byte for byte (YatrisCMS#422)`,
+);
+{
+  // The skill's seed-less example declaration validates with the site's installed contract
+  const examples = read('.claude/skills/yatris-reservation/references/examples.md').replace(/\r\n/g, '\n');
+  mkdirSync(join(site, '.e2e-reservation'), { recursive: true });
+  writeFileSync(join(site, '.e2e-reservation/setup.json'), /```json\n([\s\S]*?)```/.exec(examples)[1]);
+  const valid = sh(`node --input-type=module -e "import { validateSetup } from '@yatris/astro/reservations'; import { readFileSync } from 'node:fs'; const r = validateSetup(JSON.parse(readFileSync('.e2e-reservation/setup.json', 'utf8'))); console.log(r.valid && r.errors.length === 0)"`, site).trim();
+  rmSync(join(site, '.e2e-reservation'), { recursive: true, force: true });
+  expect(valid === 'true', 'the yatris-reservation skill example declaration validates with the installed @yatris/astro');
+}
 
 const html = read('dist/index.html');
 expect(html.includes('<html lang="ja">') && html.includes('<title>ホーム</title>'), 'home page has a language and a title');

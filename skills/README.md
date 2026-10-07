@@ -20,6 +20,7 @@ directories with their `references/`, to existing sites.
 | `tailwindcss-development` | Tailwind CSS 4 styling rules |
 | `alpinejs-development` | Alpine.js 3 interaction rules |
 | `yatris-contact-form` | Contact and inquiry forms through Yatris: adaptive interview, resumable brief (`src/forms/<key>.brief.json`), declaration, `<YatrisForm>`, honest hand-off. Its `references/` are checked by `packages/astro/src/forms-skill.test.ts`. |
+| `yatris-reservation` | Reservations through Yatris for time-slot, service and party bookings: a mode-aware interview, resumable brief (`src/reservations/<key>.brief.json`, `references/brief.schema.json`), declaration with an optional one-time operations seed, `<ReservationEmbed>`, readiness blockers. Checked by `packages/astro/src/reservation-skill.test.ts`. |
 
 ## Attribution
 

@@ -118,6 +118,27 @@ describe('createProject', () => {
     }
   });
 
+  it('scaffolds the yatris-reservation skill to both agents and the root guidance that points to it (YatrisCMS#422)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const skill = files(join(sources.skillsDir, 'yatris-reservation'));
+
+    expect(skill).toEqual(expect.arrayContaining(['SKILL.md', 'references/brief.schema.json', 'references/interview.md', 'references/examples.md', 'references/readiness.md']));
+    for (const location of SKILL_LOCATIONS) {
+      expect(files(join(target, location, 'yatris-reservation'))).toEqual(skill);
+      for (const file of skill) {
+        expect(readFileSync(join(target, location, 'yatris-reservation', file)), file).toEqual(readFileSync(join(sources.skillsDir, 'yatris-reservation', file)));
+      }
+    }
+    const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('**Reservations always use Yatris**');
+    expect(agents).toContain('`yatris-reservation`');
+
+    const lock = readPlatformLock(target)!;
+    for (const location of SKILL_LOCATIONS) {
+      for (const file of skill) expect(lock.managed[`${location}/yatris-reservation/${file}`], file).toMatch(/^sha256:/);
+    }
+  });
+
   it('records the platform release and every managed artifact as written', () => {
     const target = createProject({ targetDir: join(work, 'site') }, sources);
     const lock = readPlatformLock(target)!;
