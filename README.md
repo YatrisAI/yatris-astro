@@ -67,6 +67,15 @@ against clearly labelled synthetic hosts and availability (builds refuse
 preview), and `yatris reservations validate` checks them offline. The booking
 flow itself is `@yatris/astro/booking/client`, shared with the hosted page.
 
+`yatris reservations plan`, `apply --plan` and `pull` synchronize setup
+definitions with Yatris drafts through the Product MCP, with the contact-form
+rules and exit codes (never publishing, never deleting), recording the
+baseline in `.yatris/reservations.lock.json`. They cover setup definitions
+only: a declaration's `operations` seed is used once, when apply creates the
+setup, and afterwards daily operations live in Yatris, are never reported as
+drift and are never written by `pull`. `yatris reservations status <key>`
+shows readiness and the live operations from Yatris.
+
 ## Development
 
 Requires Node.js 22.19 or later (the pinned Astro stack depends on undici 8).

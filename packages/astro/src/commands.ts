@@ -119,7 +119,7 @@ export async function run(argv: string[], env: CliEnvironment = { cwd: process.c
   }
 
   if (first === 'reservations') {
-    return runReservations(rest, env.cwd);
+    return runReservations(rest, env.cwd, remoteOptions(env));
   }
 
   if (first === 'mail') {

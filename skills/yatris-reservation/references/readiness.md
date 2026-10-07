@@ -13,7 +13,7 @@ and in the final report, with who resolves each one.
 | `recipient_setup` | Booking notification recipients for this setup | The Website Owner, in Yatris; each address confirmed by link |
 | `embedding_origins` | The site origins the booking page may be embedded in | Yatris staff register them |
 | `staff_review` | Sensitive questions, their consent and purpose notice | Yatris staff review before publication |
-| `yatris_import` | The declaration is not in Yatris yet | Yatris staff (setup builder), or setup synchronization once it exists |
+| `yatris_import` | The declaration is not in Yatris yet | `npx yatris reservations plan` and `apply` (saves a draft), or Yatris staff in the setup builder |
 | `staff_publication` | The setup is not published | Yatris staff |
 | `pairing` | The site is not paired (`websiteId` is `null`) | Yatris staff |
 | `mail_setup` | The client wants their own sender, not yet active | The Website Owner on the Connections page, or staff |

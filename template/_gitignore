@@ -18,6 +18,10 @@ npm-debug.log*
 # never commit or deploy it (the lock, .yatris/forms.lock.json, is committed)
 .yatris/forms.plan.json
 
+# yatris reservations plan: the same for reservation setups (the lock,
+# .yatris/reservations.lock.json, is committed)
+.yatris/reservations.plan.json
+
 # environment variables and local credentials (never commit Yatris keys)
 .env
 .env.*
