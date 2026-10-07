@@ -1,6 +1,6 @@
 {
   "name": "@yatris/astro",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Yatris Astro integration, build contract and the yatris CLI for Yatris-managed websites.",
   "license": "MIT",
   "type": "module",
