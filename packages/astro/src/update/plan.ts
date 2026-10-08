@@ -146,13 +146,16 @@ function seededFiles(root: string, templateDir: string): FileChange[] {
 
 /** Where `yatris forms plan` writes its plan (`DEFAULT_PLAN_PATH` in forms-sync). */
 export const FORMS_PLAN_PATH = '.yatris/forms.plan.json';
+/** Where `yatris reservations plan` writes its plan (`DEFAULT_RESERVATIONS_PLAN_PATH` in reservations-sync). */
+export const RESERVATIONS_PLAN_PATH = '.yatris/reservations.plan.json';
 
 /**
  * What `.gitignore` needs, as Git itself matches the site's ignore rules:
  * - a seeded `.env.example` committed while `.env` stays ignored (an older
  *   site may ignore `.env.*` without re-including `.env.example`);
- * - the local forms plan ignored. New sites get that rule from the template;
- *   sites created before contact forms do not (YatrisCMS#395).
+ * - the local forms and reservations plans ignored. New sites get those
+ *   rules from the template; sites created before contact forms
+ *   (YatrisCMS#395) or reservations sync (YatrisCMS#432) do not.
  * Nothing is checked, and nothing appended, outside a Git work tree.
  */
 export async function planIgnoreRules(root: string, plan: UpdatePlan, exec: Exec): Promise<string[]> {
@@ -167,6 +170,7 @@ export async function planIgnoreRules(root: string, plan: UpdatePlan, exec: Exec
     if (await ignored('.env.example')) rules.push('!.env.example');
   }
   if (!(await ignored(FORMS_PLAN_PATH))) rules.push(FORMS_PLAN_PATH);
+  if (!(await ignored(RESERVATIONS_PLAN_PATH))) rules.push(RESERVATIONS_PLAN_PATH);
   return rules;
 }
 
@@ -235,6 +239,7 @@ const IGNORE_REASON: Record<string, string> = {
   '.env': 'keep local keys out of Git',
   '!.env.example': 'commit the template; .env stays ignored',
   [FORMS_PLAN_PATH]: 'a local forms sync plan, never committed or deployed',
+  [RESERVATIONS_PLAN_PATH]: 'a local reservations sync plan, never committed or deployed',
 };
 
 export const CONFLICT_TEXT: Record<ConflictReason, string> = {

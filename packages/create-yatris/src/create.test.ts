@@ -68,6 +68,15 @@ describe('createProject', () => {
     expect(ignored).toEqual(expect.arrayContaining(['.env', '.env.*', '!.env.example']));
   });
 
+  it('ignores the local forms and reservations sync plans, not their locks (YatrisCMS#395, #432)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const ignored = readFileSync(join(target, '.gitignore'), 'utf8').split(/\r?\n/);
+
+    expect(ignored).toEqual(expect.arrayContaining(['.yatris/forms.plan.json', '.yatris/reservations.plan.json']));
+    expect(ignored).not.toContain('.yatris/reservations.lock.json');
+    expect(ignored).not.toContain('.yatris/forms.lock.json');
+  });
+
   it('pins every dependency to the platform release', () => {
     const target = createProject({ targetDir: join(work, 'My Site') }, sources);
     const pkg = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8'));

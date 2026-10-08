@@ -179,7 +179,10 @@ describe('yatris reservations', () => {
   });
 
   it('an unknown action fails and the help lists the reservations command', async () => {
-    expect((await run(['reservations', 'plan'], { cwd: process.cwd() })).code).toBe(1);
-    expect((await run(['--help'], { cwd: process.cwd() })).stdout).toContain('reservations validate [<path>…]');
+    expect((await run(['reservations', 'sync'], { cwd: process.cwd() })).code).toBe(1);
+    const help = (await run(['--help'], { cwd: process.cwd() })).stdout;
+    expect(help).toContain('reservations validate [<path>…]');
+    expect(help).toContain('reservations plan [--json]');
+    expect(help).toContain('reservations pull [<key>…] [--draft] [--json]');
   });
 });

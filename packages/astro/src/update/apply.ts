@@ -225,7 +225,7 @@ function appendIgnoreRules(root: string, rules: string[]): void {
   const path = join(root, '.gitignore');
   const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
   const separator = current === '' ? '' : current.endsWith('\n') ? '\n' : '\n\n';
-  writeFileSync(path, `${current}${separator}# Added by yatris update: keep local keys and the forms plan out of Git; commit .env.example\n${rules.join('\n')}\n`);
+  writeFileSync(path, `${current}${separator}# Added by yatris update: keep local keys and the sync plans out of Git; commit .env.example\n${rules.join('\n')}\n`);
 }
 
 /** The site's own checks: its doctor (which builds), else the build; then its tests. */

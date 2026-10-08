@@ -12,7 +12,8 @@ import { applyUpdate, TRANSACTION_DIR } from './apply.js';
 import { CONFLICTS_DIR, runUpdate, type UpdateEnvironment } from './command.js';
 import { exec as realExec, type Exec } from './exec.js';
 import { DEFAULT_PLAN_PATH } from '../forms-sync.js';
-import { FORMS_PLAN_PATH, planUpdate } from './plan.js';
+import { DEFAULT_RESERVATIONS_PLAN_PATH } from '../reservations-sync.js';
+import { FORMS_PLAN_PATH, planUpdate, RESERVATIONS_PLAN_PATH } from './plan.js';
 import { newestStable, type UpdateSource } from './source.js';
 import { isMajorChange, isStable, nodeSatisfies } from './versions.js';
 
@@ -76,10 +77,10 @@ const read = (path: string) => readFileSync(join(site, path), 'utf8');
 /**
  * Fakes npm and git: records commands, lets `npm install` pin versions, fails
  * what it is told to. `git check-ignore` answers from `ignored` (by default
- * the template's rules: `.env` and the forms plan ignored, `.env.example`
+ * the template's rules: `.env` and the sync plans ignored, `.env.example`
  * committed).
  */
-function fakeExec(fail: RegExp | null = null, ignored: string[] = ['.env', '.yatris/forms.plan.json']) {
+function fakeExec(fail: RegExp | null = null, ignored: string[] = ['.env', '.yatris/forms.plan.json', '.yatris/reservations.plan.json']) {
   const commands: string[] = [];
   const fn: Exec = async (command) => {
     const line = command.join(' ');
@@ -396,13 +397,13 @@ describe('seeding .env.example (YatrisCMS#329)', () => {
 
     expect(result.code).toBe(0);
     expect(read('.env.example')).toBe(ours);
-    // Only the forms plan rule is checked when nothing is seeded
-    expect(exec.commands.filter((c) => c.startsWith('git check-ignore'))).toEqual(['git check-ignore -q --no-index -- .yatris/forms.plan.json']);
+    // Only the sync plan rules are checked when nothing is seeded
+    expect(exec.commands.filter((c) => c.startsWith('git check-ignore'))).toEqual(['git check-ignore -q --no-index -- .yatris/forms.plan.json', 'git check-ignore -q --no-index -- .yatris/reservations.plan.json']);
   });
 
   it('shows it in a dry run, and writes nothing', async () => {
     const logged: string[] = [];
-    const result = await runUpdate(args('--dry-run'), env(fakeExec(null, ['.env', '.env.example', '.yatris/forms.plan.json']).fn, { log: (line) => logged.push(line) }));
+    const result = await runUpdate(args('--dry-run'), env(fakeExec(null, ['.env', '.env.example', '.yatris/forms.plan.json', '.yatris/reservations.plan.json']).fn, { log: (line) => logged.push(line) }));
 
     expect(result.stdout).toContain('nothing was written');
     expect(logged.join('\n')).toContain(
@@ -420,9 +421,9 @@ describe('seeding .env.example (YatrisCMS#329)', () => {
     await realExec(['git', 'init', '-q'], { cwd: site });
     const cases = [
       // An older site: .env.* ignored, with no exception for the example
-      { before: 'node_modules/\n.env\n.env.*\n', appended: ['!.env.example', '.yatris/forms.plan.json'] },
+      { before: 'node_modules/\n.env\n.env.*\n', appended: ['!.env.example', '.yatris/forms.plan.json', '.yatris/reservations.plan.json'] },
       // A site that never ignored .env at all
-      { before: 'node_modules/', appended: ['.env', '.yatris/forms.plan.json'] },
+      { before: 'node_modules/', appended: ['.env', '.yatris/forms.plan.json', '.yatris/reservations.plan.json'] },
     ];
 
     for (const { before, appended } of cases) {
@@ -440,6 +441,7 @@ describe('seeding .env.example (YatrisCMS#329)', () => {
       expect(await gitIgnores('.env')).toBe(true);
       expect(await gitIgnores('.env.example')).toBe(false);
       expect(await gitIgnores('.yatris/forms.plan.json')).toBe(true);
+      expect(await gitIgnores('.yatris/reservations.plan.json')).toBe(true);
     }
   });
 });
@@ -463,8 +465,9 @@ describe('ignoring the local forms plan (YatrisCMS#395)', () => {
     expect(result.code).toBe(0);
     const text = read('.gitignore');
     expect(text.startsWith(before)).toBe(true);
-    expect(text.slice(before.length).trim().split('\n').slice(1)).toEqual(['.yatris/forms.plan.json']);
+    expect(text.slice(before.length).trim().split('\n').slice(1)).toEqual(['.yatris/forms.plan.json', '.yatris/reservations.plan.json']);
     expect((await realExec(['git', 'check-ignore', '-q', '--', '.yatris/forms.plan.json'], { cwd: site })).code).toBe(0);
+    expect((await realExec(['git', 'check-ignore', '-q', '--', '.yatris/reservations.plan.json'], { cwd: site })).code).toBe(0);
 
     // A later update finds the rule and appends nothing
     writePlatformLock(site, { ...readPlatformLock(site)!, platformVersion: '0.0.0' });
@@ -474,6 +477,38 @@ describe('ignoring the local forms plan (YatrisCMS#395)', () => {
 
   it('matches the path yatris forms plan writes', () => {
     expect(FORMS_PLAN_PATH).toBe(DEFAULT_PLAN_PATH);
+  });
+});
+
+describe('ignoring the local reservations plan (YatrisCMS#432)', () => {
+  const env = (exec: Exec): UpdateEnvironment => ({ cwd: site, exec, log: () => {} });
+  const args = (...more: string[]) => [...more, '--resolved', release, '--install-spec', '@yatris/astro@0.1.0'];
+  const withGit =
+    (fake: Exec): Exec =>
+    (command, options) =>
+      command[0] === 'git' ? realExec(command, options) : fake(command, options);
+
+  it('adds only the reservations rule to a site that already ignores the forms plan, and only once', async () => {
+    await realExec(['git', 'init', '-q'], { cwd: site });
+    writeFileSync(join(site, '.env.example'), 'YATRIS_DELIVERY_ENDPOINT=\n');
+    const before = 'node_modules/\n.env\n.yatris/forms.plan.json\n';
+    writeFileSync(join(site, '.gitignore'), before);
+
+    const result = await runUpdate(args('--yes', '--to', '0.1.0', '--major', '--allow-dirty'), env(withGit(fakeExec().fn)));
+
+    expect(result.code).toBe(0);
+    const text = read('.gitignore');
+    expect(text.startsWith(before)).toBe(true);
+    expect(text.slice(before.length).trim().split('\n').slice(1)).toEqual(['.yatris/reservations.plan.json']);
+    expect((await realExec(['git', 'check-ignore', '-q', '--', '.yatris/reservations.plan.json'], { cwd: site })).code).toBe(0);
+
+    writePlatformLock(site, { ...readPlatformLock(site)!, platformVersion: '0.0.0' });
+    expect((await runUpdate(args('--yes', '--to', '0.1.0', '--major', '--allow-dirty'), env(withGit(fakeExec().fn)))).code).toBe(0);
+    expect(read('.gitignore')).toBe(text);
+  });
+
+  it('matches the path yatris reservations plan writes', () => {
+    expect(RESERVATIONS_PLAN_PATH).toBe(DEFAULT_RESERVATIONS_PLAN_PATH);
   });
 });
 

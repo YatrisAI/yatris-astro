@@ -171,13 +171,22 @@ Within the scope the user authorized:
 
 ### 5. Hand-off to Yatris
 
-Setup synchronization commands may not exist in the installed version yet
-(`npx yatris --help`). Until they do, Yatris staff import the declaration in
-the internal setup builder, review it, enter or confirm the operating facts
-and publish it. When they exist, follow their documented plan → review →
-apply steps exactly as for contact forms: plan is read-only, apply saves a
-draft, and publication stays a staff action. Never edit
-`.yatris/reservations.lock.json` by hand.
+When `npx yatris --help` lists `reservations plan`, synchronize exactly as
+for contact forms, only within a work order that names
+`.yatris/reservations.lock.json`: `npx yatris reservations plan` (read-only;
+show the user every operation), then, once they approve,
+`npx yatris reservations apply --plan=.yatris/reservations.plan.json`, which
+saves a draft. Publication stays a staff action. Drift, conflicts and
+adoption are reconciled with `npx yatris reservations pull`, never by
+overwriting. Sync covers the **setup definition only**: the `operations`
+seed is used once, when apply creates the setup; afterwards daily operations
+live in Yatris, plan never reports them as changes, and pull never writes
+them. `npx yatris reservations status <key>` shows readiness and the live
+operations; quote those, never the seed, as current settings. Deleting a
+file never deletes a setup. Without these commands, Yatris staff import the
+declaration in the internal setup builder, review it, enter or confirm the
+operating facts and publish it. Never edit `.yatris/reservations.lock.json`
+by hand.
 
 ### 6. Report honestly
 

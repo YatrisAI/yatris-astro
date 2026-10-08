@@ -488,3 +488,22 @@ Focus moves to each step heading, every control is a native element reachable by
 | Command | Behaviour |
 | --- | --- |
 | `yatris reservations validate [<path>…]` | Runs `validateSetup` on each declaration file, or every `*.json` (not `*.brief.json`) in each directory; default `src/reservations/`. Checks that the file name matches `key`, prints `path code` per error and warnings. Offline. Exits 0 when every declaration is valid (or there are none), 1 otherwise. |
+| `yatris reservations plan`, `apply`, `pull`, `status` | Synchronization of setup definitions with Yatris drafts; see below. |
+
+### Synchronization
+
+Setup definitions synchronize exactly like contact forms (forms contract §9: the same Product MCP client, credential, plan and lock rules, drift matrix and exit codes), with these differences (decisions §5):
+
+| Command | Behaviour |
+| --- | --- |
+| `yatris reservations plan [--json] [--out=<file>]` | Validates every `src/reservations/*.json` (not `*.brief.json`) with `validateSetup` first (invalid: exit 1, nothing sent), then calls `plan_reservation_setups` `{ website, setups: [{ key, declaration, baseline: { digest, draft_revision, published_version } \| null }] }`. Read-only in Yatris. The plan file (default `.yatris/reservations.plan.json`, gitignored; never under `public/`, `src/`, `dist/` or `.astro/`) holds the Website, plan token and expiry, operations and each declaration's path and SHA-256. Each operation may carry `live_operations_revision`, printed as information only. |
+| `yatris reservations apply --plan=<file> [--json]` | Refuses an expired or non-applicable plan, a plan not written by `reservations plan`, and any declaration added, removed or changed since the plan, seed included (exit 3, nothing sent). Otherwise one `apply_reservation_setups` `{ website, plan_token, setups: [{ key, declaration }], idempotency_key }` call (`reservations-apply-<uuid>`, reused on a transport retry). Yatris saves **drafts** atomically and never publishes, connects accounts, approves bookings or provisions secrets. Updates the lock. |
+| `yatris reservations pull [<key>…] [--draft] [--json]` | `list_reservation_setups` `{ website }`, then `get_reservation_setup` `{ website, key, state }` per setup. Writes the definition to `src/reservations/<key>.json` only when the file is absent or its definition is unchanged since its baseline; any other file is refused and left untouched (exit 2). A file whose definition already equals the remote one only advances the baseline. |
+| `yatris reservations status <key> [--json]` | `get_reservation_setup_readiness` `{ website, key }`: readiness items and the current live operations (redacted, meeting URLs as `meetingUrlSet`), labelled as live values from Yatris, never as the seed. Read-only. |
+
+- **Setup definitions only.** Yatris digests cover the declaration without `$schema` and without `operations`. The `operations` seed is sent with each declaration, and Yatris uses it only when apply **creates** the setup. Afterwards daily operations live only in Yatris: editing them there is neither drift nor a conflict, editing or removing the seed changes nothing live, and routine sync never overwrites operations.
+- **Pull never writes operations.** It writes the remote definition (which contains neither `$schema` nor `operations`; any it contained would be dropped), keeps the local file's own `$schema` and `operations` exactly as they are, and writes neither into a new file.
+- **No deletion.** Only local declarations are sent, and there is no delete operation: omitting or removing a file never archives or deletes a setup or its bookings.
+- **Invalid operations** carry setup-specific issues: `/mode mode_immutable` (a mode or presentation change of an existing setup: a different mode is a replacement setup under a new key), `setup_archived` and `/key key_mismatch`.
+
+**Lock** `.yatris/reservations.lock.json`, committed, written only by `apply` and `pull`: `{ contractVersion: 1, websiteId, setups: { <key>: { state, digest, draft_revision, published_version, definition_sha256 } } }`. As for forms, except that `definition_sha256` hashes the local setup definition (canonical JSON without `$schema` and `operations`) rather than the file, so a seed edit after creation never blocks a pull. Never edit it by hand; a work order that runs `apply` or `pull` must name it as an exact extra path.
