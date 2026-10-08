@@ -570,7 +570,8 @@
 /* Staff (hosts, practitioners): a grid of cards with an initial. */
 :where(.yb-staff-grid) {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.25rem), 1fr));
+  /* Two columns only when each card still has room for a full name; a phone gets one column */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 10.5rem), 1fr));
   gap: 0.5rem;
 }
 
@@ -611,10 +612,8 @@
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.35;
-  /* A name never wraps into two lines (「高橋／さくら」); a very long one ends in an ellipsis */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  /* A name is never cut short: it wraps only at its space (「高橋／さくら」), never inside 「高橋」 */
+  word-break: keep-all;
 }
 
 /* On narrow widths 「指定しない（おまかせ）」 takes the whole row instead of wrapping */
