@@ -387,11 +387,14 @@ describe('time-slot flow', () => {
     expect(q(root, '.yb-notice').textContent).toBe(BOOKING_UI.holdExpired);
   });
 
-  it('uses Turnstile for holds and bookings, one token each', async () => {
+  it('challenges only the final submit, never choosing a slot', async () => {
     const definition = { ...(await definitionOf()), turnstile: { siteKey: 'site', action: 'reservation' } };
     let n = 0;
+    const rendered: HTMLElement[] = [];
     const turnstile: TurnstileApi = {
-      render: (_el, options) => {
+      render: (el, options) => {
+        rendered.push(el);
+        expect(options.appearance).toBe('interaction-only');
         (options.callback as (token: string) => void)(`token-${++n}`);
         return `w${n}`;
       },
@@ -402,12 +405,16 @@ describe('time-slot flow', () => {
     const api = fakeBooking(definition);
     const { root } = await mount(liveConfig(), { fetch: api.fetch, turnstile: async () => turnstile });
     await chooseLocation(root, 'online');
+    await flush();
+    expect(rendered).toHaveLength(0);
     await chooseTime(root);
     fillDetails(root);
     await flush();
+    expect(rendered).toHaveLength(1);
+    expect(rendered[0]!.closest('form')).not.toBeNull();
     await submit(root);
-    expect(api.calls.find((c) => c.url.endsWith('/holds'))!.body).toMatchObject({ turnstileToken: 'token-1' });
-    expect(api.calls.find((c) => c.url.endsWith('/bookings'))!.body).toMatchObject({ turnstileToken: 'token-2' });
+    expect(api.calls.find((c) => c.url.endsWith('/holds'))!.body).not.toHaveProperty('turnstileToken');
+    expect(api.calls.find((c) => c.url.endsWith('/bookings'))!.body).toMatchObject({ turnstileToken: 'token-1' });
   });
 
   it('shows the unavailable state for an unknown setup and a retry after a failed load', async () => {
