@@ -138,7 +138,7 @@
 }
 
 /* Headings and labels break between phrases (Chrome) and balance their lines. */
-:where(.yb-title, .yb-heading, .yb-terms-heading, .yb-step-label, .yb-option-label, .yb-staff-name, .yb-root .yf-label, .yb-root .yf-legend, .yb-empty-text) {
+:where(.yb-title, .yb-heading, .yb-terms-heading, .yb-step-label, .yb-option-label, .yb-root .yf-label, .yb-root .yf-legend, .yb-empty-text) {
   word-break: auto-phrase;
   text-wrap: balance;
 }
@@ -610,6 +610,17 @@
   font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.35;
+  /* A name never wraps into two lines (「高橋／さくら」); a very long one ends in an ellipsis */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* On narrow widths 「指定しない（おまかせ）」 takes the whole row instead of wrapping */
+@container yb-root (max-width: 639px) {
+  :where(.yb-staff-any) {
+    grid-column: 1 / -1;
+  }
 }
 
 :where(.yb-staff-search) {
