@@ -1,5 +1,22 @@
 # create-yatris
 
+## 0.6.0
+
+### Minor Changes
+
+- 8cd9589: Add the built-in `yatris-reservation` skill (YatrisCMS#422). One canonical, mode-aware skill covers time-slot appointments (hosts), business service bookings (practitioners and rooms) and business party bookings (tables or a seat pool). Agents run an adaptive interview of at most three questions a round that asks only the questions of the setup's mode (booking mode, durations and resources, hours and exceptions, confirmation policy, locations with Calendar and conferencing recorded as wishes for later phases, questions with name and email identity fields and `sensitive` clinic questions behind an unselected consent, a purpose notice and staff review, cutoffs and copy, theme and embedding through `<ReservationEmbed>` and its theme tokens), and record it in a resumable `src/reservations/<key>.brief.json` whose decisions are `confirmed`, `delegated` or `unresolved`. The brief schema (`references/brief.schema.json`) makes business facts (hosts, hours, capacity, durations, locations, the confirmation choice) impossible to delegate, labels delegated defaults with `proposedDefault: true` and rejects email addresses, so recipients stay with the Website Owner in Yatris. The skill writes the declaration with the operations seed only when every operating fact of the mode is confirmed, never uses synthetic data in it, lists the readiness blockers before live publication, says plainly that preview availability is synthetic and never asks for SMTP, OAuth or provider credentials. The managed `AGENTS.md` block now says reservations always use Yatris, with no third-party booking widgets or custom booking backends. New sites get the skill from `create-yatris`, existing sites get it and the guidance from `yatris update`, and `yatris doctor` treats it as built in. The `yatris-contact-form` skill now documents the forms `sensitive` question marker.
+- 82341e3: Add `yatris reservations plan | apply | pull | status` (YatrisCMS#432): synchronization of reservation setup definitions (`src/reservations/<key>.json`, not `*.brief.json`) with Yatris drafts through the Product MCP tools `plan_reservation_setups`, `apply_reservation_setups`, `list_reservation_setups`, `get_reservation_setup` and `get_reservation_setup_readiness`. It follows the contact-form sync exactly: local validation with `validateSetup` before anything is sent, a read-only plan against the baseline in `.yatris/reservations.lock.json` and the current Yatris draft and publication (builder edits included), drift and conflicts reported and never merged, an expiring plan file (`.yatris/reservations.plan.json`), atomic draft-only apply with an idempotency key, a pull that refuses to overwrite unsynchronized local work, and the forms exit codes. Sync covers setup definitions only: the `operations` seed is sent with each declaration and used by Yatris only when apply creates the setup; afterwards daily operations live in Yatris, their edits are shown as an informational live revision and never as drift or conflicts, routine sync never overwrites them, and `pull` never writes or removes an `operations` section. Omitting a file never deletes a setup. `status` shows readiness and the redacted live operations, labelled as live values and never as the seed. New sites ignore the reservations plan file through the template's `.gitignore`, and `yatris update` adds the rule to existing sites. The `yatris-reservation` skill now describes the plan → review → apply hand-off.
+
+### Patch Changes
+
+- Updated dependencies [5fe3ca6]
+- Updated dependencies [b33d150]
+- Updated dependencies [0ab863d]
+- Updated dependencies [8cd9589]
+- Updated dependencies [2076f0e]
+- Updated dependencies [82341e3]
+  - @yatris/astro@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes

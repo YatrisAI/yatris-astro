@@ -1,5 +1,0 @@
----
-'@yatris/astro': minor
----
-
-Add reservation contract v1 (`@yatris/astro/reservations`, YatrisCMS#419): the setup declaration for `src/reservations/<key>.json` (modes `time_slot` and `business` with `party` or `service` presentation, explicit `identityFields`, Japanese-only `locale`, forms-contract questions and an optional operations seed) and the operations object Yatris keeps as live revisions, with `validateSetup` and `validateOperations` built on the forms shape engine and issue codes; `reservationContext` for the `booking.*` question context by mode; `reservationPublicDefinition` and its digest; and Japanese API error messages. `contracts/reservations/v1/` publishes the README (setup, operations semantics and every error code, question context, public definition, availability/hold/booking/receipt/management wire formats, interval, timezone and DST rules), a generated `setup.schema.json`, `messages.ja.json`, shared fixtures for the PHP twin and one example per mode. The forms contract is unchanged.
