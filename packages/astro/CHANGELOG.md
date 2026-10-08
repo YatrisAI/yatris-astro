@@ -1,5 +1,11 @@
 # @yatris/astro
 
+## 0.7.2
+
+### Patch Changes
+
+- The booking page shows Turnstile on the final submit only, and hidden unless Cloudflare needs the visitor to click (`appearance: interaction-only`). Choosing a slot no longer renders or sends a challenge; holds are protected by rate limits.
+
 ## 0.7.1
 
 ### Patch Changes

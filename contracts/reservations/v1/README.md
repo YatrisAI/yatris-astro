@@ -244,10 +244,10 @@ Neither field reveals capacities, seat counts or resources. The booking UI's 空
 ### `POST holds`
 
 ```json
-{ "selection": { "locationKey": "office" }, "start": "2026-11-02T10:00:00+09:00", "turnstileToken": "<token>", "replaceHoldToken": "<previous holdToken>" }
+{ "selection": { "locationKey": "office" }, "start": "2026-11-02T10:00:00+09:00", "replaceHoldToken": "<previous holdToken>" }
 ```
 
-`start` must be a slot start currently offered for that selection. Turnstile is verified server-side for the booking host and action. Acquiring a hold releases the visitor session's previous hold for the setup in the same transaction; `replaceHoldToken` names it explicitly. Response `201`:
+`start` must be a slot start currently offered for that selection. Holds are protected by rate limits, not Turnstile: the challenge belongs to the final submit only (owner decision 2026-10-08). A `turnstileToken` sent here is ignored. Acquiring a hold releases the visitor session's previous hold for the setup in the same transaction; `replaceHoldToken` names it explicitly. Response `201`:
 
 ```json
 { "holdToken": "<random>", "expiresAt": "2026-11-01T15:05:00+09:00", "start": "…", "end": "…", "hostLabel": "佐藤" }
@@ -266,7 +266,7 @@ The token is random, expires after `holdMinutes` on the server and is bound to t
 | `setupVersion` | `setup.version` the visitor saw. |
 | `operationsRevision` | `setup.operationsRevision` the visitor saw. |
 | `idempotencyKey` | 16–128 chars of `[A-Za-z0-9_-]` (forms). One per deliberate submission, reused on retry. |
-| `turnstileToken` | When the definition has `turnstile`; verified server-side (spec §10: holds and final submit are both protected). |
+| `turnstileToken` | When the definition has `turnstile`; verified server-side for the booking host and action. The final submit is the only challenged request. |
 | `files[<fieldKey>][]` | One part per file, forms §6. |
 | `hp_website` | Honeypot; must be empty. |
 
