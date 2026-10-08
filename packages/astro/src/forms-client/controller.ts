@@ -6,7 +6,7 @@ import { flatten, type FormDeclaration } from '../forms/tree.js';
 import { missingCapabilities, SUPPORTED_CONTRACT_VERSIONS } from './capabilities.js';
 import { h } from './dom.js';
 import { buildViews, describeFile, isSafePath, type FieldEnv, type View } from './fields.js';
-import { loadTurnstile, type TurnstileApi } from './turnstile.js';
+import { loadTurnstile, turnstileSize, type TurnstileApi } from './turnstile.js';
 import type { ClassSlot, MountConfig } from './types.js';
 import { displayValue, fieldMessage, formMessage, UI } from './ui.js';
 
@@ -743,6 +743,7 @@ export class FormController {
         sitekey: settings.siteKey,
         action: settings.action,
         language: 'ja',
+        size: turnstileSize(slot),
         callback: (token: string) => {
           this.token = token;
         },

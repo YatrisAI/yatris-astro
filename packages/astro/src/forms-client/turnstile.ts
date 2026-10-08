@@ -14,6 +14,12 @@ export interface TurnstileApi {
   getResponse(widget?: string): string | undefined;
 }
 
+/** The normal widget is a fixed 300px; anything narrower gets the 150px compact one rather than pushing the layout wide. */
+export function turnstileSize(slot: HTMLElement): 'normal' | 'compact' {
+  const width = slot.getBoundingClientRect().width;
+  return width > 0 && width < 300 ? 'compact' : 'normal';
+}
+
 let loading: Promise<TurnstileApi> | null = null;
 
 export function loadTurnstile(): Promise<TurnstileApi> {
