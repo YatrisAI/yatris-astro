@@ -5,7 +5,7 @@ import { nodeType } from '../forms/registry.js';
 import { flatten, type FormDeclaration } from '../forms/tree.js';
 import { h } from '../forms-client/dom.js';
 import { buildViews, describeFile, type FieldEnv, type View } from '../forms-client/fields.js';
-import { loadTurnstile, type TurnstileApi } from '../forms-client/turnstile.js';
+import { loadTurnstile, turnstileSize, type TurnstileApi } from '../forms-client/turnstile.js';
 import { displayValue, fieldMessage, formMessage } from '../forms-client/ui.js';
 import { reservationContext } from '../reservations/context.js';
 import { bookingMessage, INSTANCE_PATTERN, isBookingOrigin, isNavigatePath, isWebOrigin, type BookingMessageType, type BookingStatus } from '../reservations/embed.js';
@@ -112,6 +112,7 @@ class Challenge {
         sitekey: this.settings.siteKey,
         action: this.settings.action,
         language: 'ja',
+        size: turnstileSize(slot),
         callback: (token: string) => {
           this.token = token;
         },
@@ -803,7 +804,8 @@ export class BookingController {
       if (compact === this.compact || !this.parts) return;
       this.compact = compact;
       this.root.setAttribute('data-yb-layout', compact ? 'list' : 'grid');
-      if (this.step === 'select' && this.flow !== 'party') this.renderPicker();
+      // While a hint stands in for the picker (no menu chosen yet), there is no grid or list to redraw
+      if (this.step === 'select' && this.flow !== 'party' && !this.pickerHint()) this.renderPicker();
     }).observe(this.root);
   }
 
@@ -959,7 +961,7 @@ export class BookingController {
     const box = h('div', { class: 'yb-empty' }, icon('calendar', 'yb-icon yb-empty-icon'), h('p', { class: 'yb-empty-text' }, UI.noSlotsInPage));
     const later = [...placed.keys()].filter((d) => daysBetween(dates.at(-1)!, d) > 0 && placed.get(d)!.length).sort()[0];
     if (later) {
-      const jump = h('button', { type: 'button', class: 'yb-button-secondary yb-next-available' }, UI.nextAvailable(formatDateLabel(later)));
+      const jump = h('button', { type: 'button', class: 'yb-button-secondary yb-next-available' }, h('span', {}, ...tokens(UI.nextAvailable(formatDateLabel(later)))));
       jump.addEventListener('click', () => this.showPageOf(later));
       box.append(jump);
     }
