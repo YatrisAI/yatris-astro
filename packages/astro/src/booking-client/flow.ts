@@ -7,16 +7,24 @@ import type { Selection } from './types.js';
  * "Selection"), shared by the controller and the synthetic preview API so
  * both judge a selection exactly as the server does.
  *
- * - `time_slot`: date → time → details → review → outcome
- * - `service` (`business` + `service`): service (variant, practitioner) → date → time → details → review → outcome
- * - `party` (`business` + `party`): party size → date → time → details → review → outcome
+ * Every flow has the same three steps: `select` (the mode's own choices with
+ * the date and time together), `details` (contact details, questions and
+ * the booking terms) and `outcome`.
+ *
+ * - `time_slot`: location, host → week grid of times
+ * - `service` (`business` + `service`): service, variant, practitioner → week grid of times
+ * - `party` (`business` + `party`): party size → 空席表 (a seven-day availability matrix)
  */
 
 export type BookingFlow = 'time_slot' | 'service' | 'party';
-export type BookingStep = 'service' | 'party' | 'date' | 'time' | 'details' | 'review' | 'outcome';
+export type BookingStep = 'select' | 'details' | 'outcome';
+/**
+ * The choice a selection must change: the service choices, the party size,
+ * or `date` for the location and host (the controls beside the dates).
+ */
+export type SelectionProblem = 'service' | 'party' | 'date';
 
-export const ALL_STEPS: readonly BookingStep[] = ['service', 'party', 'date', 'time', 'details', 'review', 'outcome'];
-const COMMON: BookingStep[] = ['date', 'time', 'details', 'review', 'outcome'];
+export const ALL_STEPS: readonly BookingStep[] = ['select', 'details', 'outcome'];
 
 export type PublicService = NonNullable<ReservationPublicDefinition['services']>[number];
 
@@ -28,8 +36,9 @@ export function flowOf(definition: Pick<ReservationPublicDefinition, 'setup'>): 
   return null;
 }
 
-export function stepsOf(flow: BookingFlow): BookingStep[] {
-  return flow === 'time_slot' ? [...COMMON] : [flow, ...COMMON];
+/** The steps of a flow, in order: the same three for every flow. */
+export function stepsOf(_flow: BookingFlow): BookingStep[] {
+  return [...ALL_STEPS];
 }
 
 /** The service a selection names, if the definition has it. */
@@ -51,13 +60,13 @@ export function durationOf(definition: ReservationPublicDefinition, selection: S
 const has = (selection: Selection, key: keyof Selection) => selection[key] !== undefined;
 
 /**
- * The step that must change for the server to accept `selection`, or null
+ * The choice that must change for the server to accept `selection`, or null
  * when it is complete and valid: `service` / `party` for the mode's own
  * choices, `date` for the location and host. Mirrors the server's
  * `validation_failed` + `invalid_selection` rules, so a rejected selection
- * sends the visitor back to the right step.
+ * points the visitor at the right control.
  */
-export function selectionProblem(definition: ReservationPublicDefinition, selection: Selection): BookingStep | null {
+export function selectionProblem(definition: ReservationPublicDefinition, selection: Selection): SelectionProblem | null {
   const flow = flowOf(definition);
   if (flow === 'service') {
     const service = serviceOf(definition, selection);
