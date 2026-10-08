@@ -1,5 +1,12 @@
 # create-yatris
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [eee93d0]
+  - @yatris/astro@0.7.1
+
 ## 0.7.0
 
 ### Patch Changes
