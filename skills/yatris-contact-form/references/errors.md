@@ -19,6 +19,7 @@ validator, and re-run until it exits 0. Full list: contract README §2, §3, §5
 | `upload_limit_exceeded` | `maxFileSize` larger than `uploads.maxTotalBytes` | Lower it |
 | `invalid_mail_field` | `replyToField`, `thankYou.toField` not an `email` field, or `attachmentFields` not a `file` field | Point it at the right field |
 | `invalid_placeholder_field`, `unknown_placeholder`, `placeholder_not_allowed`, `malformed_placeholder` | Bad `{{…}}` in mail text | Use only the placeholders in `fields.md`; `{{submission.answers}}` only in bodies |
+| `sensitive_placeholder` | `{{field.<key>}}` names a field marked `sensitive: true` | Remove the placeholder; sensitive answers never go into mail |
 | Condition codes | See `conditions.md` | — |
 
 Warning `recipients_missing` at `/mail/notification/to`: expected while the

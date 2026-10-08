@@ -1,4 +1,5 @@
 import { compareDecimal, toDecimal } from './decimal.js';
+import { assertContext, contextEntry, contextValue, type QuestionContext } from './context.js';
 import type { AnswerKind } from './registry.js';
 import { datetimeToSeconds, dateToDays, timeToSeconds } from './temporal.js';
 import { answerKind, flatten, isInput, type Entry, type FormDeclaration, type FormNode } from './tree.js';
@@ -22,11 +23,25 @@ export interface Activity {
   required: string[];
 }
 
+export interface ActivityOptions {
+  /** Read-only system inputs conditions may reference (README "Question context"). */
+  context?: QuestionContext;
+  /** Their values, supplied by the consumer and never by the visitor. Always active. */
+  contextValues?: Record<string, AnswerValue>;
+}
+
 export function isEmptyValue(value: AnswerValue): boolean {
   return value === undefined || value === '' || (Array.isArray(value) && value.length === 0);
 }
 
-export function evaluateActivity(declaration: FormDeclaration, values: Record<string, AnswerValue>): Activity {
+export function evaluateActivity(
+  declaration: Pick<FormDeclaration, 'fields'>,
+  values: Record<string, AnswerValue>,
+  options: ActivityOptions = {},
+): Activity {
+  const context = options.context ?? {};
+  assertContext(context);
+  const contextValues = options.contextValues ?? {};
   const entries = flatten(declaration.fields);
   const byKey = new Map(entries.map((e) => [e.node.key, e]));
   const memo = new Map<string, boolean>();
@@ -51,6 +66,11 @@ export function evaluateActivity(declaration: FormDeclaration, values: Record<st
     if ('all' in condition) return condition.all.every(holds);
     if ('any' in condition) return condition.any.some(holds);
     if ('not' in condition) return !holds(condition.not);
+    const system = contextEntry(context, condition.field);
+    if (system) {
+      const raw = Object.hasOwn(contextValues, condition.field) ? contextValues[condition.field] : undefined;
+      return compare(system.kind, condition.operator, contextValue(system.kind, raw), condition.value);
+    }
     const entry = byKey.get(condition.field);
     if (!entry) return false;
     return compare(answerKind(entry.node)!, condition.operator, effective(condition.field), condition.value);

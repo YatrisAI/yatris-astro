@@ -294,6 +294,29 @@ export const declarationFixtures: DeclarationFixture[] = [
     ],
   },
   {
+    name: 'sensitive questions are allowed with the answers catch-all',
+    declaration: form(
+      [text('name', { required: true }), { key: 'health', type: 'textarea', label: '体調', required: false, sensitive: true }, email('mail', { sensitive: false })],
+      {
+        mail: {
+          notification: { to: ['owner@example.jp'], subject: '{{form.name}}', body: '{{field.name}} 様\n{{submission.answers}}' },
+          thankYou: { enabled: false },
+        },
+      },
+    ),
+    errors: [],
+  },
+  {
+    name: 'sensitive fields cannot be mail placeholders',
+    declaration: form([text('name'), { key: 'health', type: 'textarea', label: '体調', required: false, sensitive: true }], {
+      mail: {
+        notification: { to: ['owner@example.jp'], subject: '{{form.name}}', body: '{{field.name}}\n{{ field.health }}' },
+        thankYou: { enabled: false },
+      },
+    }),
+    errors: [issue('/mail/notification/body', 'sensitive_placeholder')],
+  },
+  {
     name: 'success message mode needs a message',
     declaration: form([text('name')], { success: { mode: 'message' } }),
     errors: [issue('/success/message', 'required_property')],
@@ -663,3 +686,291 @@ export const submissionFixtures: SubmissionFixture[] = [
     expected: { answers: { newsletter: false }, fieldErrors: {}, formErrors: [] },
   },
 ];
+
+export interface QuestionsFixture {
+  name: string;
+  fields: Json;
+  context: Record<string, Json>;
+  errors: { path: string; code: string }[];
+}
+
+export interface ContextActivityFixture {
+  name: string;
+  fields: Json[];
+  context: Record<string, Json>;
+  contextValues: Record<string, Json>;
+  values: Record<string, Json>;
+  active: string[];
+  required: string[];
+}
+
+/** Read-only booking context, as reservations supply it next to their questions. */
+const booking = {
+  'booking.service_key': { kind: 'choice', options: ['cut', 'color', 'perm'] },
+  'booking.extras': { kind: 'choices', options: ['shampoo', 'treatment'] },
+  'booking.party_size': { kind: 'decimal' },
+  'booking.starts_at': { kind: 'datetime' },
+  'booking.first_visit': { kind: 'boolean' },
+  'booking.staff_name': { kind: 'string' },
+};
+const service = (value: Json) => eq('booking.service_key', value);
+const partyAtLeast = (value: Json) => ({ field: 'booking.party_size', operator: 'gte', value });
+const tel = (key: string, extra: Json = {}) => ({ key, type: 'tel', label: key, required: false, ...extra });
+const health = (extra: Json = {}) => ({ key: 'health', type: 'textarea', label: '体調', required: false, sensitive: true, ...extra });
+
+export const contextFixtures: { questions: QuestionsFixture[]; activity: ContextActivityFixture[] } = {
+  questions: [
+    {
+      name: 'choice and choices context references',
+      fields: [
+        text('colour_history', { visibleWhen: service('color') }),
+        text('scalp', { visibleWhen: { field: 'booking.extras', operator: 'contains', value: 'treatment' } }),
+        text('listed', { visibleWhen: { field: 'booking.service_key', operator: 'in', value: ['cut', 'perm'] } }),
+        text('staff', { visibleWhen: { field: 'booking.staff_name', operator: 'isNotEmpty' } }),
+      ],
+      context: booking,
+      errors: [],
+    },
+    {
+      name: 'context values must be context options',
+      fields: [
+        text('a', { visibleWhen: service('massage') }),
+        text('b', { visibleWhen: { field: 'booking.service_key', operator: 'in', value: ['cut', 'nail'] } }),
+        text('c', { visibleWhen: { field: 'booking.extras', operator: 'contains', value: 'massage' } }),
+      ],
+      context: booking,
+      errors: [
+        issue('/fields/0/visibleWhen/value', 'invalid_condition_value'),
+        issue('/fields/1/visibleWhen/value', 'invalid_condition_value'),
+        issue('/fields/2/visibleWhen/value', 'invalid_condition_value'),
+      ],
+    },
+    {
+      name: 'an unknown context key',
+      fields: [text('a', { visibleWhen: eq('booking.staff_key', 'x') })],
+      context: booking,
+      errors: [issue('/fields/0/visibleWhen/field', 'unknown_reference')],
+    },
+    {
+      name: 'a dotted reference with an empty context',
+      fields: [text('a', { visibleWhen: service('cut') })],
+      context: {},
+      errors: [issue('/fields/0/visibleWhen/field', 'unknown_reference')],
+    },
+    {
+      name: 'operators must suit the context kind',
+      fields: [
+        text('a', { visibleWhen: { field: 'booking.service_key', operator: 'contains', value: 'cut' } }),
+        text('b', { visibleWhen: { field: 'booking.first_visit', operator: 'neq', value: true } }),
+        text('c', { visibleWhen: { field: 'booking.starts_at', operator: 'in', value: ['2026-10-10T10:00'] } }),
+      ],
+      context: booking,
+      errors: [
+        issue('/fields/0/visibleWhen/operator', 'invalid_operator'),
+        issue('/fields/1/visibleWhen/operator', 'invalid_operator'),
+        issue('/fields/2/visibleWhen/operator', 'invalid_operator'),
+      ],
+    },
+    {
+      name: 'decimal, temporal and boolean context values',
+      fields: [
+        text('a', { visibleWhen: partyAtLeast('6') }),
+        text('b', { visibleWhen: partyAtLeast(6) }),
+        text('c', { visibleWhen: partyAtLeast('six') }),
+        text('d', { visibleWhen: { field: 'booking.starts_at', operator: 'gte', value: '2026-10-10T18:00' } }),
+        text('e', { visibleWhen: { field: 'booking.starts_at', operator: 'lt', value: '2026-10-10' } }),
+        text('f', { visibleWhen: eq('booking.first_visit', true) }),
+        text('g', { visibleWhen: eq('booking.first_visit', 'yes') }),
+        text('h', { visibleWhen: { field: 'booking.party_size', operator: 'isEmpty', value: '0' } }),
+      ],
+      context: booking,
+      errors: [
+        issue('/fields/2/visibleWhen/value', 'invalid_condition_value'),
+        issue('/fields/4/visibleWhen/value', 'invalid_condition_value'),
+        issue('/fields/6/visibleWhen/value', 'invalid_condition_value'),
+        issue('/fields/7/visibleWhen/value', 'invalid_condition_value'),
+      ],
+    },
+    {
+      name: 'a context reference inside requiredWhen',
+      fields: [tel('phone', { requiredWhen: partyAtLeast('6') })],
+      context: booking,
+      errors: [],
+    },
+    {
+      name: 'a context reference inside a nested group visibleWhen',
+      fields: [
+        {
+          key: 'details',
+          type: 'group',
+          fields: [{ key: 'perm_details', type: 'group', visibleWhen: { not: service('cut') }, fields: [text('curl', { required: true })] }],
+        },
+      ],
+      context: booking,
+      errors: [],
+    },
+    {
+      name: 'context references inside all/any/not keep their paths',
+      fields: [text('a', { visibleWhen: { all: [{ any: [service('cut')] }, { not: { field: 'booking.service_key', operator: 'gt', value: 'cut' } }] } })],
+      context: booking,
+      errors: [issue('/fields/0/visibleWhen/all/1/not/operator', 'invalid_operator')],
+    },
+    {
+      name: 'a sensitive field with a normal condition',
+      fields: [health({ visibleWhen: service('color') }), text('follow_up', { visibleWhen: { field: 'health', operator: 'isNotEmpty' } })],
+      context: booking,
+      errors: [],
+    },
+    {
+      name: 'quiz takes no sensitive marker',
+      fields: [text('name'), { key: 'q', type: 'quiz', label: 'q', sensitive: true, questions: [{ id: 'x', question: '?', answers: ['a'] }] }],
+      context: booking,
+      errors: [issue('/fields/1/sensitive', 'unknown_property')],
+    },
+    {
+      name: 'node rules still apply to questions',
+      fields: [text('a', { visibleWhen: eq('a', 'x') }), text('a'), radio('r', ['x', 'x']), { key: 'echo', type: 'reflection', source: 'missing' }],
+      context: booking,
+      errors: [
+        issue('/fields/0/visibleWhen/field', 'self_reference'),
+        issue('/fields/1/key', 'duplicate_key'),
+        issue('/fields/2/options/1/value', 'duplicate_option'),
+        issue('/fields/3/source', 'reflection_source_invalid'),
+      ],
+    },
+    {
+      name: 'visibility cycles are still found and context never joins them',
+      fields: [
+        text('a', { visibleWhen: { all: [service('cut'), { field: 'b', operator: 'isNotEmpty' }] } }),
+        text('b', { visibleWhen: { field: 'a', operator: 'isNotEmpty' } }),
+      ],
+      context: booking,
+      errors: [issue('/fields/0/visibleWhen', 'condition_cycle')],
+    },
+    { name: 'an empty question list', fields: [], context: booking, errors: [issue('/fields', 'too_short')] },
+    { name: 'questions must be a list', fields: { key: 'a' }, context: booking, errors: [issue('/fields', 'invalid_type')] },
+  ],
+  activity: [
+    {
+      name: 'visibleWhen on a context choice: active',
+      fields: [text('length', { visibleWhen: service('cut') })],
+      context: booking,
+      contextValues: { 'booking.service_key': 'cut' },
+      values: { length: 'short' },
+      active: ['length'],
+      required: [],
+    },
+    {
+      name: 'visibleWhen on a context choice: inactive',
+      fields: [text('length', { visibleWhen: service('cut') })],
+      context: booking,
+      contextValues: { 'booking.service_key': 'color' },
+      values: { length: 'short' },
+      active: [],
+      required: [],
+    },
+    {
+      name: 'requiredWhen on a context decimal: required',
+      fields: [tel('phone', { requiredWhen: partyAtLeast('6') })],
+      context: booking,
+      contextValues: { 'booking.party_size': '8' },
+      values: {},
+      active: ['phone'],
+      required: ['phone'],
+    },
+    {
+      name: 'requiredWhen on a context decimal: optional',
+      fields: [tel('phone', { requiredWhen: partyAtLeast('6') })],
+      context: booking,
+      contextValues: { 'booking.party_size': '4' },
+      values: {},
+      active: ['phone'],
+      required: [],
+    },
+    {
+      name: 'context decimals are canonicalized before comparison',
+      fields: [tel('phone', { requiredWhen: partyAtLeast('6') }), text('exact', { visibleWhen: eq('booking.party_size', 6) })],
+      context: booking,
+      contextValues: { 'booking.party_size': '06.0' },
+      values: {},
+      active: ['phone', 'exact'],
+      required: ['phone'],
+    },
+    {
+      name: 'a group gated by context hides its children',
+      fields: [
+        text('name', { required: true }),
+        {
+          key: 'colour',
+          type: 'group',
+          visibleWhen: service('color'),
+          fields: [text('history', { required: true }), { key: 'note', type: 'help', text: '補足' }, { key: 'echo', type: 'reflection', source: 'history' }],
+        },
+      ],
+      context: booking,
+      contextValues: { 'booking.service_key': 'cut' },
+      values: { name: '山田', history: 'stale' },
+      active: ['name'],
+      required: ['name'],
+    },
+    {
+      name: 'a context key missing from contextValues is empty',
+      fields: [
+        text('a', { visibleWhen: { field: 'booking.service_key', operator: 'isEmpty' } }),
+        text('b', { visibleWhen: { field: 'booking.service_key', operator: 'neq', value: 'cut' } }),
+        text('c', { visibleWhen: service('cut') }),
+        text('d', { visibleWhen: partyAtLeast('1') }),
+      ],
+      context: booking,
+      contextValues: {},
+      values: {},
+      active: ['a', 'b'],
+      required: [],
+    },
+    {
+      name: 'answers never stand in for context values',
+      fields: [text('length', { visibleWhen: service('cut') })],
+      context: booking,
+      contextValues: { 'booking.service_key': 'color' },
+      values: { 'booking.service_key': 'cut', length: 'short' },
+      active: [],
+      required: [],
+    },
+    {
+      name: 'choices, boolean, datetime and string context values',
+      fields: [
+        text('scalp', { visibleWhen: { field: 'booking.extras', operator: 'contains', value: 'treatment' } }),
+        text('welcome', { visibleWhen: eq('booking.first_visit', true) }),
+        text('late', { visibleWhen: { field: 'booking.starts_at', operator: 'gte', value: '2026-10-10T18:00' } }),
+        text('staff', { visibleWhen: { field: 'booking.staff_name', operator: 'contains', value: '佐藤' } }),
+      ],
+      context: booking,
+      contextValues: { 'booking.extras': ['shampoo', 'treatment'], 'booking.first_visit': false, 'booking.starts_at': '2026-10-10T18:30', 'booking.staff_name': '佐藤 花子' },
+      values: {},
+      active: ['scalp', 'late', 'staff'],
+      required: [],
+    },
+    {
+      name: 'a context value of the wrong type is empty',
+      fields: [
+        text('a', { visibleWhen: eq('booking.first_visit', true) }),
+        text('b', { visibleWhen: { field: 'booking.party_size', operator: 'isEmpty' } }),
+        text('c', { visibleWhen: { field: 'booking.service_key', operator: 'isEmpty' } }),
+      ],
+      context: booking,
+      contextValues: { 'booking.first_visit': 'true', 'booking.party_size': 'six', 'booking.service_key': ['cut'] },
+      values: {},
+      active: ['b', 'c'],
+      required: [],
+    },
+    {
+      name: 'a sensitive field follows context like any other',
+      fields: [health({ requiredWhen: service('color') }), text('follow_up', { visibleWhen: { field: 'health', operator: 'isNotEmpty' } })],
+      context: booking,
+      contextValues: { 'booking.service_key': 'color' },
+      values: { health: '頭皮が敏感です' },
+      active: ['health', 'follow_up'],
+      required: ['health'],
+    },
+  ],
+};

@@ -1,7 +1,8 @@
 import { normalize } from './answers.js';
 import { compareDecimal, toDecimal } from './decimal.js';
 import { DECLARATION, MAX_GROUP_DEPTH, MAX_NODES, nodeType, OPERATORS_BY_KIND, PLACEHOLDERS, UPLOAD_LIMITS, type AnswerKind } from './registry.js';
-import { checkObject, isPlainObject, type Issue } from './spec.js';
+import { assertContext, contextEntry, type QuestionContext } from './context.js';
+import { checkObject, checkShape, isPlainObject, tidy, type Issue } from './spec.js';
 import { datetimeToSeconds, dateToDays, timeToSeconds } from './temporal.js';
 import { answerKind, flatten, isInput, type Entry, type FormDeclaration, type FormNode } from './tree.js';
 
@@ -23,6 +24,11 @@ export interface DeclarationResult {
   warnings: Issue[];
 }
 
+export interface QuestionsOptions {
+  /** Read-only system inputs conditions may reference (README "Question context"). */
+  context?: QuestionContext;
+}
+
 export function validateDeclaration(value: unknown): DeclarationResult {
   const shape: Issue[] = [];
   checkObject(DECLARATION.props, DECLARATION.required, value, '', shape, checkNode);
@@ -31,7 +37,36 @@ export function validateDeclaration(value: unknown): DeclarationResult {
   const declaration = value as FormDeclaration;
   const errors: Issue[] = [];
   const warnings: Issue[] = [];
-  const entries = flatten(declaration.fields);
+  const byKey = checkFields(declaration.fields, declaration.uploads?.maxTotalBytes ?? UPLOAD_LIMITS.maxTotalBytes, {}, errors);
+  checkMail(declaration, byKey, errors, warnings);
+  checkSuccess(declaration, errors);
+
+  const tidied = tidy(errors);
+  return { valid: tidied.length === 0, errors: tidied, warnings: tidy(warnings) };
+}
+
+/**
+ * Validates a bare node list, such as reservation questions, exactly as a
+ * declaration's `fields` (same shape limits, issue paths `/fields/...`) but
+ * without any declaration-level rule (mail, success, key, name...).
+ * Conditions may also reference the keys of `options.context`.
+ */
+export function validateQuestions(fields: unknown, options: QuestionsOptions = {}): DeclarationResult {
+  const context = options.context ?? {};
+  assertContext(context);
+  const shape: Issue[] = [];
+  checkShape(DECLARATION.props.fields!, fields, '/fields', shape, checkNode);
+  if (shape.length) return { valid: false, errors: tidy(shape), warnings: [] };
+
+  const errors: Issue[] = [];
+  checkFields(fields as FormNode[], UPLOAD_LIMITS.maxTotalBytes, context, errors);
+  const tidied = tidy(errors);
+  return { valid: tidied.length === 0, errors: tidied, warnings: [] };
+}
+
+/** Every node and condition rule of a shape-valid node list; returns the key index. */
+function checkFields(fields: FormNode[], maxTotalBytes: number, context: QuestionContext, errors: Issue[]): Map<string, Entry> {
+  const entries = flatten(fields);
   const byKey = new Map<string, Entry>();
 
   for (const entry of entries) {
@@ -45,9 +80,9 @@ export function validateDeclaration(value: unknown): DeclarationResult {
     const { node, path } = entry;
     if (node.type === 'group' && entry.groups.length + 1 > MAX_GROUP_DEPTH) errors.push({ path, code: 'group_too_deep' });
     if (node.type === 'quiz' && ++quizzes > 1) errors.push({ path, code: 'too_many_quiz' });
-    checkNodeSemantics(declaration, node, path, errors);
+    checkNodeSemantics(maxTotalBytes, node, path, errors);
     for (const prop of ['visibleWhen', 'requiredWhen'] as const) {
-      if (node[prop] !== undefined) checkCondition(node[prop], `${path}/${prop}`, node.key, byKey, errors);
+      if (node[prop] !== undefined) checkCondition(node[prop], `${path}/${prop}`, node.key, byKey, context, errors);
     }
     if (node.type === 'reflection') {
       const source = byKey.get(node.source)?.node;
@@ -58,14 +93,11 @@ export function validateDeclaration(value: unknown): DeclarationResult {
   }
 
   errors.push(...findCycles(entries, byKey));
-  checkMail(declaration, byKey, errors, warnings);
-  checkSuccess(declaration, errors);
-
-  const tidied = tidy(errors);
-  return { valid: tidied.length === 0, errors: tidied, warnings: tidy(warnings) };
+  return byKey;
 }
 
-function checkNode(value: unknown, path: string, issues: Issue[]): void {
+/** Shape checker for one node (and, through groups, its children); the `nodes` hook of `checkShape`. */
+export function checkNode(value: unknown, path: string, issues: Issue[]): void {
   if (!isPlainObject(value)) return void issues.push({ path, code: 'invalid_type' });
   if (!('type' in value)) return void issues.push({ path: `${path}/type`, code: 'required_property' });
   const type = nodeType(value.type);
@@ -73,7 +105,7 @@ function checkNode(value: unknown, path: string, issues: Issue[]): void {
   checkObject(type.props, type.required, value, path, issues, checkNode);
 }
 
-function checkNodeSemantics(declaration: FormDeclaration, node: FormNode, path: string, errors: Issue[]): void {
+function checkNodeSemantics(maxTotalBytes: number, node: FormNode, path: string, errors: Issue[]): void {
   const v = node.validation ?? {};
   const at = (suffix: string) => `${path}${suffix}`;
 
@@ -129,8 +161,7 @@ function checkNodeSemantics(declaration: FormDeclaration, node: FormNode, path: 
       }
       break;
     case 'file': {
-      const total = declaration.uploads?.maxTotalBytes ?? UPLOAD_LIMITS.maxTotalBytes;
-      if (v.maxFileSize !== undefined && v.maxFileSize > total) errors.push({ path: at('/validation/maxFileSize'), code: 'upload_limit_exceeded' });
+      if (v.maxFileSize !== undefined && v.maxFileSize > maxTotalBytes) errors.push({ path: at('/validation/maxFileSize'), code: 'upload_limit_exceeded' });
       break;
     }
   }
@@ -140,20 +171,36 @@ function checkNodeSemantics(declaration: FormDeclaration, node: FormNode, path: 
   }
 }
 
-function checkCondition(condition: any, path: string, ownKey: string, byKey: Map<string, Entry>, errors: Issue[]): void {
+function checkCondition(
+  condition: any,
+  path: string,
+  ownKey: string,
+  byKey: Map<string, Entry>,
+  context: QuestionContext,
+  errors: Issue[],
+): void {
   for (const combinator of ['all', 'any'] as const) {
     if (combinator in condition) {
-      condition[combinator].forEach((c: unknown, i: number) => checkCondition(c, `${path}/${combinator}/${i}`, ownKey, byKey, errors));
+      condition[combinator].forEach((c: unknown, i: number) => checkCondition(c, `${path}/${combinator}/${i}`, ownKey, byKey, context, errors));
       return;
     }
   }
-  if ('not' in condition) return checkCondition(condition.not, `${path}/not`, ownKey, byKey, errors);
+  if ('not' in condition) return checkCondition(condition.not, `${path}/not`, ownKey, byKey, context, errors);
+
+  // Context keys contain a dot and node keys never do, so the two cannot collide.
+  const system = contextEntry(context, condition.field);
+  if (system) return checkComparison(condition, path, system.kind, system.options ?? null, errors);
 
   const target = byKey.get(condition.field)?.node;
   if (condition.field === ownKey) return void errors.push({ path: `${path}/field`, code: 'self_reference' });
   if (!target) return void errors.push({ path: `${path}/field`, code: 'unknown_reference' });
   const kind = answerKind(target);
   if (!kind || OPERATORS_BY_KIND[kind].length === 0) return void errors.push({ path: `${path}/field`, code: 'reference_not_allowed' });
+  checkComparison(condition, path, kind, optionValues(target), errors);
+}
+
+/** Operator and value rules for a comparison on a value of `kind`. `options` null: any string is a valid choice. */
+function checkComparison(condition: any, path: string, kind: AnswerKind, options: string[] | null, errors: Issue[]): void {
   if (!OPERATORS_BY_KIND[kind].includes(condition.operator)) return void errors.push({ path: `${path}/operator`, code: 'invalid_operator' });
 
   const needsValue = condition.operator !== 'isEmpty' && condition.operator !== 'isNotEmpty';
@@ -162,27 +209,27 @@ function checkCondition(condition: any, path: string, ownKey: string, byKey: Map
     return;
   }
   if (!('value' in condition)) return void errors.push({ path: `${path}/value`, code: 'required_property' });
-  if (!conditionValueOk(kind, target, condition.operator, condition.value)) {
+  if (!conditionValueOk(kind, options, condition.operator, condition.value)) {
     errors.push({ path: `${path}/value`, code: 'invalid_condition_value' });
   }
 }
 
-function conditionValueOk(kind: AnswerKind, target: FormNode, operator: string, value: unknown): boolean {
-  if (operator === 'in') return Array.isArray(value) && value.every((v) => scalarOk(kind, target, v));
+function conditionValueOk(kind: AnswerKind, options: string[] | null, operator: string, value: unknown): boolean {
+  if (operator === 'in') return Array.isArray(value) && value.every((v) => scalarOk(kind, options, v));
   if (Array.isArray(value)) return false;
   if (operator === 'contains') {
-    if (kind === 'choices') return typeof value === 'string' && optionValues(target).includes(value);
+    if (kind === 'choices') return typeof value === 'string' && (options === null ? value !== '' : options.includes(value));
     return typeof value === 'string' && value !== '';
   }
-  return scalarOk(kind, target, value);
+  return scalarOk(kind, options, value);
 }
 
-function scalarOk(kind: AnswerKind, target: FormNode, value: unknown): boolean {
+function scalarOk(kind: AnswerKind, options: string[] | null, value: unknown): boolean {
   switch (kind) {
     case 'string':
       return typeof value === 'string';
     case 'choice':
-      return typeof value === 'string' && optionValues(target).includes(value);
+      return typeof value === 'string' && (options === null || options.includes(value));
     case 'decimal':
       return toDecimal(value) !== null;
     case 'date':
@@ -311,6 +358,7 @@ export function placeholderIssues(text: string, subject: boolean, byKey: Map<str
     } else if (name!.startsWith('field.')) {
       const node = byKey.get(name!.slice('field.'.length))?.node;
       if (!node || !isInput(node) || node.type === 'quiz') codes.add('invalid_placeholder_field');
+      else if (node.sensitive === true) codes.add('sensitive_placeholder');
     } else {
       codes.add('unknown_placeholder');
     }
@@ -324,15 +372,4 @@ function checkSuccess(declaration: FormDeclaration, errors: Issue[]): void {
   const success = declaration.success;
   if (success.mode === 'message' && success.message === undefined) errors.push({ path: '/success/message', code: 'required_property' });
   if (success.mode === 'redirect' && success.redirectPath === undefined) errors.push({ path: '/success/redirectPath', code: 'required_property' });
-}
-
-/** Deduplicated and sorted by path, then code. */
-function tidy(issues: Issue[]): Issue[] {
-  const seen = new Map<string, Issue>();
-  for (const issue of issues) seen.set(`${issue.path}\u0000${issue.code}`, issue);
-  return [...seen.values()].sort((a, b) => (a.path === b.path ? cmp(a.code, b.code) : cmp(a.path, b.path)));
-}
-
-function cmp(a: string, b: string): number {
-  return a < b ? -1 : a > b ? 1 : 0;
 }

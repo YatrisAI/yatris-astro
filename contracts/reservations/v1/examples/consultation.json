@@ -1,0 +1,122 @@
+{
+  "$schema": "https://yatris.jp/schemas/reservations/v1/setup.schema.json",
+  "contractVersion": 1,
+  "key": "consultation",
+  "name": "無料相談のご予約",
+  "locale": "ja",
+  "mode": "time_slot",
+  "identityFields": { "name": "name", "email": "email", "phone": "phone" },
+  "questions": [
+    { "key": "name", "type": "text", "label": "お名前", "required": true, "autocomplete": "name" },
+    { "key": "email", "type": "email", "label": "メールアドレス", "required": true, "autocomplete": "email" },
+    {
+      "key": "phone",
+      "type": "tel",
+      "label": "電話番号",
+      "required": false,
+      "autocomplete": "tel",
+      "help": "来社でのご相談の場合は、当日の連絡先としてご入力ください。",
+      "requiredWhen": { "field": "booking.location_key", "operator": "eq", "value": "office" }
+    },
+    { "key": "company", "type": "text", "label": "会社名", "required": false, "autocomplete": "organization" },
+    {
+      "key": "topic",
+      "type": "radio",
+      "label": "ご相談内容",
+      "required": true,
+      "options": [
+        { "value": "website", "label": "ホームページ制作" },
+        { "value": "marketing", "label": "集客・広告" },
+        { "value": "other", "label": "その他" }
+      ]
+    },
+    {
+      "key": "topic_detail",
+      "type": "textarea",
+      "label": "ご相談内容の詳細",
+      "required": false,
+      "rows": 5,
+      "requiredWhen": { "field": "topic", "operator": "eq", "value": "other" }
+    },
+    {
+      "key": "office_note",
+      "type": "help",
+      "text": "来社でのご相談は、受付でお名前をお伝えください。",
+      "visibleWhen": { "field": "booking.location_key", "operator": "eq", "value": "office" }
+    }
+  ],
+  "copy": { "confirmedMessage": "ご予約が確定しました。確認メールをお送りしましたので、内容をご確認ください。" },
+  "success": { "redirectPath": "/consultation/thanks/" },
+  "operations": {
+    "timezone": "Asia/Tokyo",
+    "slotIntervalMinutes": 30,
+    "bookingHorizonDays": 60,
+    "minimumLeadMinutes": 1440,
+    "holdMinutes": 10,
+    "confirmationMode": "automatic",
+    "cancelCutoffMinutes": 1440,
+    "rescheduleCutoffMinutes": 1440,
+    "reminderMinutesBefore": 1440,
+    "venueHours": {
+      "weekly": [
+        { "day": "monday", "start": "10:00", "end": "12:00" },
+        { "day": "monday", "start": "13:00", "end": "18:00" },
+        { "day": "tuesday", "start": "10:00", "end": "12:00" },
+        { "day": "tuesday", "start": "13:00", "end": "18:00" },
+        { "day": "wednesday", "start": "10:00", "end": "12:00" },
+        { "day": "wednesday", "start": "13:00", "end": "18:00" },
+        { "day": "thursday", "start": "10:00", "end": "12:00" },
+        { "day": "thursday", "start": "13:00", "end": "18:00" },
+        { "day": "friday", "start": "10:00", "end": "12:00" },
+        { "day": "friday", "start": "13:00", "end": "18:00" }
+      ],
+      "exceptions": [
+        { "date": "2026-12-29", "closed": true },
+        { "date": "2026-12-30", "closed": true },
+        { "date": "2026-12-31", "closed": true },
+        { "date": "2027-01-04", "hours": [{ "start": "13:00", "end": "17:00" }] }
+      ]
+    },
+    "locations": [
+      {
+        "key": "online",
+        "type": "online",
+        "label": "オンライン（Google Meet）",
+        "meetingUrl": "https://meet.google.com/abc-defg-hij",
+        "instructions": "開始時刻になりましたら、ご予約確定メールのリンクからご参加ください。"
+      },
+      {
+        "key": "office",
+        "type": "in_person",
+        "label": "大阪オフィス",
+        "address": "大阪府大阪市北区梅田1-1-1 梅田ビル5階",
+        "instructions": "5階受付でお名前をお伝えください。"
+      }
+    ],
+    "resources": [
+      {
+        "key": "sato",
+        "kind": "host",
+        "label": "佐藤",
+        "weeklyHours": [
+          { "day": "monday", "start": "10:00", "end": "18:00" },
+          { "day": "wednesday", "start": "10:00", "end": "18:00" },
+          { "day": "friday", "start": "10:00", "end": "18:00" }
+        ]
+      },
+      {
+        "key": "tanaka",
+        "kind": "host",
+        "label": "田中",
+        "exceptions": [{ "date": "2027-01-04", "closed": true }]
+      }
+    ],
+    "appointment": {
+      "durationMinutes": 60,
+      "bufferAfterMinutes": 15,
+      "hostStrategy": "one_available",
+      "hostResourceKeys": ["sato", "tanaka"],
+      "visitorChoosesHost": false
+    }
+  }
+}

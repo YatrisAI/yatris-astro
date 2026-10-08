@@ -47,6 +47,26 @@ Optional: `$schema`, `confirmStep`, `uploads`, `smtp`.
 | Page-supplied metadata (campaign, source page) | `hidden` | Filled by `<YatrisForm hidden={{ … }}>`; untrusted, never chooses recipients |
 | Simple anti-spam question | `quiz` | `questions: [{ id, question, answers }]`, at most one per form, always required. Optional: Turnstile already protects every form. |
 
+## Sensitive answers
+
+Any input except `quiz` may carry `sensitive: true`, for health information
+or anything else that should stay with the business that asked for it
+(forms contract §1, "Sensitive questions"). Validation and conditions work
+as usual. Yatris keeps the answer, and the files of a sensitive `file`
+field, off every outbound surface: notification and thank-you mail
+(`{{submission.answers}}` leaves it out), exports and integrations, logs and
+analytics, and agent access. Only authorised people viewing the inquiry see
+it.
+
+- Mark a field sensitive only when the client asks for that kind of
+  information, and collect only what they need; never a detailed medical
+  history.
+- `{{field.<key>}}` naming a sensitive field is the error
+  `sensitive_placeholder`. Do not list a sensitive `file` field in
+  `attachmentFields`: it is never attached.
+- Never mark the email field used for `replyToField` or the thank-you mail
+  as sensitive.
+
 ## Display nodes
 
 `heading` (`text`, `level` 2–4), `help` (`text`), `divider`, `group`

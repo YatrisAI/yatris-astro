@@ -68,6 +68,15 @@ describe('createProject', () => {
     expect(ignored).toEqual(expect.arrayContaining(['.env', '.env.*', '!.env.example']));
   });
 
+  it('ignores the local forms and reservations sync plans, not their locks (YatrisCMS#395, #432)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const ignored = readFileSync(join(target, '.gitignore'), 'utf8').split(/\r?\n/);
+
+    expect(ignored).toEqual(expect.arrayContaining(['.yatris/forms.plan.json', '.yatris/reservations.plan.json']));
+    expect(ignored).not.toContain('.yatris/reservations.lock.json');
+    expect(ignored).not.toContain('.yatris/forms.lock.json');
+  });
+
   it('pins every dependency to the platform release', () => {
     const target = createProject({ targetDir: join(work, 'My Site') }, sources);
     const pkg = JSON.parse(readFileSync(join(target, 'package.json'), 'utf8'));
@@ -115,6 +124,27 @@ describe('createProject', () => {
     const lock = readPlatformLock(target)!;
     for (const location of SKILL_LOCATIONS) {
       for (const file of skill) expect(lock.managed[`${location}/yatris-contact-form/${file}`], file).toMatch(/^sha256:/);
+    }
+  });
+
+  it('scaffolds the yatris-reservation skill to both agents and the root guidance that points to it (YatrisCMS#422)', () => {
+    const target = createProject({ targetDir: join(work, 'site') }, sources);
+    const skill = files(join(sources.skillsDir, 'yatris-reservation'));
+
+    expect(skill).toEqual(expect.arrayContaining(['SKILL.md', 'references/brief.schema.json', 'references/interview.md', 'references/examples.md', 'references/readiness.md']));
+    for (const location of SKILL_LOCATIONS) {
+      expect(files(join(target, location, 'yatris-reservation'))).toEqual(skill);
+      for (const file of skill) {
+        expect(readFileSync(join(target, location, 'yatris-reservation', file)), file).toEqual(readFileSync(join(sources.skillsDir, 'yatris-reservation', file)));
+      }
+    }
+    const agents = readFileSync(join(target, 'AGENTS.md'), 'utf8');
+    expect(agents).toContain('**Reservations always use Yatris**');
+    expect(agents).toContain('`yatris-reservation`');
+
+    const lock = readPlatformLock(target)!;
+    for (const location of SKILL_LOCATIONS) {
+      for (const file of skill) expect(lock.managed[`${location}/yatris-reservation/${file}`], file).toMatch(/^sha256:/);
     }
   });
 

@@ -86,7 +86,7 @@ rules and decision ids are in [references/interview.md](references/interview.md)
 | # | Topic | Decides |
 | --- | --- | --- |
 | 1 | Purpose and placement | Form purpose and key, page route, existing form, visual placement |
-| 2 | Fields | Fields, types and labels, requiredness of every input, choices, defaults, validation, furigana (kana preset), 入力→確認→完了 confirmation step |
+| 2 | Fields | Fields, types and labels, requiredness of every input, choices, defaults, validation, furigana (kana preset), 入力→確認→完了 confirmation step, sensitive answers |
 | 3 | Conditions | Fields shown or required only in some cases, with an example per branch |
 | 4 | Files and consent | Attachments (types, count, size); consent wording and privacy page |
 | 5 | Client notification | Business recipients, subject and body, attached files |

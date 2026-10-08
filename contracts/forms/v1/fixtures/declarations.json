@@ -2188,6 +2188,108 @@
   },
   {
     "warnings": [],
+    "name": "sensitive questions are allowed with the answers catch-all",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": true
+        },
+        {
+          "key": "health",
+          "type": "textarea",
+          "label": "体調",
+          "required": false,
+          "sensitive": true
+        },
+        {
+          "key": "mail",
+          "type": "email",
+          "label": "mail",
+          "required": false,
+          "sensitive": false
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "{{form.name}}",
+          "body": "{{field.name}} 様\n{{submission.answers}}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "errors": []
+  },
+  {
+    "warnings": [],
+    "name": "sensitive fields cannot be mail placeholders",
+    "declaration": {
+      "contractVersion": 1,
+      "key": "contact",
+      "name": "お問い合わせ",
+      "locale": "ja",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "health",
+          "type": "textarea",
+          "label": "体調",
+          "required": false,
+          "sensitive": true
+        }
+      ],
+      "submit": {
+        "label": "送信する"
+      },
+      "success": {
+        "mode": "message",
+        "message": "お問い合わせを受け付けました。"
+      },
+      "mail": {
+        "notification": {
+          "to": [
+            "owner@example.jp"
+          ],
+          "subject": "{{form.name}}",
+          "body": "{{field.name}}\n{{ field.health }}"
+        },
+        "thankYou": {
+          "enabled": false
+        }
+      }
+    },
+    "errors": [
+      {
+        "path": "/mail/notification/body",
+        "code": "sensitive_placeholder"
+      }
+    ]
+  },
+  {
+    "warnings": [],
     "name": "success message mode needs a message",
     "declaration": {
       "contractVersion": 1,

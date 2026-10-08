@@ -68,6 +68,26 @@ expect(
     ['.agents/skills', '.claude/skills'].every((location) => sha(`${location}/yatris-contact-form/SKILL.md`) === sha('.agents/skills/yatris-contact-form/SKILL.md') && existsSync(join(site, location, 'yatris-contact-form/references/brief.schema.json'))),
   'the new site tells agents to use Yatris for contact forms and ships the yatris-contact-form skill to both agents (YatrisCMS#381)',
 );
+const reservationSkill = readdirSync(join(root, 'skills/yatris-reservation'), { recursive: true, withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => join(entry.parentPath, entry.name).slice(join(root, 'skills/yatris-reservation').length + 1).replaceAll('\\', '/'));
+const sourceSha = (file) => createHash('sha256').update(readFileSync(join(root, 'skills/yatris-reservation', file))).digest('hex');
+expect(
+  read('AGENTS.md').includes('Reservations always use Yatris') &&
+    read('AGENTS.md').includes('`yatris-reservation`') &&
+    reservationSkill.length >= 10 &&
+    ['.agents/skills', '.claude/skills'].every((location) => reservationSkill.every((file) => existsSync(join(site, location, 'yatris-reservation', file)) && sha(`${location}/yatris-reservation/${file}`) === sourceSha(file))),
+  `the new site tells agents to use Yatris for reservations and ships all ${reservationSkill.length} yatris-reservation skill files to both agents, byte for byte (YatrisCMS#422)`,
+);
+{
+  // The skill's seed-less example declaration validates with the site's installed contract
+  const examples = read('.claude/skills/yatris-reservation/references/examples.md').replace(/\r\n/g, '\n');
+  mkdirSync(join(site, '.e2e-reservation'), { recursive: true });
+  writeFileSync(join(site, '.e2e-reservation/setup.json'), /```json\n([\s\S]*?)```/.exec(examples)[1]);
+  const valid = sh(`node --input-type=module -e "import { validateSetup } from '@yatris/astro/reservations'; import { readFileSync } from 'node:fs'; const r = validateSetup(JSON.parse(readFileSync('.e2e-reservation/setup.json', 'utf8'))); console.log(r.valid && r.errors.length === 0)"`, site).trim();
+  rmSync(join(site, '.e2e-reservation'), { recursive: true, force: true });
+  expect(valid === 'true', 'the yatris-reservation skill example declaration validates with the installed @yatris/astro');
+}
 
 const html = read('dist/index.html');
 expect(html.includes('<html lang="ja">') && html.includes('<title>ホーム</title>'), 'home page has a language and a title');
@@ -168,6 +188,28 @@ import YatrisForm from '@yatris/astro/YatrisForm.astro';
 </BaseLayout>
 `,
 );
+// Reservations (YatrisCMS#421): the embed ships; the declaration, synthetic
+// hosts and availability, the booking UI and the preview never reach dist/.
+mkdirSync(join(site, 'src/reservations'), { recursive: true });
+write('src/reservations/consultation.json', readFileSync(join(root, 'contracts/reservations/v1/examples/consultation.json'), 'utf8'));
+write(
+  'src/pages/booking.astro',
+  `---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import ReservationEmbed from '@yatris/astro/ReservationEmbed.astro';
+---
+<BaseLayout page={{ title: 'ご予約' }}>
+  <h1>ご予約</h1>
+  <ReservationEmbed setupKey="consultation" title="相談のご予約" theme={{ primary: '#4F46E5', radius: 8, fontFamily: '"Noto Sans JP", sans-serif' }} />
+</BaseLayout>
+`,
+);
+const reservationLeaks = () => {
+  const text = [...distFiles('.html'), ...distFiles('.js'), ...distFiles('.css')].join('\n');
+  // Declaration-only text, private seed values, synthetic data, the booking UI and preview code
+  const markers = ['来社でのご相談は', 'ご相談内容の詳細', '大阪府大阪市北区', 'meet.google.com', '架空の担当者', 'sample_host', 'プレビュー：サンプル', 'yatris-booking-preview', 'X-Booking-Session', 'yb-root', 'hp_website', 'YATRIS_MCP_TOKEN', 'YATRIS_DELIVERY_API_KEY', 'YATRIS_SMTP'];
+  return markers.filter((m) => text.includes(m));
+};
 const formLeaks = () => {
   const text = [...distFiles('.html'), ...distFiles('.js'), ...distFiles('.css')].join('\n');
   // Recipients, quiz answers, mail templates, declaration-only text and preview code
@@ -183,6 +225,13 @@ expect(distFiles('.css').some((css) => css.includes('.yf-field')), 'the default 
 let leaked = formLeaks();
 expect(leaked.length === 0, `dist/ holds no declaration content, quiz answer, recipient or preview code${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
 expect(doctor().report.ok, 'doctor passes a site with a form');
+let bookingHtml = read('dist/booking/index.html');
+expect(
+  bookingHtml.includes('data-yatris-booking="consultation"') && bookingHtml.includes('data-yr-mode="unconfigured"') && bookingHtml.includes('現在、オンライン予約はご利用いただけません。') && !bookingHtml.includes('<iframe'),
+  'an unpaired build renders the reservation embed in its unavailable state, never a fake booking',
+);
+leaked = reservationLeaks();
+expect(leaked.length === 0, `dist/ holds no reservation declaration content, synthetic data, booking UI, preview code or credentials${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
 
 const previewBuild = (extraEnv) => spawnSync('npm run build', { cwd: site, shell: true, encoding: 'utf8', env: { ...env, ...extraEnv } });
 let refused = previewBuild({ YATRIS_FORMS_PREVIEW: '1' });
@@ -191,6 +240,14 @@ write('.env', 'YATRIS_FORMS_PREVIEW=1\n');
 refused = previewBuild({});
 expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('forms preview only runs under `astro dev`'), 'a production build refuses forms preview set in .env');
 rmSync(join(site, '.env'));
+refused = previewBuild({ YATRIS_RESERVATIONS_PREVIEW: '1' });
+expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('reservations preview only runs under `astro dev`'), 'a production build refuses the reservations preview');
+write('.env', 'YATRIS_RESERVATIONS_PREVIEW=1\n');
+refused = previewBuild({});
+expect(refused.status !== 0 && `${refused.stdout}${refused.stderr}`.includes('reservations preview only runs under `astro dev`'), 'a production build refuses the reservations preview set in .env');
+rmSync(join(site, '.env'));
+const validate = spawnSync('npx yatris reservations validate', { cwd: site, shell: true, encoding: 'utf8', env });
+expect(validate.status === 0 && validate.stdout.includes('valid (consultation)'), 'yatris reservations validate checks the declaration offline');
 
 // Paired: the mount names the public key and the Yatris definition URL. A
 // stand-in answers the schema check a paired build makes; nothing else.
@@ -214,9 +271,18 @@ expect(
 );
 leaked = formLeaks();
 expect(leaked.length === 0, `a paired dist/ holds no declaration content either${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
+bookingHtml = read('dist/booking/index.html');
+expect(
+  bookingHtml.includes('data-yr-mode="live"') && bookingHtml.includes('"bookingOrigin":"https://book.yatris.jp","websiteId":42') && /href="https:\/\/book\.yatris\.jp\/book\/42\/consultation\?theme=[A-Za-z0-9_-]+"/.test(bookingHtml),
+  'a paired build embeds https://book.yatris.jp/book/<websiteId>/<setupKey> with a direct-link fallback',
+);
+expect(bookingHtml.includes('予約ページを新しいタブで開く') && bookingHtml.includes('"title":"相談のご予約"'), 'the embed carries its title and the visible fallback link');
+expect(distFiles('.js').some((js) => js.includes('yatris-booking') && js.includes('allow-scripts')), 'the page loads the bundled embed client');
+leaked = reservationLeaks();
+expect(leaked.length === 0, `a paired dist/ holds no reservation declaration content, synthetic data, booking UI or credentials either${leaked.length ? ` (found ${leaked.join(', ')})` : ''}`);
 fakeYatris.kill();
 write('.yatris/project.json', projectBefore);
-for (const path of ['src/forms', 'src/pages/contact.astro']) rmSync(join(site, path), { recursive: true });
+for (const path of ['src/forms', 'src/pages/contact.astro', 'src/reservations', 'src/pages/booking.astro']) rmSync(join(site, path), { recursive: true });
 sh('npm run build', site);
 
 // Delivery API loader, against a local stand-in for the Delivery API. The

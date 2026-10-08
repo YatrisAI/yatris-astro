@@ -41,14 +41,14 @@ for (const pkg of packed) {
   }
   expect(!files.some((f) => f.endsWith('.test.js') || f.startsWith('src/')), `${pkg.name} tarball ships no sources or tests`);
   if (pkg.name === '@yatris/astro') {
-    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro', 'components/YatrisForm.astro', 'components/YatrisForm.css', 'dist/forms-client/index.js', 'dist/forms-client/preview.js']) {
+    for (const component of ['components/YatrisHead.astro', 'components/YatrisBodyStart.astro', 'components/YatrisForm.astro', 'components/YatrisForm.css', 'dist/forms-client/index.js', 'dist/forms-client/preview.js', 'components/ReservationEmbed.astro', 'components/ReservationEmbed.css', 'components/YatrisBooking.css', 'dist/booking-client/index.js', 'dist/booking-client/site-preview.js', 'dist/reservations-embed.js', 'dist/reservations-mount.js', 'contracts/reservations/v1/fixtures/theme.json']) {
       expect(files.includes(component), `@yatris/astro tarball contains ${component}`);
     }
     // `yatris update` seeds a missing .env.example from the release's own template
     expect(files.includes('template/.env.example'), '@yatris/astro tarball contains the template .env.example');
   }
   // Both packages carry the skill pack: create-yatris scaffolds it, `yatris update` delivers it
-  for (const file of ['skills/yatris-contact-form/SKILL.md', 'skills/yatris-contact-form/references/brief.schema.json', 'template/AGENTS.md']) {
+  for (const file of ['skills/yatris-contact-form/SKILL.md', 'skills/yatris-contact-form/references/brief.schema.json', 'skills/yatris-reservation/SKILL.md', 'skills/yatris-reservation/references/brief.schema.json', 'template/AGENTS.md']) {
     expect(files.includes(file), `${pkg.name} tarball contains ${file}`);
   }
   if (pkg.name === 'create-yatris') {
@@ -73,6 +73,11 @@ expect(name === '@yatris/astro', 'integration imports from the installed package
 const capabilities = sh(`node --input-type=module -e "import { SUPPORTED_CAPABILITIES } from '@yatris/astro/forms/client'; import { formMountConfig } from '@yatris/astro/forms/mount'; console.log(SUPPORTED_CAPABILITIES.includes('confirm_step') && formMountConfig({ mode: 'live', origin: 'https://app.yatris.jp', websiteId: 1, timeZone: 'Asia/Tokyo' }, { form: 'contact' }).publicKey)"`, appDir);
 expect(capabilities === '1.contact', 'the forms renderer and mount helper import from the installed package');
 expect(sh('npm exec --offline -- yatris forms validate', appDir).includes('no declarations'), 'yatris forms validate runs');
+const reservation = sh(`node --input-type=module -e "import { validateSetup } from '@yatris/astro/reservations'; import { readFileSync } from 'node:fs'; const setup = JSON.parse(readFileSync(new URL(import.meta.resolve('@yatris/astro/contracts/reservations/v1/examples/salon.json')), 'utf8')); console.log(validateSetup(setup).valid)"`, appDir);
+expect(reservation === 'true', 'the reservation contract and its examples import from the installed package');
+const embed = sh(`node --input-type=module -e "import { encodeTheme, bookingEmbedUrl } from '@yatris/astro/reservations'; import { reservationEmbedConfig } from '@yatris/astro/reservations/mount'; import { mountBooking } from '@yatris/astro/booking/client'; const c = reservationEmbedConfig({ mode: 'live', bookingOrigin: 'https://book.yatris.jp', websiteId: 1, }, { setupKey: 'consultation', theme: { radius: 4 } }); console.log(typeof mountBooking, c.directUrl === 'https://book.yatris.jp/book/1/consultation?theme=' + encodeTheme({ radius: 4 }), bookingEmbedUrl({ origin: c.bookingOrigin, websiteId: 1, setupKey: 'consultation', instance: 'abcdefghijklmnop', parentOrigin: 'https://example.jp' }).includes('embed=1'))"`, appDir);
+expect(embed === 'function true true', 'the reservation embed, theme contract and booking client import from the installed package');
+expect(sh('npm exec --offline -- yatris reservations validate', appDir).includes('no declarations'), 'yatris reservations validate runs');
 
 // A site scaffolded by the installed create-yatris (files only) carries the
 // contact-form skill in both agent locations and the root guidance, and the
@@ -83,6 +88,9 @@ const skillMd = ['.agents/skills', '.claude/skills'].map((location) => readFileS
 expect(skillMd[0] === skillMd[1] && skillMd[0].includes('name: yatris-contact-form'), 'the scaffold has the yatris-contact-form skill for Codex and Claude Code');
 const agents = readFileSync(resolve(scaffolded, 'AGENTS.md'), 'utf8');
 expect(agents.includes('Contact and inquiry forms always use Yatris') && agents.includes('`yatris-contact-form`'), 'the scaffold AGENTS.md sends contact forms to Yatris and the skill');
+const reservationMd = ['.agents/skills', '.claude/skills'].map((location) => readFileSync(resolve(scaffolded, location, 'yatris-reservation/SKILL.md'), 'utf8'));
+expect(reservationMd[0] === reservationMd[1] && reservationMd[0].includes('name: yatris-reservation'), 'the scaffold has the yatris-reservation skill for Codex and Claude Code');
+expect(agents.includes('Reservations always use Yatris') && agents.includes('`yatris-reservation`'), 'the scaffold AGENTS.md sends reservations to Yatris and the skill');
 const examples = readFileSync(resolve(scaffolded, '.claude/skills/yatris-contact-form/references/examples.md'), 'utf8').replace(/\r\n/g, '\n');
 mkdirSync(resolve(scaffolded, 'src/forms'), { recursive: true });
 writeFileSync(resolve(scaffolded, 'src/forms/contact.json'), /```json\n([\s\S]*?)```/.exec(examples)[1]);

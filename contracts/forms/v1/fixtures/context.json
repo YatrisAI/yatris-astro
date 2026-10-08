@@ -1,0 +1,1739 @@
+{
+  "questions": [
+    {
+      "name": "choice and choices context references",
+      "fields": [
+        {
+          "key": "colour_history",
+          "type": "text",
+          "label": "colour_history",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "color"
+          }
+        },
+        {
+          "key": "scalp",
+          "type": "text",
+          "label": "scalp",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.extras",
+            "operator": "contains",
+            "value": "treatment"
+          }
+        },
+        {
+          "key": "listed",
+          "type": "text",
+          "label": "listed",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "in",
+            "value": [
+              "cut",
+              "perm"
+            ]
+          }
+        },
+        {
+          "key": "staff",
+          "type": "text",
+          "label": "staff",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.staff_name",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": []
+    },
+    {
+      "name": "context values must be context options",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "massage"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "in",
+            "value": [
+              "cut",
+              "nail"
+            ]
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.extras",
+            "operator": "contains",
+            "value": "massage"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/value",
+          "code": "invalid_condition_value"
+        },
+        {
+          "path": "/fields/1/visibleWhen/value",
+          "code": "invalid_condition_value"
+        },
+        {
+          "path": "/fields/2/visibleWhen/value",
+          "code": "invalid_condition_value"
+        }
+      ]
+    },
+    {
+      "name": "an unknown context key",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.staff_key",
+            "operator": "eq",
+            "value": "x"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/field",
+          "code": "unknown_reference"
+        }
+      ]
+    },
+    {
+      "name": "a dotted reference with an empty context",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        }
+      ],
+      "context": {},
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/field",
+          "code": "unknown_reference"
+        }
+      ]
+    },
+    {
+      "name": "operators must suit the context kind",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "contains",
+            "value": "cut"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.first_visit",
+            "operator": "neq",
+            "value": true
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.starts_at",
+            "operator": "in",
+            "value": [
+              "2026-10-10T10:00"
+            ]
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/operator",
+          "code": "invalid_operator"
+        },
+        {
+          "path": "/fields/1/visibleWhen/operator",
+          "code": "invalid_operator"
+        },
+        {
+          "path": "/fields/2/visibleWhen/operator",
+          "code": "invalid_operator"
+        }
+      ]
+    },
+    {
+      "name": "decimal, temporal and boolean context values",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": 6
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "six"
+          }
+        },
+        {
+          "key": "d",
+          "type": "text",
+          "label": "d",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.starts_at",
+            "operator": "gte",
+            "value": "2026-10-10T18:00"
+          }
+        },
+        {
+          "key": "e",
+          "type": "text",
+          "label": "e",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.starts_at",
+            "operator": "lt",
+            "value": "2026-10-10"
+          }
+        },
+        {
+          "key": "f",
+          "type": "text",
+          "label": "f",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.first_visit",
+            "operator": "eq",
+            "value": true
+          }
+        },
+        {
+          "key": "g",
+          "type": "text",
+          "label": "g",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.first_visit",
+            "operator": "eq",
+            "value": "yes"
+          }
+        },
+        {
+          "key": "h",
+          "type": "text",
+          "label": "h",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "isEmpty",
+            "value": "0"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/2/visibleWhen/value",
+          "code": "invalid_condition_value"
+        },
+        {
+          "path": "/fields/4/visibleWhen/value",
+          "code": "invalid_condition_value"
+        },
+        {
+          "path": "/fields/6/visibleWhen/value",
+          "code": "invalid_condition_value"
+        },
+        {
+          "path": "/fields/7/visibleWhen/value",
+          "code": "invalid_condition_value"
+        }
+      ]
+    },
+    {
+      "name": "a context reference inside requiredWhen",
+      "fields": [
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "phone",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": []
+    },
+    {
+      "name": "a context reference inside a nested group visibleWhen",
+      "fields": [
+        {
+          "key": "details",
+          "type": "group",
+          "fields": [
+            {
+              "key": "perm_details",
+              "type": "group",
+              "visibleWhen": {
+                "not": {
+                  "field": "booking.service_key",
+                  "operator": "eq",
+                  "value": "cut"
+                }
+              },
+              "fields": [
+                {
+                  "key": "curl",
+                  "type": "text",
+                  "label": "curl",
+                  "required": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": []
+    },
+    {
+      "name": "context references inside all/any/not keep their paths",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "all": [
+              {
+                "any": [
+                  {
+                    "field": "booking.service_key",
+                    "operator": "eq",
+                    "value": "cut"
+                  }
+                ]
+              },
+              {
+                "not": {
+                  "field": "booking.service_key",
+                  "operator": "gt",
+                  "value": "cut"
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/all/1/not/operator",
+          "code": "invalid_operator"
+        }
+      ]
+    },
+    {
+      "name": "a sensitive field with a normal condition",
+      "fields": [
+        {
+          "key": "health",
+          "type": "textarea",
+          "label": "体調",
+          "required": false,
+          "sensitive": true,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "color"
+          }
+        },
+        {
+          "key": "follow_up",
+          "type": "text",
+          "label": "follow_up",
+          "required": false,
+          "visibleWhen": {
+            "field": "health",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": []
+    },
+    {
+      "name": "quiz takes no sensitive marker",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": false
+        },
+        {
+          "key": "q",
+          "type": "quiz",
+          "label": "q",
+          "sensitive": true,
+          "questions": [
+            {
+              "id": "x",
+              "question": "?",
+              "answers": [
+                "a"
+              ]
+            }
+          ]
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/1/sensitive",
+          "code": "unknown_property"
+        }
+      ]
+    },
+    {
+      "name": "node rules still apply to questions",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "a",
+            "operator": "eq",
+            "value": "x"
+          }
+        },
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false
+        },
+        {
+          "key": "r",
+          "type": "radio",
+          "label": "r",
+          "required": false,
+          "options": [
+            {
+              "value": "x",
+              "label": "x"
+            },
+            {
+              "value": "x",
+              "label": "x"
+            }
+          ]
+        },
+        {
+          "key": "echo",
+          "type": "reflection",
+          "source": "missing"
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen/field",
+          "code": "self_reference"
+        },
+        {
+          "path": "/fields/1/key",
+          "code": "duplicate_key"
+        },
+        {
+          "path": "/fields/2/options/1/value",
+          "code": "duplicate_option"
+        },
+        {
+          "path": "/fields/3/source",
+          "code": "reflection_source_invalid"
+        }
+      ]
+    },
+    {
+      "name": "visibility cycles are still found and context never joins them",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "all": [
+              {
+                "field": "booking.service_key",
+                "operator": "eq",
+                "value": "cut"
+              },
+              {
+                "field": "b",
+                "operator": "isNotEmpty"
+              }
+            ]
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "a",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields/0/visibleWhen",
+          "code": "condition_cycle"
+        }
+      ]
+    },
+    {
+      "name": "an empty question list",
+      "fields": [],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields",
+          "code": "too_short"
+        }
+      ]
+    },
+    {
+      "name": "questions must be a list",
+      "fields": {
+        "key": "a"
+      },
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "errors": [
+        {
+          "path": "/fields",
+          "code": "invalid_type"
+        }
+      ]
+    }
+  ],
+  "activity": [
+    {
+      "name": "visibleWhen on a context choice: active",
+      "fields": [
+        {
+          "key": "length",
+          "type": "text",
+          "label": "length",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.service_key": "cut"
+      },
+      "values": {
+        "length": "short"
+      },
+      "active": [
+        "length"
+      ],
+      "required": []
+    },
+    {
+      "name": "visibleWhen on a context choice: inactive",
+      "fields": [
+        {
+          "key": "length",
+          "type": "text",
+          "label": "length",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.service_key": "color"
+      },
+      "values": {
+        "length": "short"
+      },
+      "active": [],
+      "required": []
+    },
+    {
+      "name": "requiredWhen on a context decimal: required",
+      "fields": [
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "phone",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.party_size": "8"
+      },
+      "values": {},
+      "active": [
+        "phone"
+      ],
+      "required": [
+        "phone"
+      ]
+    },
+    {
+      "name": "requiredWhen on a context decimal: optional",
+      "fields": [
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "phone",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.party_size": "4"
+      },
+      "values": {},
+      "active": [
+        "phone"
+      ],
+      "required": []
+    },
+    {
+      "name": "context decimals are canonicalized before comparison",
+      "fields": [
+        {
+          "key": "phone",
+          "type": "tel",
+          "label": "phone",
+          "required": false,
+          "requiredWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "6"
+          }
+        },
+        {
+          "key": "exact",
+          "type": "text",
+          "label": "exact",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "eq",
+            "value": 6
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.party_size": "06.0"
+      },
+      "values": {},
+      "active": [
+        "phone",
+        "exact"
+      ],
+      "required": [
+        "phone"
+      ]
+    },
+    {
+      "name": "a group gated by context hides its children",
+      "fields": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "name",
+          "required": true
+        },
+        {
+          "key": "colour",
+          "type": "group",
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "color"
+          },
+          "fields": [
+            {
+              "key": "history",
+              "type": "text",
+              "label": "history",
+              "required": true
+            },
+            {
+              "key": "note",
+              "type": "help",
+              "text": "補足"
+            },
+            {
+              "key": "echo",
+              "type": "reflection",
+              "source": "history"
+            }
+          ]
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.service_key": "cut"
+      },
+      "values": {
+        "name": "山田",
+        "history": "stale"
+      },
+      "active": [
+        "name"
+      ],
+      "required": [
+        "name"
+      ]
+    },
+    {
+      "name": "a context key missing from contextValues is empty",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "isEmpty"
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "neq",
+            "value": "cut"
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        },
+        {
+          "key": "d",
+          "type": "text",
+          "label": "d",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "gte",
+            "value": "1"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {},
+      "values": {},
+      "active": [
+        "a",
+        "b"
+      ],
+      "required": []
+    },
+    {
+      "name": "answers never stand in for context values",
+      "fields": [
+        {
+          "key": "length",
+          "type": "text",
+          "label": "length",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "cut"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.service_key": "color"
+      },
+      "values": {
+        "booking.service_key": "cut",
+        "length": "short"
+      },
+      "active": [],
+      "required": []
+    },
+    {
+      "name": "choices, boolean, datetime and string context values",
+      "fields": [
+        {
+          "key": "scalp",
+          "type": "text",
+          "label": "scalp",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.extras",
+            "operator": "contains",
+            "value": "treatment"
+          }
+        },
+        {
+          "key": "welcome",
+          "type": "text",
+          "label": "welcome",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.first_visit",
+            "operator": "eq",
+            "value": true
+          }
+        },
+        {
+          "key": "late",
+          "type": "text",
+          "label": "late",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.starts_at",
+            "operator": "gte",
+            "value": "2026-10-10T18:00"
+          }
+        },
+        {
+          "key": "staff",
+          "type": "text",
+          "label": "staff",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.staff_name",
+            "operator": "contains",
+            "value": "佐藤"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.extras": [
+          "shampoo",
+          "treatment"
+        ],
+        "booking.first_visit": false,
+        "booking.starts_at": "2026-10-10T18:30",
+        "booking.staff_name": "佐藤 花子"
+      },
+      "values": {},
+      "active": [
+        "scalp",
+        "late",
+        "staff"
+      ],
+      "required": []
+    },
+    {
+      "name": "a context value of the wrong type is empty",
+      "fields": [
+        {
+          "key": "a",
+          "type": "text",
+          "label": "a",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.first_visit",
+            "operator": "eq",
+            "value": true
+          }
+        },
+        {
+          "key": "b",
+          "type": "text",
+          "label": "b",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.party_size",
+            "operator": "isEmpty"
+          }
+        },
+        {
+          "key": "c",
+          "type": "text",
+          "label": "c",
+          "required": false,
+          "visibleWhen": {
+            "field": "booking.service_key",
+            "operator": "isEmpty"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.first_visit": "true",
+        "booking.party_size": "six",
+        "booking.service_key": [
+          "cut"
+        ]
+      },
+      "values": {},
+      "active": [
+        "b",
+        "c"
+      ],
+      "required": []
+    },
+    {
+      "name": "a sensitive field follows context like any other",
+      "fields": [
+        {
+          "key": "health",
+          "type": "textarea",
+          "label": "体調",
+          "required": false,
+          "sensitive": true,
+          "requiredWhen": {
+            "field": "booking.service_key",
+            "operator": "eq",
+            "value": "color"
+          }
+        },
+        {
+          "key": "follow_up",
+          "type": "text",
+          "label": "follow_up",
+          "required": false,
+          "visibleWhen": {
+            "field": "health",
+            "operator": "isNotEmpty"
+          }
+        }
+      ],
+      "context": {
+        "booking.service_key": {
+          "kind": "choice",
+          "options": [
+            "cut",
+            "color",
+            "perm"
+          ]
+        },
+        "booking.extras": {
+          "kind": "choices",
+          "options": [
+            "shampoo",
+            "treatment"
+          ]
+        },
+        "booking.party_size": {
+          "kind": "decimal"
+        },
+        "booking.starts_at": {
+          "kind": "datetime"
+        },
+        "booking.first_visit": {
+          "kind": "boolean"
+        },
+        "booking.staff_name": {
+          "kind": "string"
+        }
+      },
+      "contextValues": {
+        "booking.service_key": "color"
+      },
+      "values": {
+        "health": "頭皮が敏感です"
+      },
+      "active": [
+        "health",
+        "follow_up"
+      ],
+      "required": [
+        "health"
+      ]
+    }
+  ]
+}

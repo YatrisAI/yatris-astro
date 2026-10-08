@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { activityFixtures, declarationFixtures, submissionFixtures } from '../../test/forms-fixtures.js';
+import { activityFixtures, contextFixtures, declarationFixtures, submissionFixtures } from '../../test/forms-fixtures.js';
 import {
   API_ERRORS,
   canonicalJson,
@@ -15,6 +15,7 @@ import {
   requiredCapabilities,
   toPublicDefinition,
   validateDeclaration,
+  validateQuestions,
   validateSubmission,
   type FormDeclaration,
 } from './index.js';
@@ -61,6 +62,49 @@ describe('submission fixtures', () => {
       files: {},
       ...fixture.expected,
     });
+  });
+});
+
+describe('question context fixtures', () => {
+  it.each(contextFixtures.questions.map((f) => [f.name, f] as const))('questions: %s', (_, fixture) => {
+    const result = validateQuestions(fixture.fields, { context: fixture.context });
+    expect(result.errors).toEqual(fixture.errors);
+    expect(result.warnings).toEqual([]);
+    expect(result.valid).toBe(fixture.errors.length === 0);
+  });
+
+  it.each(contextFixtures.activity.map((f) => [f.name, f] as const))('activity: %s', (_, fixture) => {
+    expect(validateQuestions(fixture.fields, { context: fixture.context }).errors).toEqual([]);
+    const options = { context: fixture.context, contextValues: fixture.contextValues };
+    expect(evaluateActivity({ fields: fixture.fields }, fixture.values, options)).toEqual({ active: fixture.active, required: fixture.required });
+  });
+
+  it('questions report the same node issues as a declaration with those fields', () => {
+    const fields = (declarationFixtures.find((f) => f.name === 'condition references')!.declaration as FormDeclaration).fields;
+    expect(validateQuestions(fields).errors).toEqual(validateDeclaration({ ...(declarationFixtures[0]!.declaration as FormDeclaration), fields }).errors);
+  });
+
+  it('unknown context keys evaluate to false and malformed contexts throw', () => {
+    const fields = [{ key: 'a', type: 'text', label: 'a', required: false, visibleWhen: { field: 'booking.nope', operator: 'neq', value: 'x' } }] as never;
+    expect(evaluateActivity({ fields }, {}, { context: {}, contextValues: { 'booking.nope': 'y' } }).active).toEqual([]);
+    expect(() => validateQuestions(fields, { context: { service: { kind: 'choice' } } as never })).toThrow(TypeError);
+    expect(() => validateQuestions(fields, { context: { 'booking.files': { kind: 'files' } } as never })).toThrow(TypeError);
+    expect(() => evaluateActivity({ fields }, {}, { context: { 'booking.size': { kind: 'decimal', options: ['1'] } } as never })).toThrow(TypeError);
+  });
+
+  it('visitors can never supply context values', () => {
+    const fields = [
+      { key: 'name', type: 'text', label: 'name', required: false },
+      { key: 'phone', type: 'tel', label: 'phone', required: false, requiredWhen: { field: 'booking.party_size', operator: 'gte', value: '6' } },
+    ];
+    const declaration = { ...(declarationFixtures[0]!.declaration as FormDeclaration), fields } as FormDeclaration;
+    const context = { 'booking.party_size': { kind: 'decimal' as const } };
+    const spoofed = validateSubmission(declaration, { answers: { name: '山田', 'booking.party_size': '8' } }, { context, contextValues: { 'booking.party_size': '2' } });
+    expect(spoofed.formErrors).toEqual(['undeclared_field']);
+    expect(spoofed.required).toEqual([]);
+    const large = validateSubmission(declaration, { answers: { name: '山田' } }, { context, contextValues: { 'booking.party_size': '8' } });
+    expect(large.fieldErrors).toEqual({ phone: 'required' });
+    expect(large.required).toEqual(['phone']);
   });
 });
 
@@ -173,6 +217,7 @@ describe('published contract files', () => {
   it('fixture files match their sources', () => {
     published('fixtures/declarations.json', declarationFixtures.map((f) => ({ warnings: [], ...f })));
     published('fixtures/activity.json', activityFixtures);
+    published('fixtures/context.json', contextFixtures);
     published('fixtures/submissions.json', submissionFixtures.map((f) => ({ options: {}, ...f, expected: { files: {}, ...f.expected } })));
   });
 });

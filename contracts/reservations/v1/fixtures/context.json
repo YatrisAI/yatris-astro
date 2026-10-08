@@ -1,0 +1,658 @@
+[
+  {
+    "name": "time_slot without operations",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": null,
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice"
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.host_key": {
+        "kind": "choice"
+      }
+    }
+  },
+  {
+    "name": "time_slot with operations",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "online",
+          "type": "online",
+          "label": "オンライン"
+        },
+        {
+          "key": "office",
+          "type": "in_person",
+          "label": "本社"
+        }
+      ],
+      "resources": [
+        {
+          "key": "sato",
+          "kind": "host",
+          "label": "佐藤"
+        },
+        {
+          "key": "tanaka",
+          "kind": "host",
+          "label": "田中"
+        }
+      ],
+      "appointment": {
+        "durationMinutes": 60,
+        "hostStrategy": "one_available",
+        "hostResourceKeys": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    },
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice",
+        "options": [
+          "online",
+          "office"
+        ]
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.host_key": {
+        "kind": "choice",
+        "options": [
+          "sato",
+          "tanaka"
+        ]
+      }
+    }
+  },
+  {
+    "name": "service without operations",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": null,
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice"
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.service_key": {
+        "kind": "choice"
+      },
+      "booking.variant_key": {
+        "kind": "choice"
+      }
+    }
+  },
+  {
+    "name": "service with operations: variant keys across services, deduplicated",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "service",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "perm",
+          "label": "パーマ",
+          "durationMinutes": 120,
+          "variants": [
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 150
+            },
+            {
+              "key": "root",
+              "label": "根元",
+              "durationMinutes": 90
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice",
+        "options": [
+          "salon"
+        ]
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.service_key": {
+        "kind": "choice",
+        "options": [
+          "cut",
+          "color",
+          "perm"
+        ]
+      },
+      "booking.variant_key": {
+        "kind": "choice",
+        "options": [
+          "short",
+          "long",
+          "root"
+        ]
+      }
+    }
+  },
+  {
+    "name": "party without operations",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": null,
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice"
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.party_size": {
+        "kind": "decimal"
+      }
+    }
+  },
+  {
+    "name": "party with operations",
+    "setup": {
+      "contractVersion": 1,
+      "key": "restaurant",
+      "name": "お席のご予約",
+      "locale": "ja",
+      "mode": "business",
+      "presentation": "party",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "manual",
+      "locations": [
+        {
+          "key": "restaurant",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "t1",
+          "kind": "table",
+          "label": "t1",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t2",
+          "kind": "table",
+          "label": "t2",
+          "seats": {
+            "min": 1,
+            "max": 2
+          }
+        },
+        {
+          "key": "t3",
+          "kind": "table",
+          "label": "t3",
+          "seats": {
+            "min": 2,
+            "max": 4
+          }
+        }
+      ],
+      "party": {
+        "minSize": 1,
+        "maxSize": 6,
+        "durationMinutes": 120,
+        "strategy": "tables",
+        "tableResourceKeys": [
+          "t1",
+          "t2",
+          "t3"
+        ],
+        "combinations": [
+          {
+            "key": "t1_t2",
+            "resourceKeys": [
+              "t1",
+              "t2"
+            ],
+            "seats": {
+              "min": 3,
+              "max": 4
+            }
+          }
+        ]
+      }
+    },
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice",
+        "options": [
+          "restaurant"
+        ]
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.party_size": {
+        "kind": "decimal"
+      }
+    }
+  },
+  {
+    "name": "business without a presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "salon",
+      "name": "サロンのご予約",
+      "locale": "ja",
+      "mode": "business",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "automatic",
+      "locations": [
+        {
+          "key": "salon",
+          "type": "in_person",
+          "label": "本店"
+        }
+      ],
+      "resources": [
+        {
+          "key": "yamada",
+          "kind": "practitioner",
+          "label": "山田"
+        },
+        {
+          "key": "suzuki",
+          "kind": "practitioner",
+          "label": "鈴木"
+        },
+        {
+          "key": "spa_room",
+          "kind": "room",
+          "label": "スパルーム"
+        }
+      ],
+      "services": [
+        {
+          "key": "cut",
+          "label": "カット",
+          "durationMinutes": 60,
+          "variants": [
+            {
+              "key": "short",
+              "label": "ショート",
+              "durationMinutes": 45
+            },
+            {
+              "key": "long",
+              "label": "ロング",
+              "durationMinutes": 75
+            }
+          ],
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        },
+        {
+          "key": "color",
+          "label": "カラー",
+          "durationMinutes": 90,
+          "requirements": [
+            {
+              "resourceKeys": [
+                "yamada",
+                "suzuki"
+              ],
+              "count": 1
+            }
+          ]
+        }
+      ]
+    },
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice",
+        "options": [
+          "salon"
+        ]
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      }
+    }
+  },
+  {
+    "name": "time_slot ignores a presentation",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ],
+      "presentation": "party"
+    },
+    "operations": null,
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice"
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.host_key": {
+        "kind": "choice"
+      }
+    }
+  },
+  {
+    "name": "known operations without locations or appointment give empty options",
+    "setup": {
+      "contractVersion": 1,
+      "key": "consultation",
+      "name": "無料相談のご予約",
+      "locale": "ja",
+      "mode": "time_slot",
+      "identityFields": {
+        "name": "name",
+        "email": "email"
+      },
+      "questions": [
+        {
+          "key": "name",
+          "type": "text",
+          "label": "お名前",
+          "required": true
+        },
+        {
+          "key": "email",
+          "type": "email",
+          "label": "メールアドレス",
+          "required": true
+        }
+      ]
+    },
+    "operations": {
+      "confirmationMode": "automatic"
+    },
+    "expected": {
+      "booking.location_key": {
+        "kind": "choice",
+        "options": []
+      },
+      "booking.starts_at": {
+        "kind": "datetime"
+      },
+      "booking.host_key": {
+        "kind": "choice",
+        "options": []
+      }
+    }
+  }
+]
