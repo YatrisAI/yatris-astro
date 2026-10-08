@@ -38,6 +38,12 @@ export interface LiveBookingConfig extends BookingConfigBase {
   turnstile?: { siteKey: string; action: string } | null;
   /** Present when the page runs inside `<ReservationEmbed>`'s iframe. */
   embed?: { instance: string; parentOrigin: string } | null;
+  /**
+   * The Website's public origin (e.g. `https://www.example.jp`). Relative
+   * privacy-policy links of consent questions open on it rather than on the
+   * booking origin. Default: the embed's `parentOrigin`.
+   */
+  siteOrigin?: string | null;
 }
 
 export interface PreviewBookingConfig extends BookingConfigBase {
@@ -102,7 +108,17 @@ export interface BookingApi {
   receipt(receipt: string): Promise<ApiResult<ReceiptResponse>>;
 }
 
+/** The `selection` of availability and holds (contract README "Selection"). */
 export interface Selection {
   locationKey?: string;
+  /** `time_slot`, when the visitor chose a host. */
   hostKey?: string;
+  /** `service`: the one service of the booking. */
+  serviceKey?: string;
+  /** `service`: required when the service has variants. */
+  variantKey?: string;
+  /** `service`, when the visitor chose a practitioner; absent for 「指定しない」. */
+  practitionerKey?: string;
+  /** `party`: an integer from `party.minSize` to `party.maxSize`. */
+  partySize?: number;
 }

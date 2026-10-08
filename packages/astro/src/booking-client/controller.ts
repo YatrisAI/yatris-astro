@@ -13,6 +13,7 @@ import { RESERVATION_API_ERRORS, type ReservationApiErrorCode } from '../reserva
 import type { ReservationPublicDefinition } from '../reservations/public.js';
 import { validateTheme, type ReservationTheme } from '../reservations/theme.js';
 import { liveApi } from './api.js';
+import { ALL_STEPS, contextValuesOf, durationOf, flowOf, keptSelection, selectionProblem, serviceOf, stepsOf, type BookingFlow, type BookingStep } from './flow.js';
 import { previewApi, type PreviewApi } from './preview-api.js';
 import {
   addDays,
@@ -30,11 +31,13 @@ import type { AcceptedResponse, ApiResult, AvailabilityResponse, BookingApi, Boo
 import { UI } from './ui.js';
 
 /**
- * One mounted booking flow (contract README "Wire formats"), `time_slot`
- * mode: date → time (acquires a hold) → contact details and questions →
- * review → submit → outcome. It never claims a booking without an
+ * One mounted booking flow (contract README "Wire formats" and "Booking
+ * UI"): date → time (acquires a hold) → contact details and questions →
+ * review → submit → outcome, preceded by the service choice (service,
+ * variant, practitioner preference) for `business` + `service` and by the
+ * party size for `business` + `party`. It never claims a booking without an
  * `accepted` response and never falls back to synthetic data in a live
- * mount. Service and party flows add steps in a later contract issue.
+ * mount.
  */
 
 export interface BookingOptions {
@@ -56,11 +59,11 @@ export interface BookingOptions {
   random?: () => number;
 }
 
-export type BookingStep = 'date' | 'time' | 'details' | 'review' | 'outcome';
-const STEPS: BookingStep[] = ['date', 'time', 'details', 'review', 'outcome'];
+export type { BookingFlow, BookingStep };
 const WINDOW_DAYS = 14;
 const MAX_RECEIPT_POLLS = 20;
-const SUPPORTED_MODES = ['time_slot'];
+/** A party-size range up to this many sizes is a select; a wider one a number input. */
+const PARTY_SELECT_MAX = 30;
 
 interface Attempt {
   key: string;
@@ -137,6 +140,10 @@ class Challenge {
 export class BookingController {
   readonly ready: Promise<void>;
   definition: ReservationPublicDefinition | null = null;
+  /** The flow of the loaded definition. */
+  flow: BookingFlow = 'time_slot';
+  /** The steps of this flow, in order. */
+  steps: BookingStep[] = stepsOf('time_slot');
   step: BookingStep = 'date';
   selection: Selection = {};
   hold: HoldResponse | null = null;
@@ -153,7 +160,13 @@ export class BookingController {
   private readonly now: () => number;
   private readonly embed: { instance: string; parentOrigin: string } | null;
   private readonly bookingOrigin: string | null;
+  /** Where relative consent privacy links open (live mounts). */
+  private readonly siteOrigin: string | null;
   private body: HTMLElement;
+  /** A hold dropped by a selection change, still named as `replaceHoldToken` on the next hold. */
+  private staleHoldToken: string | null = null;
+  /** Only the newest availability response is drawn. */
+  private availabilitySeq = 0;
   private declaration: FormDeclaration | null = null;
   private context: QuestionContext = {};
   private result: SubmissionResult | null = null;
@@ -176,6 +189,12 @@ export class BookingController {
     holdBar: HTMLElement;
     sections: Record<BookingStep, HTMLElement>;
     headings: Partial<Record<BookingStep, HTMLElement>>;
+    /** The date step's duration and selection summary. */
+    dateSummary: HTMLElement;
+    /** The service step's variant and practitioner choices, redrawn per service. */
+    serviceDetails: HTMLElement;
+    /** The inline error of the service or party step. */
+    choiceError: Partial<Record<BookingStep, HTMLElement>>;
     datesBox: HTMLElement;
     timesBox: HTMLElement;
     form: HTMLFormElement;
@@ -201,6 +220,7 @@ export class BookingController {
       this.api = liveApi(config, doFetch, this.now);
       this.embed = validEmbed(config.embed);
       this.bookingOrigin = new URL(config.definitionUrl).origin;
+      this.siteOrigin = typeof config.siteOrigin === 'string' && isWebOrigin(config.siteOrigin) ? config.siteOrigin : (this.embed?.parentOrigin ?? null);
     } else {
       const log = h('pre', { class: 'yb-preview-log' }, UI.previewNothing);
       const api = config.definition ? previewApi(config, this.now, (entry) => (log.textContent = JSON.stringify(entry, null, 2))) : null;
@@ -208,6 +228,7 @@ export class BookingController {
       this.previewLog = api?.sent ?? null;
       this.embed = null;
       this.bookingOrigin = null;
+      this.siteOrigin = null;
       root.setAttribute('data-yb-preview', 'true');
       root.append(previewMarker(config.source, log));
     }
@@ -252,7 +273,10 @@ export class BookingController {
   private checkDefinition(d: ReservationPublicDefinition): string | null {
     if (!d || typeof d !== 'object' || d.contractVersion !== 1) return 'contract version is not supported';
     if (!d.setup || !d.policies || !Array.isArray(d.questions) || !Array.isArray(d.locations)) return 'the definition is malformed';
-    if (!SUPPORTED_MODES.includes(d.setup.mode) || !d.appointment) return `mode ${String(d.setup.mode)} is not supported by this version of the booking UI`;
+    const flow = flowOf(d);
+    if (!flow) return `mode ${String(d.setup.mode)}/${String(d.setup.presentation)} is not supported by this version of the booking UI`;
+    const section = sectionProblem(d, flow);
+    if (section) return section;
     if (!isTimeZone(d.policies.timezone)) return `unknown time zone ${d.policies.timezone}`;
     const unknown = flatten(d.questions).filter((e) => !nodeType(e.node.type)).map((e) => String(e.node.type));
     if (unknown.length) return `unknown node types ${unknown.join(', ')}`;
@@ -282,34 +306,61 @@ export class BookingController {
 
   // Rendering --------------------------------------------------------------
 
-  private render(definition: ReservationPublicDefinition): void {
+  /**
+   * Draws the definition. `keep` is the selection before a reload: what is
+   * still valid is kept, and the flow resumes at the dates when the mode's
+   * own choices still stand, else at the first step.
+   */
+  private render(definition: ReservationPublicDefinition, keep?: Selection): void {
     this.holdChallenge?.remove();
     this.submitChallenge?.remove();
     this.definition = definition;
+    this.flow = flowOf(definition)!;
+    this.steps = stepsOf(this.flow);
     const venue = definition.policies.timezone;
     this.displayTimeZone = venue;
     this.declaration = { contractVersion: 1, key: definition.setup.key, name: definition.setup.name, locale: 'ja', fields: definition.questions };
-    this.context = reservationContext({ mode: definition.setup.mode as 'time_slot', presentation: undefined }, null);
+    this.context = reservationContext({ mode: definition.setup.mode as 'time_slot' | 'business', presentation: this.flow === 'time_slot' ? undefined : this.flow }, null);
     const turnstile = this.config.mode === 'live' ? (this.config.turnstile ?? definition.turnstile) : null;
     const loader = this.options.turnstile ?? loadTurnstile;
     this.holdChallenge = turnstile ? new Challenge(turnstile, loader) : null;
     this.submitChallenge = turnstile ? new Challenge(turnstile, loader) : null;
-    if (definition.locations.length === 1) this.selection = { locationKey: definition.locations[0]!.key };
-    else this.selection = {};
+    this.selection = keptSelection(definition, keep);
+    this.staleHoldToken = null;
 
-    const stepItems = UI.steps.map((label) => h('li', { class: 'yb-step' }, label));
-    const sections = Object.fromEntries(STEPS.map((step) => [step, h('section', { class: `yb-section yb-section-${step}`, hidden: true, 'data-yb-section': step })])) as Record<BookingStep, HTMLElement>;
+    const stepItems = this.steps.map((step) => h('li', { class: 'yb-step', 'data-yb-step-item': step }, UI.stepLabels[step]));
+    const sections = Object.fromEntries(ALL_STEPS.map((step) => [step, h('section', { class: `yb-section yb-section-${step}`, hidden: true, 'data-yb-section': step })])) as Record<BookingStep, HTMLElement>;
     const notice = h('p', { class: 'yb-notice', role: 'alert', hidden: true, tabindex: '-1' });
     const holdBar = h('p', { class: 'yb-hold', role: 'status', hidden: true });
     const status = h('p', { class: 'yb-status', role: 'status', 'aria-live': 'polite' });
+    const headings: Partial<Record<BookingStep, HTMLElement>> = {};
+    const choiceError: Partial<Record<BookingStep, HTMLElement>> = {};
+    const serviceDetails = h('div', { class: 'yb-service-details' });
 
-    // Date step: heading, duration, location and host choice, the dates.
-    const dateHeading = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.dateHeading);
+    // Service or party step: the mode's own choices.
+    if (this.flow === 'service') {
+      headings.service = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.serviceHeading);
+      choiceError.service = h('p', { class: 'yb-error', role: 'alert', hidden: true, id: `${this.prefix}-service-error` });
+      sections.service.append(headings.service, this.serviceChoice(definition), serviceDetails, choiceError.service, this.continueActions('service'));
+    } else if (this.flow === 'party') {
+      headings.party = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.partyHeading);
+      choiceError.party = h('p', { class: 'yb-error', role: 'alert', hidden: true, id: `${this.prefix}-party-error` });
+      sections.party.append(headings.party, this.partyChoice(definition, choiceError.party), h('p', { class: 'yb-duration' }, UI.diningDuration(definition.party!.durationMinutes)), choiceError.party, this.continueActions('party'));
+    }
+
+    // Date step: heading, the selection and its duration, location and host choice, the dates.
+    headings.date = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.dateHeading);
+    const dateSummary = h('div', { class: 'yb-selection-summary' });
     const datesBox = h('div', { class: 'yb-dates-box' });
-    sections.date.append(dateHeading, h('p', { class: 'yb-duration' }, UI.duration(definition.appointment!.durationMinutes)));
+    sections.date.append(headings.date, dateSummary);
     if (definition.locations.length) sections.date.append(this.locationChoice(definition));
-    if (definition.appointment!.visitorChoosesHost && definition.appointment!.hosts.length) sections.date.append(this.hostChoice(definition));
+    if (this.flow === 'time_slot' && definition.appointment!.visitorChoosesHost && definition.appointment!.hosts.length) sections.date.append(this.hostChoice(definition));
     sections.date.append(datesBox);
+    if (this.flow !== 'time_slot') {
+      const back = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, this.flow === 'service' ? UI.backToService : UI.backToParty);
+      back.addEventListener('click', () => this.goTo(this.steps[0]!));
+      sections.date.append(h('div', { class: 'yb-actions' }, back));
+    }
 
     const timesBox = h('div', { class: 'yb-times-box' });
     sections.time.append(timesBox);
@@ -344,6 +395,8 @@ export class BookingController {
       this.toReview();
     });
     sections.details.append(detailsHeading, form);
+    headings.details = detailsHeading;
+    this.openPolicyLinksOnSite(fields);
 
     const timeZone = h('div', { class: 'yb-tz' });
     this.body.replaceChildren(
@@ -352,16 +405,20 @@ export class BookingController {
       timeZone,
       holdBar,
       notice,
-      ...STEPS.map((step) => sections[step]),
+      ...ALL_STEPS.map((step) => sections[step]),
       status,
     );
-    this.parts = { steps: stepItems, timeZone, notice, holdBar, sections, headings: { date: dateHeading, details: detailsHeading }, datesBox, timesBox, form, summary, honeypot, status };
+    this.parts = { steps: stepItems, timeZone, notice, holdBar, sections, headings, dateSummary, serviceDetails, choiceError, datesBox, timesBox, form, summary, honeypot, status };
+    if (this.flow === 'service') this.renderServiceDetails();
+    this.renderDateSummary();
     this.renderTimeZone();
     this.shownErrors.clear();
     this.windowStart = localDate(this.now(), venue);
     this.days.clear();
     this.chosenDate = null;
-    this.showStep('date', false);
+    const own = selectionProblem(definition, this.selection);
+    const first = keep && own !== 'service' && own !== 'party' ? 'date' : this.steps[0]!;
+    this.showStep(first, false);
     this.refresh();
     if (!this.readySent) {
       this.readySent = true;
@@ -371,6 +428,19 @@ export class BookingController {
     void this.loadAvailability();
   }
 
+  /**
+   * Consent questions link their privacy policy by a site path. On the
+   * booking origin such a path would open the booking host, so it is
+   * resolved against the Website's origin when one is known.
+   */
+  private openPolicyLinksOnSite(fields: HTMLElement): void {
+    if (!this.siteOrigin) return;
+    for (const link of Array.from(fields.querySelectorAll<HTMLAnchorElement>('.yf-policy a[href^="/"]'))) {
+      link.href = new URL(link.getAttribute('href')!, this.siteOrigin).href;
+      link.rel = 'noopener noreferrer';
+    }
+  }
+
   private locationChoice(definition: ReservationPublicDefinition): HTMLElement {
     const fieldset = h('fieldset', { class: 'yb-choice-group' }, h('legend', { class: 'yb-legend' }, UI.locationLegend));
     for (const location of definition.locations) {
@@ -378,9 +448,7 @@ export class BookingController {
       const input = h('input', { type: 'radio', name: `${this.prefix}-location`, id, value: location.key, class: 'yb-choice-input', checked: this.selection.locationKey === location.key });
       input.addEventListener('change', () => {
         if (!input.checked) return;
-        this.selection = { ...this.selection, locationKey: location.key };
-        this.refresh();
-        void this.loadAvailability();
+        this.changeSelection({ ...this.selection, locationKey: location.key });
       });
       fieldset.append(h('div', { class: 'yb-choice' }, input, h('label', { for: id, class: 'yb-choice-label' }, location.label)));
     }
@@ -389,14 +457,224 @@ export class BookingController {
 
   private hostChoice(definition: ReservationPublicDefinition): HTMLElement {
     const id = `${this.prefix}-host`;
-    const select = h('select', { id, class: 'yb-select' }, h('option', { value: '' }, UI.anyHost), ...definition.appointment!.hosts.map((host) => h('option', { value: host.key }, host.label)));
+    const select = h(
+      'select',
+      { id, class: 'yb-select' },
+      h('option', { value: '' }, UI.anyHost),
+      ...definition.appointment!.hosts.map((host) => h('option', { value: host.key, selected: host.key === this.selection.hostKey }, host.label)),
+    );
     select.addEventListener('change', () => {
       const { hostKey: _previous, ...rest } = this.selection;
-      this.selection = select.value ? { ...rest, hostKey: select.value } : rest;
-      this.refresh();
-      void this.loadAvailability();
+      this.changeSelection(select.value ? { ...rest, hostKey: select.value } : rest);
     });
     return h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.hostLabel), select);
+  }
+
+  /**
+   * A new selection: conditions on `booking.*` are recalculated (inactive
+   * answers clear), the old availability is dropped, and a held time no
+   * longer matches, so it is released locally and replaced explicitly by the
+   * next hold. Availability reloads when the visitor is on the dates.
+   */
+  private changeSelection(next: Selection): void {
+    this.selection = next;
+    if (this.hold) {
+      this.staleHoldToken = this.hold.holdToken;
+      this.releaseHold();
+    }
+    this.days.clear();
+    this.chosenDate = null;
+    this.clearChoiceError();
+    this.renderDateSummary();
+    this.refresh();
+    if (this.step === 'date') void this.loadAvailability();
+  }
+
+  /** The service step: one radio per service, then its variants and the practitioner preference. */
+  private serviceChoice(definition: ReservationPublicDefinition): HTMLElement {
+    const fieldset = h('fieldset', { class: 'yb-choice-group yb-services', 'aria-describedby': `${this.prefix}-service-error` }, h('legend', { class: 'yb-legend' }, UI.serviceLegend));
+    for (const service of definition.services!) {
+      const id = `${this.prefix}-service-${service.key}`;
+      const input = h('input', { type: 'radio', name: `${this.prefix}-service`, id, value: service.key, class: 'yb-choice-input', checked: this.selection.serviceKey === service.key, 'data-yb-service': service.key });
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        const { locationKey } = this.selection;
+        this.changeSelection({ ...(locationKey !== undefined ? { locationKey } : {}), serviceKey: service.key });
+        this.renderServiceDetails();
+      });
+      const durations = service.variants.map((v) => v.durationMinutes);
+      const min = Math.min(...durations);
+      const max = Math.max(...durations);
+      const duration = !durations.length ? UI.duration(service.durationMinutes) : min === max ? UI.duration(min) : UI.durationRange(UI.minutes(min), UI.minutes(max));
+      fieldset.append(
+        h(
+          'div',
+          { class: 'yb-choice yb-option' },
+          input,
+          h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-option-label' }, service.label), h('span', { class: 'yb-option-detail' }, duration)),
+        ),
+      );
+    }
+    return fieldset;
+  }
+
+  /** The chosen service's variants (each with its own duration) and practitioner preference. */
+  private renderServiceDetails(): void {
+    const p = this.parts!;
+    const service = serviceOf(this.definition!, this.selection);
+    const children: HTMLElement[] = [];
+    if (service?.variants.length) {
+      const fieldset = h('fieldset', { class: 'yb-choice-group yb-variants', 'aria-describedby': `${this.prefix}-service-error` }, h('legend', { class: 'yb-legend' }, UI.variantLegend));
+      for (const variant of service.variants) {
+        const id = `${this.prefix}-variant-${service.key}-${variant.key}`;
+        const input = h('input', { type: 'radio', name: `${this.prefix}-variant`, id, value: variant.key, class: 'yb-choice-input', checked: this.selection.variantKey === variant.key, 'data-yb-variant': variant.key });
+        input.addEventListener('change', () => {
+          if (input.checked) this.changeSelection({ ...this.selection, variantKey: variant.key });
+        });
+        fieldset.append(
+          h(
+            'div',
+            { class: 'yb-choice yb-option' },
+            input,
+            h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-option-label' }, variant.label), h('span', { class: 'yb-option-detail' }, UI.duration(variant.durationMinutes))),
+          ),
+        );
+      }
+      children.push(fieldset);
+    }
+    if (service?.visitorChoosesPractitioner && service.practitioners.length) {
+      const id = `${this.prefix}-practitioner`;
+      const note = `${id}-note`;
+      const select = h(
+        'select',
+        { id, class: 'yb-select yb-practitioner', 'aria-describedby': note },
+        h('option', { value: '' }, UI.anyPractitioner),
+        ...service.practitioners.map((practitioner) => h('option', { value: practitioner.key, selected: practitioner.key === this.selection.practitionerKey }, practitioner.label)),
+      );
+      select.addEventListener('change', () => {
+        const { practitionerKey: _previous, ...rest } = this.selection;
+        this.changeSelection(select.value ? { ...rest, practitionerKey: select.value } : rest);
+      });
+      children.push(h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.practitionerLabel), select, h('p', { class: 'yb-hint', id: note }, UI.anyPractitionerNote)));
+    }
+    p.serviceDetails.replaceChildren(...children);
+    this.postHeight();
+  }
+
+  /** The party step: a select of every allowed size, or a number input for a wide range. */
+  private partyChoice(definition: ReservationPublicDefinition, error: HTMLElement): HTMLElement {
+    const { minSize, maxSize } = definition.party!;
+    const id = `${this.prefix}-party`;
+    const hint = `${id}-hint`;
+    const describedBy = `${hint} ${error.id}`;
+    let control: HTMLSelectElement | HTMLInputElement;
+    if (maxSize - minSize < PARTY_SELECT_MAX) {
+      const sizes = Array.from({ length: maxSize - minSize + 1 }, (_, i) => minSize + i);
+      control = h(
+        'select',
+        { id, class: 'yb-select yb-party-size', 'aria-describedby': describedBy, required: true },
+        ...(minSize === maxSize ? [] : [h('option', { value: '' }, UI.partyPrompt)]),
+        ...sizes.map((size) => h('option', { value: String(size), selected: size === this.selection.partySize }, UI.partyOption(size))),
+      );
+    } else {
+      control = h('input', {
+        id,
+        type: 'number',
+        class: 'yb-input yb-party-size',
+        inputmode: 'numeric',
+        min: String(minSize),
+        max: String(maxSize),
+        step: '1',
+        required: true,
+        'aria-describedby': describedBy,
+        value: this.selection.partySize === undefined ? '' : String(this.selection.partySize),
+      });
+    }
+    control.addEventListener('change', () => {
+      const raw = control.value.trim();
+      const size = /^\d{1,4}$/.test(raw) ? Number(raw) : NaN;
+      const { partySize: _previous, ...rest } = this.selection;
+      this.changeSelection(Number.isInteger(size) && size >= minSize && size <= maxSize ? { ...rest, partySize: size } : rest);
+    });
+    return h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.partyLabel), control, h('p', { class: 'yb-hint', id: hint }, UI.partyRange(minSize, maxSize)));
+  }
+
+  /** The 「日付の選択へ進む」 button of the service and party steps. */
+  private continueActions(step: 'service' | 'party'): HTMLElement {
+    const next = h('button', { type: 'button', class: 'yb-next yb-button' }, UI.toDates);
+    next.addEventListener('click', () => this.continueToDates(step));
+    return h('div', { class: 'yb-actions yb-actions-end' }, next);
+  }
+
+  private continueToDates(step: 'service' | 'party'): void {
+    if (this.pending) return;
+    const definition = this.definition!;
+    const p = this.parts!;
+    if (selectionProblem(definition, this.selection) === step) {
+      const error = p.choiceError[step]!;
+      let message: string;
+      let target: HTMLElement | null;
+      if (step === 'party') {
+        message = UI.partyInvalid(definition.party!.minSize, definition.party!.maxSize);
+        target = p.sections.party.querySelector('.yb-party-size');
+        target?.setAttribute('aria-invalid', 'true');
+      } else if (!serviceOf(definition, this.selection)) {
+        message = UI.chooseService;
+        target = p.sections.service.querySelector('.yb-services input');
+      } else {
+        message = UI.chooseVariant;
+        target = p.sections.service.querySelector('.yb-variants input');
+      }
+      error.textContent = message;
+      error.hidden = false;
+      target?.focus();
+      this.postHeight();
+      return;
+    }
+    this.clearChoiceError();
+    this.goTo('date');
+    void this.loadAvailability();
+  }
+
+  private clearChoiceError(): void {
+    const p = this.parts;
+    if (!p) return;
+    for (const error of Object.values(p.choiceError)) {
+      error.textContent = '';
+      error.hidden = true;
+    }
+    p.sections.party.querySelector('.yb-party-size')?.removeAttribute('aria-invalid');
+  }
+
+  /** What the visitor chose before the dates, and how long it lasts. */
+  private renderDateSummary(): void {
+    const p = this.parts;
+    if (!p) return;
+    const definition = this.definition!;
+    const what = this.selectionLabel();
+    const minutes = durationOf(definition, this.selection);
+    p.dateSummary.replaceChildren(
+      ...(what ? [h('p', { class: 'yb-selection' }, what)] : []),
+      ...(minutes !== null ? [h('p', { class: 'yb-duration' }, this.flow === 'party' ? UI.diningDuration(minutes) : UI.duration(minutes))] : []),
+    );
+  }
+
+  /** 「カット（ロング）」, 「4名」 or null (time slot). */
+  private selectionLabel(): string | null {
+    const definition = this.definition!;
+    if (this.flow === 'party') return this.selection.partySize === undefined ? null : UI.partyOption(this.selection.partySize);
+    if (this.flow !== 'service') return null;
+    const service = serviceOf(definition, this.selection);
+    if (!service) return null;
+    const variant = service.variants.find((v) => v.key === this.selection.variantKey);
+    return variant ? `${service.label}（${variant.label}）` : service.label;
+  }
+
+  /** The selection's duration text for the time step: 所要時間 or ご利用時間. */
+  private durationText(): string {
+    const minutes = durationOf(this.definition!, this.selection);
+    if (minutes === null) return '';
+    return this.flow === 'party' ? UI.diningDuration(minutes) : UI.duration(minutes);
   }
 
   /** The display-zone switch: the venue zone, plus the visitor's when it differs. */
@@ -430,14 +708,14 @@ export class BookingController {
   private showStep(step: BookingStep, focus = true): void {
     const p = this.parts!;
     this.step = step;
-    for (const s of STEPS) p.sections[s].hidden = s !== step;
-    const index = STEPS.indexOf(step);
+    for (const s of ALL_STEPS) p.sections[s].hidden = s !== step;
+    const index = this.steps.indexOf(step);
     p.steps.forEach((li, i) => {
       if (i === index) li.setAttribute('aria-current', 'step');
       else li.removeAttribute('aria-current');
       li.classList.toggle('yb-step-done', i < index);
     });
-    p.timeZone.hidden = !p.timeZone.hasChildNodes() || step === 'details' || step === 'outcome';
+    p.timeZone.hidden = !p.timeZone.hasChildNodes() || !['date', 'time', 'review'].includes(step);
     this.setState(step === 'outcome' ? 'done' : 'ready');
     this.root.setAttribute('data-yb-step', step);
     this.updateHoldBar();
@@ -474,6 +752,16 @@ export class BookingController {
   async loadAvailability(): Promise<void> {
     const p = this.parts!;
     const definition = this.definition!;
+    const seq = ++this.availabilitySeq;
+    p.datesBox.removeAttribute('aria-busy');
+    if (p.status.textContent === UI.loadingAvailability) p.status.textContent = '';
+    const own = selectionProblem(definition, this.selection);
+    if (own === 'service' || own === 'party') {
+      // Nothing to ask the server yet: the mode's own choices come first.
+      p.datesBox.replaceChildren(h('p', { class: 'yb-hint' }, own === 'service' ? UI.chooseServiceFirst : UI.choosePartyFirst));
+      this.postHeight();
+      return;
+    }
     if (definition.locations.length && !this.selection.locationKey) {
       p.datesBox.replaceChildren(h('p', { class: 'yb-hint' }, UI.chooseLocationFirst));
       this.postHeight();
@@ -484,11 +772,13 @@ export class BookingController {
     const from = this.windowStart;
     const to = this.windowEnd();
     const result = await this.api.availability({ from, to, selection: { ...this.selection } });
+    if (seq !== this.availabilitySeq || this.definition !== definition) return;
     p.datesBox.removeAttribute('aria-busy');
     p.status.textContent = '';
     if (!result.ok) {
       if (result.code === 'version_changed') return this.versionChanged();
       if (result.code === 'setup_unavailable') return this.showUnavailable(UI.unavailable, false, 'unavailable');
+      if (isInvalidSelection(result)) return this.selectionRejected();
       const retry = h('button', { type: 'button', class: 'yb-retry yb-button' }, UI.reloadAvailability);
       retry.addEventListener('click', () => void this.loadAvailability());
       p.datesBox.replaceChildren(h('p', { class: 'yb-error', role: 'alert' }, this.errorMessage(result)), retry);
@@ -564,7 +854,8 @@ export class BookingController {
     const challenge = this.holdChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
     p.timesBox.replaceChildren(
       heading,
-      h('p', { class: 'yb-duration' }, `${UI.duration(this.definition!.appointment!.durationMinutes)}　${UI.timesShownIn(timeZoneLabel(zone))}`),
+      ...(this.selectionLabel() ? [h('p', { class: 'yb-selection' }, this.selectionLabel()!)] : []),
+      h('p', { class: 'yb-duration' }, `${this.durationText()}　${UI.timesShownIn(timeZoneLabel(zone))}`),
       slots.length ? list : h('p', { class: 'yb-hint' }, UI.noSlots),
       ...(challenge ? [challenge] : []),
       h('div', { class: 'yb-actions' }, back),
@@ -583,13 +874,14 @@ export class BookingController {
       if (!turnstileToken) return this.notice(this.holdChallenge.state === 'failed' ? UI.verificationUnavailable : UI.verificationPending, true);
     }
     this.setPending(true, UI.holding);
+    const replace = this.hold?.holdToken ?? this.staleHoldToken;
     let result: ApiResult<HoldResponse>;
     try {
       result = await this.api.hold({
         selection: { ...this.selection },
         start: slot.start,
         ...(turnstileToken ? { turnstileToken } : {}),
-        ...(this.hold ? { replaceHoldToken: this.hold.holdToken } : {}),
+        ...(replace ? { replaceHoldToken: replace } : {}),
       });
     } finally {
       this.holdChallenge?.reset();
@@ -600,6 +892,7 @@ export class BookingController {
       return this.notice(RESERVATION_API_ERRORS.temporarily_unavailable.message, true);
     }
     this.hold = result.data;
+    this.staleHoldToken = null;
     this.attempt = null;
     this.startHoldTimer();
     this.refresh();
@@ -616,6 +909,7 @@ export class BookingController {
       case 'slot_unavailable':
       case 'hold_expired':
       case 'validation_failed':
+        if (isInvalidSelection(result)) return this.selectionRejected();
         this.releaseHold();
         this.notice(RESERVATION_API_ERRORS[result.code === 'validation_failed' ? 'slot_unavailable' : result.code].message, true);
         void this.loadAvailability();
@@ -623,6 +917,28 @@ export class BookingController {
       default:
         this.retryNotice(result);
     }
+  }
+
+  /**
+   * The server answered `validation_failed` + `invalid_selection` (its
+   * operations may have changed under the visitor): drop the hold and send
+   * the visitor back to the step whose choice it rejected, with a Japanese
+   * notice. The step is the one the client's own check names, else the
+   * flow's first step.
+   */
+  private selectionRejected(): void {
+    const definition = this.definition!;
+    const step = selectionProblem(definition, this.selection) ?? this.steps[0]!;
+    if (this.hold) this.staleHoldToken = this.hold.holdToken;
+    this.releaseHold();
+    this.attempt = null;
+    this.days.clear();
+    this.chosenDate = null;
+    this.parts!.datesBox.replaceChildren();
+    this.goTo(step);
+    if (this.step !== step) this.showStep(step);
+    this.notice(UI.invalidSelection[step] ?? UI.invalidSelection.date!, true);
+    if (step === 'date') void this.loadAvailability();
   }
 
   private startHoldTimer(): void {
@@ -679,11 +995,8 @@ export class BookingController {
 
   /** The `booking.*` values of the held selection, as the server evaluates them. */
   contextValues(): Record<string, AnswerValue> {
-    const values: Record<string, AnswerValue> = {};
-    if (this.selection.locationKey !== undefined) values['booking.location_key'] = this.selection.locationKey;
-    if (this.selection.hostKey !== undefined) values['booking.host_key'] = this.selection.hostKey;
-    if (this.hold) values['booking.starts_at'] = localDateTime(Date.parse(this.hold.start), this.definition!.policies.timezone);
-    return values;
+    const definition = this.definition!;
+    return contextValuesOf(definition, this.selection, this.hold ? localDateTime(Date.parse(this.hold.start), definition.policies.timezone) : null);
   }
 
   private validate(): SubmissionResult {
@@ -808,11 +1121,18 @@ export class BookingController {
     const row = (label: string, value: string, key?: string) => h('div', { class: 'yb-review-row', ...(key ? { 'data-yb-field': key } : {}) }, h('dt', {}, label), h('dd', {}, value));
 
     const when = `${formatDateTime(start, zone)}〜${formatTime(end, zone)}　${timeZoneLabel(zone)}`;
-    const rows: HTMLElement[] = [row(UI.reviewDateTime, zone === venue ? when : `${when}${UI.reviewVenueTime(`${formatDateTime(start, venue)}〜${formatTime(end, venue)}　${timeZoneLabel(venue)}`)}`)];
-    rows.push(row(UI.reviewDuration, UI.minutes(definition.appointment!.durationMinutes)));
+    const rows: HTMLElement[] = [];
+    const what = this.selectionLabel();
+    if (what) rows.push(row(this.flow === 'party' ? UI.reviewParty : UI.reviewService, what, `booking.${this.flow}`));
+    rows.push(row(UI.reviewDateTime, zone === venue ? when : `${when}${UI.reviewVenueTime(`${formatDateTime(start, venue)}〜${formatTime(end, venue)}　${timeZoneLabel(venue)}`)}`));
+    const minutes = durationOf(definition, this.selection);
+    if (minutes !== null) rows.push(row(this.flow === 'party' ? UI.reviewDiningDuration : UI.reviewDuration, UI.minutes(minutes)));
     const location = definition.locations.find((l) => l.key === this.selection.locationKey);
     if (location) rows.push(row(UI.reviewLocation, location.label));
-    if (hold.hostLabel) rows.push(row(UI.reviewHost, hold.hostLabel));
+    if (this.flow === 'time_slot' && hold.hostLabel) rows.push(row(UI.reviewHost, hold.hostLabel));
+    if (this.flow === 'service' && serviceOf(definition, this.selection)?.visitorChoosesPractitioner) {
+      rows.push(row(UI.reviewPractitioner, typeof hold.practitionerLabel === 'string' ? hold.practitionerLabel : UI.reviewAnyPractitioner));
+    }
     const result = this.result ?? this.validate();
     const active = new Set(result.active);
     for (const view of this.inputs()) {
@@ -919,13 +1239,7 @@ export class BookingController {
         this.attempt = null;
         const fieldErrors = stringRecord(result.data?.fieldErrors);
         const formErrors = Array.isArray(result.data?.formErrors) ? (result.data!.formErrors as unknown[]).filter((c): c is string => typeof c === 'string') : [];
-        if (formErrors.includes('invalid_selection')) {
-          this.releaseHold();
-          this.goTo('date');
-          this.notice(message, true);
-          void this.loadAvailability();
-          return;
-        }
+        if (formErrors.includes('invalid_selection')) return this.selectionRejected();
         this.showErrors(fieldErrors, formErrors);
         if (!Object.keys(fieldErrors).length && !formErrors.length) this.notice(message, true);
         return;
@@ -972,8 +1286,9 @@ export class BookingController {
 
   /**
    * The setup or operations changed under the visitor: reload the definition,
-   * keep the answers that still fit, drop the hold and start again from the
-   * dates. Never resubmits by itself.
+   * keep the choices and answers that still fit, drop the hold and start
+   * again from the dates (or from the service or party step when that
+   * choice no longer exists). Never resubmits by itself.
    */
   private async versionChanged(): Promise<void> {
     const before = new Map(this.inputs().map((v) => [v.node.key, { type: v.node.type, raw: v.read(), files: v.files() }]));
@@ -983,13 +1298,8 @@ export class BookingController {
     const problem = this.checkDefinition(loaded.data);
     if (problem) return this.showUnavailable(UI.unsupported, false, 'unavailable');
     this.releaseHold();
-    this.render(loaded.data);
-    if (selection.locationKey && loaded.data.locations.some((l) => l.key === selection.locationKey)) {
-      this.selection.locationKey = selection.locationKey;
-      const radio = this.root.querySelector<HTMLInputElement>(`input[type="radio"][value="${selection.locationKey}"]`);
-      if (radio) radio.checked = true;
-      void this.loadAvailability();
-    }
+    // The choices that still exist are kept; render resumes at the dates when they are complete.
+    this.render(loaded.data, selection);
     for (const view of this.inputs()) {
       const old = before.get(view.node.key);
       if (old && old.type === view.node.type && view.node.type !== 'acceptance' && view.node.type !== 'quiz') view.restore(old.raw, old.files);
@@ -1041,6 +1351,8 @@ export class BookingController {
     const heading = h('h2', { class: 'yb-heading yb-outcome-heading', tabindex: '-1', 'data-yb-outcome': state }, headings[state]);
     p.headings.outcome = heading;
     const children: HTMLElement[] = [heading];
+    const what = hold ? this.selectionLabel() : null;
+    if (what) children.push(h('p', { class: 'yb-outcome-what' }, what));
     if (hold) {
       const start = Date.parse(hold.start);
       children.push(h('p', { class: 'yb-outcome-when' }, `${formatDateTime(start, venue)}〜${formatTime(Date.parse(hold.end), venue)}　${timeZoneLabel(venue)}`));
@@ -1170,6 +1482,29 @@ export function cutoffNotice(untilStartMs: number, cancelCutoffMinutes: number, 
   if (cancel) return UI.cutoffCancel;
   if (reschedule) return UI.cutoffReschedule;
   return null;
+}
+
+const isMinutes = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0;
+const isLabelled = (value: unknown): boolean => !!value && typeof (value as { key?: unknown }).key === 'string' && typeof (value as { label?: unknown }).label === 'string';
+
+/** Why the definition's mode section cannot be drawn, or null. */
+function sectionProblem(d: ReservationPublicDefinition, flow: BookingFlow): string | null {
+  if (flow === 'time_slot') return d.appointment && isMinutes(d.appointment.durationMinutes) && Array.isArray(d.appointment.hosts) ? null : 'the appointment section is malformed';
+  if (flow === 'service') {
+    const ok =
+      Array.isArray(d.services) &&
+      d.services.length > 0 &&
+      d.services.every((s) => isLabelled(s) && isMinutes(s.durationMinutes) && Array.isArray(s.variants) && s.variants.every((v) => isLabelled(v) && isMinutes(v.durationMinutes)) && Array.isArray(s.practitioners) && s.practitioners.every(isLabelled));
+    return ok ? null : 'the services section is malformed';
+  }
+  const party = d.party;
+  const size = (n: unknown) => typeof n === 'number' && Number.isInteger(n) && n >= 1;
+  return party && size(party.minSize) && size(party.maxSize) && party.minSize <= party.maxSize && isMinutes(party.durationMinutes) ? null : 'the party section is malformed';
+}
+
+/** `validation_failed` with `formErrors: ["invalid_selection"]`: the server did not accept the selection. */
+function isInvalidSelection(result: Extract<ApiResult<unknown>, { ok: false }>): boolean {
+  return result.code === 'validation_failed' && Array.isArray(result.data?.formErrors) && (result.data.formErrors as unknown[]).includes('invalid_selection');
 }
 
 function validEmbed(embed: { instance: string; parentOrigin: string } | null | undefined): { instance: string; parentOrigin: string } | null {

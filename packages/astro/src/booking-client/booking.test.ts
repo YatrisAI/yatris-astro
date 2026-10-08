@@ -488,7 +488,7 @@ describe('synthetic preview', () => {
     expect(previewEntry('x', 'src/reservations/x.json', () => '{').problem!.message).toContain('JSON として読み込めません');
     expect(previewEntry('x', 'src/reservations/x.json', () => '{}').problem!.issues.length).toBeGreaterThan(0);
     expect(previewEntry('other', 'src/reservations/other.json', () => JSON.stringify(example('consultation'))).problem!.issues).toEqual([{ path: '/key', code: 'filename_mismatch' }]);
-    expect(previewEntry('salon', 'src/reservations/salon.json', () => JSON.stringify(example('salon'))).problem!.message).toContain('time_slot');
+    expect(previewEntry('salon', 'src/reservations/salon.json', () => JSON.stringify(example('salon'))).problem).toBeUndefined();
     const { root } = await mount({ mode: 'preview', setupKey: 'x', source: 'src/reservations/x.json', problem: { message: 'src/reservations/x.json がありません。', issues: [] } });
     expect(root.getAttribute('data-yb-state')).toBe('unavailable');
     expect(root.textContent).toContain('がありません');

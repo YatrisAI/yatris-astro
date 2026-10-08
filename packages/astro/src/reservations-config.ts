@@ -95,12 +95,19 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 /** Obviously fake host names for the preview. */
 export const syntheticHostLabel = (index: number) => `架空の担当者${LETTERS[index % 26]}（サンプル）`;
 
+const SAMPLE_PRACTITIONER_KEYS = ['sample_practitioner_a', 'sample_practitioner_b'];
+
 /**
  * Synthetic operations for previewing a setup: its own seed where it has one
- * (hosts relabelled with obviously fake names), otherwise a fixed sample.
- * Throws when the setup is not a time-slot setup (other modes preview later).
+ * (hosts and practitioners relabelled with obviously fake names), otherwise
+ * a fixed sample for its mode: 30 minutes with two sample hosts (time
+ * slot), one 60-minute sample menu with two sample practitioners (service),
+ * or parties of 1–6 for 90 minutes from a sample seat pool (party).
+ * Confirmation is automatic unless the seed chooses.
  */
 export function syntheticOperations(setup: ReservationSetup): ReservationOperations {
+  if (setup.mode === 'business' && setup.presentation === 'service') return syntheticServiceOperations(setup.operations ?? {});
+  if (setup.mode === 'business' && setup.presentation === 'party') return syntheticPartyOperations(setup.operations ?? {});
   const seed = setup.operations ?? {};
   const hostKeys = seed.appointment?.hostResourceKeys ?? SAMPLE_HOST_KEYS;
   const others: ReservationResource[] = (seed.resources ?? []).filter((r) => !hostKeys.includes(r.key));
@@ -113,6 +120,31 @@ export function syntheticOperations(setup: ReservationSetup): ReservationOperati
     confirmationMode: seed.confirmationMode ?? 'automatic',
     resources: [...hosts, ...others],
     appointment: seed.appointment ?? { durationMinutes: 30, hostStrategy: 'one_available', hostResourceKeys: hostKeys, visitorChoosesHost: false },
+  };
+}
+
+function syntheticServiceOperations(seed: ReservationOperations): ReservationOperations {
+  if (seed.services?.length) {
+    // Practitioners are the only public resource labels of a service setup.
+    let index = 0;
+    const resources = (seed.resources ?? []).map((r) => (r.kind === 'practitioner' ? { ...r, label: syntheticHostLabel(index++) } : r));
+    return { ...seed, confirmationMode: seed.confirmationMode ?? 'automatic', resources };
+  }
+  return {
+    ...seed,
+    confirmationMode: seed.confirmationMode ?? 'automatic',
+    resources: [...SAMPLE_PRACTITIONER_KEYS.map((key, i) => ({ key, kind: 'practitioner' as const, label: syntheticHostLabel(i) })), ...(seed.resources ?? []).filter((r) => r.kind !== 'practitioner')],
+    services: [{ key: 'sample_menu', label: 'サンプルメニュー（架空）', durationMinutes: 60, requirements: [{ resourceKeys: SAMPLE_PRACTITIONER_KEYS, count: 1 }], visitorChoosesPractitioner: true }],
+  };
+}
+
+function syntheticPartyOperations(seed: ReservationOperations): ReservationOperations {
+  if (seed.party) return { ...seed, confirmationMode: seed.confirmationMode ?? 'automatic' };
+  return {
+    ...seed,
+    confirmationMode: seed.confirmationMode ?? 'automatic',
+    resources: [...(seed.resources ?? []), { key: 'sample_seats', kind: 'pool', label: 'サンプル席（架空）', capacity: 20 }],
+    party: { minSize: 1, maxSize: 6, durationMinutes: 90, strategy: 'pool', poolResourceKey: 'sample_seats' },
   };
 }
 
@@ -166,9 +198,6 @@ export function previewEntry(key: string, source: string, read: () => string): R
   if (!result.valid) return { source, problem: { message: `${source} に誤りがあります。npx yatris reservations validate で確認してください。`, issues: result.errors } };
   const setup = value as ReservationSetup;
   if (setup.key !== key) return { source, problem: { message: `${source} の key は「${key}」である必要があります（現在は「${setup.key}」）。`, issues: [{ path: '/key', code: 'filename_mismatch' }] } };
-  if (setup.mode !== 'time_slot') {
-    return { source, problem: { message: `${source} は ${setup.mode} モードです。このバージョンのプレビューは時間枠（time_slot）の予約のみに対応しています。`, issues: [] } };
-  }
   const operations = syntheticOperations(setup);
   return { source, ...syntheticDefinition(setup, operations, source) };
 }
@@ -177,7 +206,7 @@ function syntheticDefinition(setup: ReservationSetup, operations: ReservationOpe
   try {
     return { definition: previewDefinition(setup, operations), synthetic: syntheticHours(operations) };
   } catch {
-    return { problem: { message: `${source} からプレビュー用のサンプル設定を作成できませんでした。質問の条件が、operations にない場所や担当者を参照していないか確認してください。`, issues: [] } };
+    return { problem: { message: `${source} からプレビュー用のサンプル設定を作成できませんでした。質問の条件が、operations にない場所・担当者・メニューを参照していないか確認してください。`, issues: [] } };
   }
 }
 
