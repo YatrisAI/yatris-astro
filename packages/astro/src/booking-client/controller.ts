@@ -113,6 +113,8 @@ class Challenge {
         action: this.settings.action,
         language: 'ja',
         size: turnstileSize(slot),
+        // Hidden unless Cloudflare needs the visitor to click; most visitors never see it
+        appearance: 'interaction-only',
         callback: (token: string) => {
           this.token = token;
         },
@@ -163,7 +165,6 @@ interface Parts {
   /** The service step's variant and practitioner choices, redrawn per service. */
   serviceDetails: HTMLElement;
   picker: HTMLElement;
-  holdChallenge: HTMLElement | null;
   summary: HTMLElement;
   terms: HTMLElement;
   submitChallenge: HTMLElement | null;
@@ -224,7 +225,6 @@ export class BookingController {
   private blockedUntil = 0;
   private lastHeight = 0;
   private readySent = false;
-  private holdChallenge: Challenge | null = null;
   private submitChallenge: Challenge | null = null;
   private parts: Parts | null = null;
 
@@ -346,7 +346,6 @@ export class BookingController {
    * still valid is kept. The flow always starts at the select step.
    */
   private render(definition: ReservationPublicDefinition, keep?: Selection): void {
-    this.holdChallenge?.remove();
     this.submitChallenge?.remove();
     this.definition = definition;
     this.flow = flowOf(definition)!;
@@ -357,7 +356,7 @@ export class BookingController {
     this.context = reservationContext({ mode: definition.setup.mode as 'time_slot' | 'business', presentation: this.flow === 'time_slot' ? undefined : this.flow }, null);
     const turnstile = this.config.mode === 'live' ? (this.config.turnstile ?? definition.turnstile) : null;
     const loader = this.options.turnstile ?? loadTurnstile;
-    this.holdChallenge = turnstile ? new Challenge(turnstile, loader) : null;
+    // Owner decision 2026-10-08: the challenge appears on the submit step only; choosing a slot is rate-limited, not challenged
     this.submitChallenge = turnstile ? new Challenge(turnstile, loader) : null;
     this.selection = keptSelection(definition, keep);
     if (this.flow === 'party' && this.selection.partySize === undefined) {
@@ -401,8 +400,7 @@ export class BookingController {
     if (this.flow === 'service') controls.append(this.serviceChoice(definition), serviceDetails);
     if (this.flow === 'party') controls.append(this.partyChoice(definition));
     const picker = h('div', { class: 'yb-picker' });
-    const holdChallenge = this.holdChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
-    sections.select.append(headings.select, ...(controls.hasChildNodes() ? [controls] : []), picker, ...(holdChallenge ? [holdChallenge] : []));
+    sections.select.append(headings.select, ...(controls.hasChildNodes() ? [controls] : []), picker);
 
     // Step 2: the held time, the questions, the terms and the submit button.
     headings.details = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.detailsHeading);
@@ -450,7 +448,7 @@ export class BookingController {
         status,
       ),
     );
-    this.parts = { steps: stepItems, chip, chipLabel, chipValue, notice, holdBar, sections, headings, serviceDetails, picker, holdChallenge, summary, terms, submitChallenge, submit, form, errorSummary, honeypot, status };
+    this.parts = { steps: stepItems, chip, chipLabel, chipValue, notice, holdBar, sections, headings, serviceDetails, picker, summary, terms, submitChallenge, submit, form, errorSummary, honeypot, status };
     if (this.flow === 'service') this.renderServiceDetails();
     this.renderHeader();
     this.shownErrors.clear();
@@ -459,7 +457,6 @@ export class BookingController {
     this.chosenDate = null;
     this.showStep('select', false);
     this.refresh();
-    if (holdChallenge) void this.holdChallenge!.mount(holdChallenge);
     if (!this.readySent) {
       this.readySent = true;
       this.post('ready');
@@ -1045,11 +1042,6 @@ export class BookingController {
   private async acquireHold(slot: Slot): Promise<void> {
     if (this.pending || this.blocked()) return;
     this.notice(null);
-    let turnstileToken: string | undefined;
-    if (this.holdChallenge) {
-      turnstileToken = this.holdChallenge.value() ?? undefined;
-      if (!turnstileToken) return this.notice(this.holdChallenge.state === 'failed' ? UI.verificationUnavailable : UI.verificationPending, true);
-    }
     this.setPending(true, UI.holding);
     const replace = this.hold?.holdToken ?? this.staleHoldToken;
     let result: ApiResult<HoldResponse>;
@@ -1057,11 +1049,9 @@ export class BookingController {
       result = await this.api.hold({
         selection: { ...this.selection },
         start: slot.start,
-        ...(turnstileToken ? { turnstileToken } : {}),
         ...(replace ? { replaceHoldToken: replace } : {}),
       });
     } finally {
-      this.holdChallenge?.reset();
       this.setPending(false);
     }
     if (!result.ok) return this.holdFailed(result);
@@ -1481,7 +1471,6 @@ export class BookingController {
       view.setError(null);
     }
     this.parts!.honeypot.value = '';
-    this.holdChallenge?.remove();
     this.submitChallenge?.remove();
     this.renderOutcome(data, hold, definition);
     this.hold = null;
@@ -1580,7 +1569,6 @@ export class BookingController {
   destroy(): void {
     this.clearHoldTimer();
     if (this.receiptTimer) clearTimeout(this.receiptTimer);
-    this.holdChallenge?.remove();
     this.submitChallenge?.remove();
   }
 
