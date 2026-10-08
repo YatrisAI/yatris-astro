@@ -61,12 +61,25 @@ export interface PreviewBookingConfig extends BookingConfigBase {
 export interface Slot {
   start: string;
   end: string;
+  /** Optional: few units remain (the 空席表 shows △). Absent means not known. */
+  few?: boolean;
+}
+
+export interface AvailabilityDay {
+  date: string;
+  slots: Slot[];
+  /**
+   * Optional: `true` when the venue has no opening hours that day (定休日),
+   * `false` when it is open (an empty day is then fully booked). Absent means
+   * not known.
+   */
+  closed?: boolean;
 }
 
 export interface AvailabilityResponse {
   timezone: string;
   operationsRevision: number;
-  days: { date: string; slots: Slot[] }[];
+  days: AvailabilityDay[];
 }
 
 export interface HoldResponse {

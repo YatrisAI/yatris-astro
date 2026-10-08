@@ -38,7 +38,16 @@ export interface FieldEnv {
   changed(key: string): void;
   blurred(key: string): void;
   random(): number;
+  /**
+   * A single-choice `select` with at most this many options renders as
+   * radio cards instead (same answer: one value or none). Unset: always a
+   * select.
+   */
+  selectAsChoices?: number;
 }
+
+/** What a browser can autofill for a field type when the declaration names nothing. */
+const DEFAULT_AUTOCOMPLETE: Record<string, string> = { email: 'email', tel: 'tel' };
 
 const INPUT_TYPES: Record<string, string> = {
   text: 'text',
@@ -83,7 +92,10 @@ function buildView(node: FormNode, env: FieldEnv, out: View[]): View {
       break;
     case 'select':
     case 'multiselect':
-      view = selectView(node, env);
+      view =
+        node.type === 'select' && env.selectAsChoices !== undefined && (node.options as unknown[]).length <= env.selectAsChoices
+          ? choicesView(node, env, true)
+          : selectView(node, env);
       break;
     case 'radio':
     case 'checkboxes':
@@ -194,7 +206,7 @@ function textView(node: FormNode, env: FieldEnv): View {
   const s = shell(node, env);
   const v = (node.validation ?? {}) as Record<string, any>;
   const multiline = node.type === 'textarea';
-  const common: Attrs = { class: env.cls('input', 'yf-input'), id: s.id, name: node.key, placeholder: node.placeholder, autocomplete: node.autocomplete };
+  const common: Attrs = { class: env.cls('input', 'yf-input'), id: s.id, name: node.key, placeholder: node.placeholder, autocomplete: node.autocomplete ?? DEFAULT_AUTOCOMPLETE[node.type] };
   let control: HTMLInputElement | HTMLTextAreaElement;
   if (multiline) {
     control = h('textarea', { ...common, rows: node.rows });
@@ -381,11 +393,11 @@ function selectView(node: FormNode, env: FieldEnv): View {
   };
 }
 
-function choicesView(node: FormNode, env: FieldEnv): View {
+/** Radio buttons or checkboxes; `radio` also draws a short single `select` as radio cards. */
+function choicesView(node: FormNode, env: FieldEnv, radio = node.type === 'radio'): View {
   const s = shell(node, env, true);
-  const radio = node.type === 'radio';
   const options = node.options as { value: string; label: string }[];
-  const list = h('div', { class: 'yf-choices' });
+  const list = h('div', { class: node.type === 'select' ? 'yf-choices yf-choices-cards' : 'yf-choices' });
   const inputs = options.map((o, i) => {
     const input = h('input', { class: env.cls('input', 'yf-choice-input'), id: `${s.id}-${i}`, type: radio ? 'radio' : 'checkbox', name: radio ? s.id : node.key, value: o.value });
     list.append(h('label', { class: env.cls('choice', 'yf-choice') }, input, h('span', { class: 'yf-choice-label' }, o.label)));

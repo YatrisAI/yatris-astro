@@ -13,31 +13,30 @@ import { RESERVATION_API_ERRORS, type ReservationApiErrorCode } from '../reserva
 import type { ReservationPublicDefinition } from '../reservations/public.js';
 import { validateTheme, type ReservationTheme } from '../reservations/theme.js';
 import { liveApi } from './api.js';
-import { ALL_STEPS, contextValuesOf, durationOf, flowOf, keptSelection, selectionProblem, serviceOf, stepsOf, type BookingFlow, type BookingStep } from './flow.js';
+import { ALL_STEPS, contextValuesOf, durationOf, flowOf, keptSelection, selectionProblem, serviceOf, stepsOf, type BookingFlow, type BookingStep, type SelectionProblem } from './flow.js';
+import { icon } from './icons.js';
+import { availabilityMatrix, dayList, matrixLegend, pagerButton, pickerSkeleton, placeSlots, tokens, weekGrid, type PlacedSlot } from './picker.js';
 import { previewApi, type PreviewApi } from './preview-api.js';
-import {
-  addDays,
-  browserTimeZone,
-  daysBetween,
-  formatDateLabel,
-  formatDateTime,
-  formatTime,
-  isTimeZone,
-  localDate,
-  localDateTime,
-  timeZoneLabel,
-} from './time.js';
-import type { AcceptedResponse, ApiResult, AvailabilityResponse, BookingApi, BookingConfig, HoldResponse, ReceiptResponse, Selection, Slot } from './types.js';
+import { addDays, browserTimeZone, daysBetween, formatDateLabel, formatDateTime, formatTime, isTimeZone, localDate, localDateTime, timeZoneLabel, zoned } from './time.js';
+import type { AcceptedResponse, ApiResult, AvailabilityDay, BookingApi, BookingConfig, HoldResponse, ReceiptResponse, Selection, Slot } from './types.js';
 import { UI } from './ui.js';
 
 /**
  * One mounted booking flow (contract README "Wire formats" and "Booking
- * UI"): date → time (acquires a hold) → contact details and questions →
- * review → submit → outcome, preceded by the service choice (service,
- * variant, practitioner preference) for `business` + `service` and by the
- * party size for `business` + `party`. It never claims a booking without an
- * `accepted` response and never falls back to synthetic data in a live
- * mount.
+ * UI") in three steps:
+ *
+ * 1. `select`: the mode's own choices (location, host, service, variant,
+ *    practitioner, party size) as controls above the slot picker, and the
+ *    date and time together: a five-day week grid (a day strip and slot list
+ *    in narrow frames) or, for parties, the seven-day 空席表. Choosing a time
+ *    acquires a hold.
+ * 2. `details`: the held date and time, the questions, the booking terms
+ *    (duration, location, confirmation policy, cutoff disclosure) and the
+ *    submit button.
+ * 3. `outcome`.
+ *
+ * It never claims a booking without an `accepted` response and never falls
+ * back to synthetic data in a live mount.
  */
 
 export interface BookingOptions {
@@ -54,16 +53,30 @@ export interface BookingOptions {
   visitorTimeZone?: string | null;
   /** The height reported to the parent (default: the bottom of the mount). */
   measureHeight?: () => number;
+  /** The mount's width, which picks the week grid (≥ 640px) or the day list (default: the root's width; 0 = unknown, the grid). */
+  measureWidth?: () => number;
   /** Milliseconds between receipt polls while a booking is `confirming`. */
   receiptPollMs?: number;
   random?: () => number;
 }
 
 export type { BookingFlow, BookingStep };
-const WINDOW_DAYS = 14;
+/** Days fetched per availability request. */
+const FETCH_DAYS = 14;
+/** Days per page: the week grid and the 空席表. */
+const GRID_DAYS = 5;
+const MATRIX_DAYS = 7;
+/** Below this mount width the week grid becomes a day strip and slot list. */
+const COMPACT_WIDTH = 640;
+/** Party sizes shown as pills; larger sizes go in a select. */
+const PARTY_PILLS = 8;
+/** The party size chosen for the visitor until they choose another. */
+const DEFAULT_PARTY_SIZE = 2;
+/** Staff cards shown before 「すべて表示」. */
+const STAFF_VISIBLE = 8;
+/** Question selects with this many options or fewer render as radio cards. */
+const SELECT_AS_CHOICES = 6;
 const MAX_RECEIPT_POLLS = 20;
-/** A party-size range up to this many sizes is a select; a wider one a number input. */
-const PARTY_SELECT_MAX = 30;
 
 interface Attempt {
   key: string;
@@ -137,6 +150,29 @@ class Challenge {
   }
 }
 
+interface Parts {
+  steps: HTMLElement[];
+  chip: HTMLElement;
+  chipLabel: HTMLElement;
+  chipValue: HTMLElement;
+  notice: HTMLElement;
+  holdBar: HTMLElement;
+  sections: Record<BookingStep, HTMLElement>;
+  headings: Partial<Record<BookingStep, HTMLElement>>;
+  /** The service step's variant and practitioner choices, redrawn per service. */
+  serviceDetails: HTMLElement;
+  picker: HTMLElement;
+  holdChallenge: HTMLElement | null;
+  summary: HTMLElement;
+  terms: HTMLElement;
+  submitChallenge: HTMLElement | null;
+  submit: HTMLButtonElement;
+  form: HTMLFormElement;
+  errorSummary: HTMLElement;
+  honeypot: HTMLInputElement;
+  status: HTMLElement;
+}
+
 export class BookingController {
   readonly ready: Promise<void>;
   definition: ReservationPublicDefinition | null = null;
@@ -144,7 +180,7 @@ export class BookingController {
   flow: BookingFlow = 'time_slot';
   /** The steps of this flow, in order. */
   steps: BookingStep[] = stepsOf('time_slot');
-  step: BookingStep = 'date';
+  step: BookingStep = 'select';
   selection: Selection = {};
   hold: HoldResponse | null = null;
   /** The zone times are shown in; the venue zone unless the visitor switches. */
@@ -172,9 +208,16 @@ export class BookingController {
   private result: SubmissionResult | null = null;
   private shownErrors = new Map<string, string>();
   private attempt: Attempt | null = null;
-  private windowStart = '';
-  private days = new Map<string, Slot[]>();
+  /** Availability of the current selection, by venue date. */
+  private days = new Map<string, AvailabilityDay>();
+  /** The first venue date of the visible page. */
+  private pageStart = '';
+  /** The day whose times the compact list shows. */
   private chosenDate: string | null = null;
+  /** The mount is narrower than COMPACT_WIDTH: day strip + slot list instead of the week grid. */
+  private compact = false;
+  /** Announce the period after the visitor pages. */
+  private announcePage = false;
   private holdTimer: ReturnType<typeof setInterval> | null = null;
   private receiptTimer: ReturnType<typeof setTimeout> | null = null;
   private blockedUntil = 0;
@@ -182,26 +225,7 @@ export class BookingController {
   private readySent = false;
   private holdChallenge: Challenge | null = null;
   private submitChallenge: Challenge | null = null;
-  private parts: {
-    steps: HTMLElement[];
-    timeZone: HTMLElement;
-    notice: HTMLElement;
-    holdBar: HTMLElement;
-    sections: Record<BookingStep, HTMLElement>;
-    headings: Partial<Record<BookingStep, HTMLElement>>;
-    /** The date step's duration and selection summary. */
-    dateSummary: HTMLElement;
-    /** The service step's variant and practitioner choices, redrawn per service. */
-    serviceDetails: HTMLElement;
-    /** The inline error of the service or party step. */
-    choiceError: Partial<Record<BookingStep, HTMLElement>>;
-    datesBox: HTMLElement;
-    timesBox: HTMLElement;
-    form: HTMLFormElement;
-    summary: HTMLElement;
-    honeypot: HTMLInputElement;
-    status: HTMLElement;
-  } | null = null;
+  private parts: Parts | null = null;
 
   constructor(
     readonly root: HTMLElement,
@@ -233,10 +257,12 @@ export class BookingController {
       root.append(previewMarker(config.source, log));
     }
 
+    // Embedded (an iframe or the in-page preview): no page background and no card, the host page shows through.
+    root.setAttribute('data-yb-frame', (config.mode === 'live' && config.embed) || config.mode === 'preview' ? 'embed' : 'page');
     this.body = h('div', { class: 'yb-body' });
     root.append(this.body);
     this.post('status', { status: 'loading' });
-    this.observeHeight();
+    this.observeSize();
     this.ready = this.start();
   }
 
@@ -256,7 +282,15 @@ export class BookingController {
   /** Loads (or reloads after a failure) and renders the definition. */
   async load(): Promise<void> {
     this.setState('loading');
-    this.body.replaceChildren(h('p', { class: 'yb-loading', role: 'status' }, UI.loading));
+    this.body.replaceChildren(
+      h(
+        'div',
+        { class: 'yb-card yb-card-loading' },
+        h('p', { class: 'yb-loading yb-sr', role: 'status' }, UI.loading),
+        h('div', { class: 'yb-skeleton-header', 'aria-hidden': 'true' }, h('span', { class: 'yb-bone yb-bone-chip' }), h('span', { class: 'yb-bone yb-bone-title' }), h('span', { class: 'yb-bone yb-bone-steps' })),
+        pickerSkeleton('grid', GRID_DAYS),
+      ),
+    );
     const loaded = await this.api.definition(false);
     if (!loaded.ok) {
       if (loaded.code === 'setup_unavailable') return this.showUnavailable(UI.unavailable, false, 'unavailable');
@@ -292,7 +326,7 @@ export class BookingController {
   private showUnavailable(message: string, retry: boolean, status: BookingStatus, details: string[] = []): void {
     this.clearHoldTimer();
     this.setState('unavailable');
-    const box = h('div', { class: 'yb-unavailable', role: 'alert' }, h('p', { class: 'yb-unavailable-message' }, message));
+    const box = h('div', { class: 'yb-card yb-unavailable', role: 'alert' }, icon('info', 'yb-icon yb-unavailable-icon'), h('p', { class: 'yb-unavailable-message' }, message));
     if (details.length) box.append(h('ul', { class: 'yb-unavailable-details' }, ...details.map((d) => h('li', {}, d))));
     if (retry) {
       const button = h('button', { type: 'button', class: 'yb-retry yb-button' }, UI.retry);
@@ -308,8 +342,7 @@ export class BookingController {
 
   /**
    * Draws the definition. `keep` is the selection before a reload: what is
-   * still valid is kept, and the flow resumes at the dates when the mode's
-   * own choices still stand, else at the first step.
+   * still valid is kept. The flow always starts at the select step.
    */
   private render(definition: ReservationPublicDefinition, keep?: Selection): void {
     this.holdChallenge?.remove();
@@ -326,49 +359,55 @@ export class BookingController {
     this.holdChallenge = turnstile ? new Challenge(turnstile, loader) : null;
     this.submitChallenge = turnstile ? new Challenge(turnstile, loader) : null;
     this.selection = keptSelection(definition, keep);
+    if (this.flow === 'party' && this.selection.partySize === undefined) {
+      const { minSize, maxSize } = definition.party!;
+      this.selection.partySize = Math.min(maxSize, Math.max(minSize, DEFAULT_PARTY_SIZE));
+    }
     this.staleHoldToken = null;
+    this.root.setAttribute('data-yb-flow', this.flow);
+    this.compact = this.measureCompact();
+    this.root.setAttribute('data-yb-layout', this.compact ? 'list' : 'grid');
 
-    const stepItems = this.steps.map((step) => h('li', { class: 'yb-step', 'data-yb-step-item': step }, UI.stepLabels[step]));
+    const labels = this.flow === 'party' ? UI.partyStepLabels : UI.stepLabels;
+    const stepItems = this.steps.map((step, i) =>
+      h('li', { class: 'yb-step', 'data-yb-step-item': step }, h('span', { class: 'yb-step-badge', 'aria-hidden': 'true' }, String(i + 1)), h('span', { class: 'yb-step-label' }, labels[i]!), h('span', { class: 'yb-sr yb-step-state' })),
+    );
     const sections = Object.fromEntries(ALL_STEPS.map((step) => [step, h('section', { class: `yb-section yb-section-${step}`, hidden: true, 'data-yb-section': step })])) as Record<BookingStep, HTMLElement>;
     const notice = h('p', { class: 'yb-notice', role: 'alert', hidden: true, tabindex: '-1' });
     const holdBar = h('p', { class: 'yb-hold', role: 'status', hidden: true });
-    const status = h('p', { class: 'yb-status', role: 'status', 'aria-live': 'polite' });
+    const status = h('p', { class: 'yb-status yb-sr', role: 'status', 'aria-live': 'polite' });
     const headings: Partial<Record<BookingStep, HTMLElement>> = {};
-    const choiceError: Partial<Record<BookingStep, HTMLElement>> = {};
+
+    // Header: the duration chip, the setup name and the single location.
+    const chipLabel = h('span', { class: 'yb-chip-label' });
+    const chipValue = h('span', { class: 'yb-chip-value' });
+    const chip = h('p', { class: 'yb-chip' }, icon('clock'), chipLabel, chipValue);
+    const only = definition.locations.length === 1 ? definition.locations[0]! : null;
+    const header = h(
+      'header',
+      { class: 'yb-header' },
+      chip,
+      h('p', { class: 'yb-title' }, definition.setup.name),
+      ...(only ? [h('p', { class: 'yb-place' }, icon('pin'), h('span', { class: 'yb-sr' }, `${UI.locationInfo}：`), only.label)] : []),
+    );
+
+    // Step 1: the choices, then the picker.
+    headings.select = h('h2', { class: 'yb-heading', tabindex: '-1' }, this.flow === 'party' ? UI.partySelectHeading : UI.selectHeading);
     const serviceDetails = h('div', { class: 'yb-service-details' });
+    const controls = h('div', { class: 'yb-controls' });
+    if (definition.locations.length > 1) controls.append(this.locationChoice(definition));
+    if (this.flow === 'time_slot' && definition.appointment!.visitorChoosesHost && definition.appointment!.hosts.length) controls.append(this.hostChoice(definition));
+    if (this.flow === 'service') controls.append(this.serviceChoice(definition), serviceDetails);
+    if (this.flow === 'party') controls.append(this.partyChoice(definition));
+    const picker = h('div', { class: 'yb-picker' });
+    const holdChallenge = this.holdChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
+    sections.select.append(headings.select, ...(controls.hasChildNodes() ? [controls] : []), picker, ...(holdChallenge ? [holdChallenge] : []));
 
-    // Service or party step: the mode's own choices.
-    if (this.flow === 'service') {
-      headings.service = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.serviceHeading);
-      choiceError.service = h('p', { class: 'yb-error', role: 'alert', hidden: true, id: `${this.prefix}-service-error` });
-      sections.service.append(headings.service, this.serviceChoice(definition), serviceDetails, choiceError.service, this.continueActions('service'));
-    } else if (this.flow === 'party') {
-      headings.party = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.partyHeading);
-      choiceError.party = h('p', { class: 'yb-error', role: 'alert', hidden: true, id: `${this.prefix}-party-error` });
-      sections.party.append(headings.party, this.partyChoice(definition, choiceError.party), h('p', { class: 'yb-duration' }, UI.diningDuration(definition.party!.durationMinutes)), choiceError.party, this.continueActions('party'));
-    }
-
-    // Date step: heading, the selection and its duration, location and host choice, the dates.
-    headings.date = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.dateHeading);
-    const dateSummary = h('div', { class: 'yb-selection-summary' });
-    const datesBox = h('div', { class: 'yb-dates-box' });
-    sections.date.append(headings.date, dateSummary);
-    if (definition.locations.length) sections.date.append(this.locationChoice(definition));
-    if (this.flow === 'time_slot' && definition.appointment!.visitorChoosesHost && definition.appointment!.hosts.length) sections.date.append(this.hostChoice(definition));
-    sections.date.append(datesBox);
-    if (this.flow !== 'time_slot') {
-      const back = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, this.flow === 'service' ? UI.backToService : UI.backToParty);
-      back.addEventListener('click', () => this.goTo(this.steps[0]!));
-      sections.date.append(h('div', { class: 'yb-actions' }, back));
-    }
-
-    const timesBox = h('div', { class: 'yb-times-box' });
-    sections.time.append(timesBox);
-
-    // Details step: the questions, rendered by the forms field renderer.
-    const detailsHeading = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.detailsHeading);
+    // Step 2: the held time, the questions, the terms and the submit button.
+    headings.details = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.detailsHeading);
+    const summary = h('div', { class: 'yb-summary' });
     const form = h('form', { class: 'yb-form yf-form', novalidate: true, 'aria-label': UI.detailsHeading });
-    const summary = h('div', { class: 'yf-error-summary', role: 'alert', tabindex: '-1', hidden: true });
+    const errorSummary = h('div', { class: 'yf-error-summary', role: 'alert', tabindex: '-1', hidden: true });
     const fields = h('div', { class: 'yf-section' });
     const env: FieldEnv = {
       id: (key) => `${this.prefix}-${key}`,
@@ -377,6 +416,7 @@ export class BookingController {
       changed: () => this.refresh(),
       blurred: (key) => this.onBlur(key),
       random: this.options.random ?? Math.random,
+      selectAsChoices: SELECT_AS_CHOICES,
     };
     this.views = buildViews(definition.questions, env, fields);
     const honeypot = h('input', { type: 'text', name: 'hp_website', id: `${this.prefix}-hp`, tabindex: '-1', autocomplete: 'off' });
@@ -386,40 +426,39 @@ export class BookingController {
       h('label', { for: honeypot.id }, UI.honeypotLabel),
       honeypot,
     );
-    const backToTimes = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, UI.backToTimes);
-    backToTimes.addEventListener('click', () => this.goTo('time'));
-    const toReview = h('button', { type: 'submit', class: 'yb-next yb-button' }, UI.toReview);
-    form.append(summary, fields, trap, h('div', { class: 'yb-actions' }, backToTimes, toReview));
+    const terms = h('div', { class: 'yb-terms' });
+    const submitChallenge = this.submitChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
+    const manual = definition.policies.confirmationMode === 'manual';
+    const submit = h('button', { type: 'submit', class: 'yb-submit yb-button yb-button-lg' }, manual ? UI.submitManual : UI.submitAutomatic);
+    form.append(errorSummary, fields, trap, terms, ...(submitChallenge ? [submitChallenge] : []), h('div', { class: 'yb-actions yb-actions-submit' }, submit));
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      this.toReview();
+      void this.submit();
     });
-    sections.details.append(detailsHeading, form);
-    headings.details = detailsHeading;
+    sections.details.append(headings.details, summary, holdBar, form);
     this.openPolicyLinksOnSite(fields);
 
-    const timeZone = h('div', { class: 'yb-tz' });
     this.body.replaceChildren(
-      h('p', { class: 'yb-title' }, definition.setup.name),
-      h('ol', { class: 'yb-steps', 'aria-label': UI.stepsLabel }, ...stepItems),
-      timeZone,
-      holdBar,
-      notice,
-      ...ALL_STEPS.map((step) => sections[step]),
-      status,
+      h(
+        'div',
+        { class: 'yb-card' },
+        header,
+        h('ol', { class: 'yb-steps', 'aria-label': UI.stepsLabel }, ...stepItems),
+        notice,
+        ...ALL_STEPS.map((step) => sections[step]),
+        status,
+      ),
     );
-    this.parts = { steps: stepItems, timeZone, notice, holdBar, sections, headings, dateSummary, serviceDetails, choiceError, datesBox, timesBox, form, summary, honeypot, status };
+    this.parts = { steps: stepItems, chip, chipLabel, chipValue, notice, holdBar, sections, headings, serviceDetails, picker, holdChallenge, summary, terms, submitChallenge, submit, form, errorSummary, honeypot, status };
     if (this.flow === 'service') this.renderServiceDetails();
-    this.renderDateSummary();
-    this.renderTimeZone();
+    this.renderHeader();
     this.shownErrors.clear();
-    this.windowStart = localDate(this.now(), venue);
     this.days.clear();
+    this.pageStart = this.today();
     this.chosenDate = null;
-    const own = selectionProblem(definition, this.selection);
-    const first = keep && own !== 'service' && own !== 'party' ? 'date' : this.steps[0]!;
-    this.showStep(first, false);
+    this.showStep('select', false);
     this.refresh();
+    if (holdChallenge) void this.holdChallenge!.mount(holdChallenge);
     if (!this.readySent) {
       this.readySent = true;
       this.post('ready');
@@ -441,40 +480,113 @@ export class BookingController {
     }
   }
 
-  private locationChoice(definition: ReservationPublicDefinition): HTMLElement {
-    const fieldset = h('fieldset', { class: 'yb-choice-group' }, h('legend', { class: 'yb-legend' }, UI.locationLegend));
-    for (const location of definition.locations) {
-      const id = `${this.prefix}-location-${location.key}`;
-      const input = h('input', { type: 'radio', name: `${this.prefix}-location`, id, value: location.key, class: 'yb-choice-input', checked: this.selection.locationKey === location.key });
+  /** A row of radio chips (the native radios stay focusable and keyboard-operable). */
+  private chips(legend: string, className: string, options: { key: string; label: string; detail?: string; checked: boolean; data: Record<string, string>; onPick: () => void }[], name: string): HTMLElement {
+    const fieldset = h('fieldset', { class: `yb-control yb-chips ${className}` }, h('legend', { class: 'yb-control-label' }, legend));
+    const row = h('div', { class: 'yb-chip-row' });
+    for (const option of options) {
+      const id = `${this.prefix}-${name}-${option.key}`;
+      const input = h('input', { type: 'radio', name: `${this.prefix}-${name}`, id, value: option.key, class: 'yb-choice-input', checked: option.checked, ...option.data });
       input.addEventListener('change', () => {
-        if (!input.checked) return;
-        this.changeSelection({ ...this.selection, locationKey: location.key });
+        if (input.checked) option.onPick();
       });
-      fieldset.append(h('div', { class: 'yb-choice' }, input, h('label', { for: id, class: 'yb-choice-label' }, location.label)));
+      row.append(
+        h(
+          'div',
+          { class: 'yb-choice yb-option' },
+          input,
+          h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-option-label' }, option.label), ...(option.detail ? [h('span', { class: 'yb-option-detail' }, option.detail)] : [])),
+        ),
+      );
     }
+    fieldset.append(row);
     return fieldset;
   }
 
-  private hostChoice(definition: ReservationPublicDefinition): HTMLElement {
-    const id = `${this.prefix}-host`;
-    const select = h(
-      'select',
-      { id, class: 'yb-select' },
-      h('option', { value: '' }, UI.anyHost),
-      ...definition.appointment!.hosts.map((host) => h('option', { value: host.key, selected: host.key === this.selection.hostKey }, host.label)),
+  private locationChoice(definition: ReservationPublicDefinition): HTMLElement {
+    return this.chips(
+      UI.locationLegend,
+      'yb-locations',
+      definition.locations.map((location) => ({
+        key: location.key,
+        label: location.label,
+        checked: this.selection.locationKey === location.key,
+        data: {},
+        onPick: () => this.changeSelection({ ...this.selection, locationKey: location.key }),
+      })),
+      'location',
     );
-    select.addEventListener('change', () => {
+  }
+
+  private hostChoice(definition: ReservationPublicDefinition): HTMLElement {
+    return this.staffChoice(UI.hostLabel, 'host', definition.appointment!.hosts, this.selection.hostKey, (key) => {
       const { hostKey: _previous, ...rest } = this.selection;
-      this.changeSelection(select.value ? { ...rest, hostKey: select.value } : rest);
+      this.changeSelection(key ? { ...rest, hostKey: key } : rest);
     });
-    return h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.hostLabel), select);
+  }
+
+  /**
+   * Hosts or practitioners as a grid of radio cards (a salon can have twenty
+   * or more): 「指定しない（おまかせ）」 first and the default, an initial per
+   * person, a filter field and 「すべて表示」 when there are more than
+   * STAFF_VISIBLE. Arrow keys move within the radio group.
+   */
+  private staffChoice(legend: string, name: string, people: { key: string; label: string }[], chosen: string | undefined, onPick: (key: string | undefined) => void, note?: string): HTMLElement {
+    const group = `${this.prefix}-${name}`;
+    const noteId = `${group}-note`;
+    const fieldset = h('fieldset', { class: `yb-control yb-staff yb-${name}s`, ...(note ? { 'aria-describedby': noteId } : {}) }, h('legend', { class: 'yb-control-label' }, legend));
+    const grid = h('div', { class: 'yb-staff-grid' });
+    const card = (key: string, label: string, avatar: Node, index: number) => {
+      const id = `${group}-${index}`;
+      const input = h('input', { type: 'radio', name: group, id, value: key, class: 'yb-choice-input', checked: (chosen ?? '') === key, [`data-yb-${name}`]: key });
+      input.addEventListener('change', () => {
+        if (input.checked) onPick(key || undefined);
+      });
+      const box = h('div', { class: key ? 'yb-choice yb-staff-card' : 'yb-choice yb-staff-card yb-staff-any', 'data-yb-label': label }, input, h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-avatar', 'aria-hidden': 'true' }, avatar), h('span', { class: 'yb-staff-name' }, ...tokens(label))));
+      grid.append(box);
+      return box;
+    };
+    card('', UI.anyStaff, icon('users'), 0);
+    const cards = people.map((person, i) => card(person.key, person.label, document.createTextNode(initialOf(person.label)), i + 1));
+    fieldset.append(grid);
+    if (people.length > STAFF_VISIBLE) {
+      let expanded = false;
+      const more = h('button', { type: 'button', class: 'yb-button-secondary yb-staff-more', 'aria-expanded': 'false' }, UI.showAllStaff(people.length));
+      const empty = h('p', { class: 'yb-hint', hidden: true, role: 'status' }, UI.noStaffMatch);
+      const search = h('input', { type: 'search', class: 'yb-input yb-staff-search', 'aria-label': UI.staffSearch(legend), placeholder: UI.staffSearchPlaceholder, autocomplete: 'off', enterkeyhint: 'search' });
+      const apply = () => {
+        const query = search.value.trim().toLowerCase();
+        let shown = 0;
+        cards.forEach((box, i) => {
+          const checked = (box.querySelector('input') as HTMLInputElement).checked;
+          const match = query ? box.getAttribute('data-yb-label')!.toLowerCase().includes(query) : expanded || i < STAFF_VISIBLE || checked;
+          box.hidden = !match;
+          if (match) shown++;
+        });
+        more.hidden = expanded || query !== '';
+        empty.hidden = !query || shown > 0;
+        this.postHeight();
+      };
+      search.addEventListener('input', apply);
+      more.addEventListener('click', () => {
+        expanded = true;
+        more.setAttribute('aria-expanded', 'true');
+        apply();
+        (cards[STAFF_VISIBLE]?.querySelector('input') as HTMLInputElement | null)?.focus();
+      });
+      fieldset.insertBefore(search, grid);
+      fieldset.append(empty, more);
+      apply();
+    }
+    if (note) fieldset.append(h('p', { class: 'yb-hint', id: noteId }, note));
+    return fieldset;
   }
 
   /**
    * A new selection: conditions on `booking.*` are recalculated (inactive
    * answers clear), the old availability is dropped, and a held time no
    * longer matches, so it is released locally and replaced explicitly by the
-   * next hold. Availability reloads when the visitor is on the dates.
+   * next hold. The picker reloads.
    */
   private changeSelection(next: Selection): void {
     this.selection = next;
@@ -484,38 +596,36 @@ export class BookingController {
     }
     this.days.clear();
     this.chosenDate = null;
-    this.clearChoiceError();
-    this.renderDateSummary();
+    this.notice(null);
+    this.renderHeader();
     this.refresh();
-    if (this.step === 'date') void this.loadAvailability();
+    if (this.step === 'select') void this.loadAvailability();
   }
 
-  /** The service step: one radio per service, then its variants and the practitioner preference. */
+  /** The services as chips, each with its duration (with variants, their range). */
   private serviceChoice(definition: ReservationPublicDefinition): HTMLElement {
-    const fieldset = h('fieldset', { class: 'yb-choice-group yb-services', 'aria-describedby': `${this.prefix}-service-error` }, h('legend', { class: 'yb-legend' }, UI.serviceLegend));
-    for (const service of definition.services!) {
-      const id = `${this.prefix}-service-${service.key}`;
-      const input = h('input', { type: 'radio', name: `${this.prefix}-service`, id, value: service.key, class: 'yb-choice-input', checked: this.selection.serviceKey === service.key, 'data-yb-service': service.key });
-      input.addEventListener('change', () => {
-        if (!input.checked) return;
-        const { locationKey } = this.selection;
-        this.changeSelection({ ...(locationKey !== undefined ? { locationKey } : {}), serviceKey: service.key });
-        this.renderServiceDetails();
-      });
-      const durations = service.variants.map((v) => v.durationMinutes);
-      const min = Math.min(...durations);
-      const max = Math.max(...durations);
-      const duration = !durations.length ? UI.duration(service.durationMinutes) : min === max ? UI.duration(min) : UI.durationRange(UI.minutes(min), UI.minutes(max));
-      fieldset.append(
-        h(
-          'div',
-          { class: 'yb-choice yb-option' },
-          input,
-          h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-option-label' }, service.label), h('span', { class: 'yb-option-detail' }, duration)),
-        ),
-      );
-    }
-    return fieldset;
+    return this.chips(
+      UI.serviceLegend,
+      'yb-services',
+      definition.services!.map((service) => {
+        const durations = service.variants.map((v) => v.durationMinutes);
+        const min = Math.min(...durations);
+        const max = Math.max(...durations);
+        return {
+          key: service.key,
+          label: service.label,
+          detail: !durations.length ? UI.minutes(service.durationMinutes) : min === max ? UI.minutes(min) : UI.range(UI.minutes(min), UI.minutes(max)),
+          checked: this.selection.serviceKey === service.key,
+          data: { 'data-yb-service': service.key },
+          onPick: () => {
+            const { locationKey } = this.selection;
+            this.changeSelection({ ...(locationKey !== undefined ? { locationKey } : {}), serviceKey: service.key });
+            this.renderServiceDetails();
+          },
+        };
+      }),
+      'service',
+    );
   }
 
   /** The chosen service's variants (each with its own duration) and practitioner preference. */
@@ -524,139 +634,85 @@ export class BookingController {
     const service = serviceOf(this.definition!, this.selection);
     const children: HTMLElement[] = [];
     if (service?.variants.length) {
-      const fieldset = h('fieldset', { class: 'yb-choice-group yb-variants', 'aria-describedby': `${this.prefix}-service-error` }, h('legend', { class: 'yb-legend' }, UI.variantLegend));
-      for (const variant of service.variants) {
-        const id = `${this.prefix}-variant-${service.key}-${variant.key}`;
-        const input = h('input', { type: 'radio', name: `${this.prefix}-variant`, id, value: variant.key, class: 'yb-choice-input', checked: this.selection.variantKey === variant.key, 'data-yb-variant': variant.key });
-        input.addEventListener('change', () => {
-          if (input.checked) this.changeSelection({ ...this.selection, variantKey: variant.key });
-        });
-        fieldset.append(
-          h(
-            'div',
-            { class: 'yb-choice yb-option' },
-            input,
-            h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-option-label' }, variant.label), h('span', { class: 'yb-option-detail' }, UI.duration(variant.durationMinutes))),
-          ),
-        );
-      }
-      children.push(fieldset);
+      children.push(
+        this.chips(
+          UI.variantLegend,
+          'yb-variants',
+          service.variants.map((variant) => ({
+            key: `${service.key}-${variant.key}`,
+            label: variant.label,
+            detail: UI.minutes(variant.durationMinutes),
+            checked: this.selection.variantKey === variant.key,
+            data: { 'data-yb-variant': variant.key },
+            onPick: () => this.changeSelection({ ...this.selection, variantKey: variant.key }),
+          })),
+          'variant',
+        ),
+      );
     }
     if (service?.visitorChoosesPractitioner && service.practitioners.length) {
-      const id = `${this.prefix}-practitioner`;
-      const note = `${id}-note`;
-      const select = h(
-        'select',
-        { id, class: 'yb-select yb-practitioner', 'aria-describedby': note },
-        h('option', { value: '' }, UI.anyPractitioner),
-        ...service.practitioners.map((practitioner) => h('option', { value: practitioner.key, selected: practitioner.key === this.selection.practitionerKey }, practitioner.label)),
+      children.push(
+        this.staffChoice(
+          UI.practitionerLabel,
+          'practitioner',
+          service.practitioners,
+          this.selection.practitionerKey,
+          (key) => {
+            const { practitionerKey: _previous, ...rest } = this.selection;
+            this.changeSelection(key ? { ...rest, practitionerKey: key } : rest);
+          },
+          UI.anyPractitionerNote,
+        ),
       );
-      select.addEventListener('change', () => {
-        const { practitionerKey: _previous, ...rest } = this.selection;
-        this.changeSelection(select.value ? { ...rest, practitionerKey: select.value } : rest);
-      });
-      children.push(h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.practitionerLabel), select, h('p', { class: 'yb-hint', id: note }, UI.anyPractitionerNote)));
     }
     p.serviceDetails.replaceChildren(...children);
+    p.serviceDetails.hidden = children.length === 0;
     this.postHeight();
   }
 
-  /** The party step: a select of every allowed size, or a number input for a wide range. */
-  private partyChoice(definition: ReservationPublicDefinition, error: HTMLElement): HTMLElement {
+  /** 「ご利用人数」: pills for the first sizes, a select for the rest. */
+  private partyChoice(definition: ReservationPublicDefinition): HTMLElement {
     const { minSize, maxSize } = definition.party!;
-    const id = `${this.prefix}-party`;
-    const hint = `${id}-hint`;
-    const describedBy = `${hint} ${error.id}`;
-    let control: HTMLSelectElement | HTMLInputElement;
-    if (maxSize - minSize < PARTY_SELECT_MAX) {
-      const sizes = Array.from({ length: maxSize - minSize + 1 }, (_, i) => minSize + i);
-      control = h(
-        'select',
-        { id, class: 'yb-select yb-party-size', 'aria-describedby': describedBy, required: true },
-        ...(minSize === maxSize ? [] : [h('option', { value: '' }, UI.partyPrompt)]),
-        ...sizes.map((size) => h('option', { value: String(size), selected: size === this.selection.partySize }, UI.partyOption(size))),
-      );
-    } else {
-      control = h('input', {
-        id,
-        type: 'number',
-        class: 'yb-input yb-party-size',
-        inputmode: 'numeric',
-        min: String(minSize),
-        max: String(maxSize),
-        step: '1',
-        required: true,
-        'aria-describedby': describedBy,
-        value: this.selection.partySize === undefined ? '' : String(this.selection.partySize),
+    const sizes = Array.from({ length: maxSize - minSize + 1 }, (_, i) => minSize + i);
+    const pills = sizes.slice(0, PARTY_PILLS);
+    const more = sizes.slice(PARTY_PILLS);
+    const name = `${this.prefix}-party`;
+    const hint = `${name}-hint`;
+    const fieldset = h('fieldset', { class: 'yb-control yb-chips yb-party', 'aria-describedby': hint }, h('legend', { class: 'yb-control-label' }, icon('users'), UI.partyLegend));
+    const row = h('div', { class: 'yb-chip-row yb-pill-row' });
+    let select: HTMLSelectElement | null = null;
+    let moreBox: HTMLElement | null = null;
+    for (const size of pills) {
+      const id = `${name}-${size}`;
+      const input = h('input', { type: 'radio', name, id, value: String(size), class: 'yb-choice-input', checked: this.selection.partySize === size, 'data-yb-party': String(size) });
+      input.addEventListener('change', () => {
+        if (!input.checked) return;
+        if (select) select.value = '';
+        moreBox?.removeAttribute('data-yb-selected');
+        this.changeSelection({ ...this.selection, partySize: size });
       });
+      row.append(h('div', { class: 'yb-choice yb-pill' }, input, h('label', { for: id, class: 'yb-choice-label' }, h('span', { class: 'yb-pill-num' }, String(size)), h('span', { class: 'yb-pill-unit' }, '名'))));
     }
-    control.addEventListener('change', () => {
-      const raw = control.value.trim();
-      const size = /^\d{1,4}$/.test(raw) ? Number(raw) : NaN;
-      const { partySize: _previous, ...rest } = this.selection;
-      this.changeSelection(Number.isInteger(size) && size >= minSize && size <= maxSize ? { ...rest, partySize: size } : rest);
-    });
-    return h('div', { class: 'yb-field' }, h('label', { for: id, class: 'yb-label' }, UI.partyLabel), control, h('p', { class: 'yb-hint', id: hint }, UI.partyRange(minSize, maxSize)));
-  }
-
-  /** The 「日付の選択へ進む」 button of the service and party steps. */
-  private continueActions(step: 'service' | 'party'): HTMLElement {
-    const next = h('button', { type: 'button', class: 'yb-next yb-button' }, UI.toDates);
-    next.addEventListener('click', () => this.continueToDates(step));
-    return h('div', { class: 'yb-actions yb-actions-end' }, next);
-  }
-
-  private continueToDates(step: 'service' | 'party'): void {
-    if (this.pending) return;
-    const definition = this.definition!;
-    const p = this.parts!;
-    if (selectionProblem(definition, this.selection) === step) {
-      const error = p.choiceError[step]!;
-      let message: string;
-      let target: HTMLElement | null;
-      if (step === 'party') {
-        message = UI.partyInvalid(definition.party!.minSize, definition.party!.maxSize);
-        target = p.sections.party.querySelector('.yb-party-size');
-        target?.setAttribute('aria-invalid', 'true');
-      } else if (!serviceOf(definition, this.selection)) {
-        message = UI.chooseService;
-        target = p.sections.service.querySelector('.yb-services input');
-      } else {
-        message = UI.chooseVariant;
-        target = p.sections.service.querySelector('.yb-variants input');
-      }
-      error.textContent = message;
-      error.hidden = false;
-      target?.focus();
-      this.postHeight();
-      return;
+    if (more.length) {
+      select = h(
+        'select',
+        { id: `${name}-more`, class: 'yb-select yb-party-size', 'aria-label': UI.partyMore(more[0]!) },
+        h('option', { value: '' }, UI.partyMore(more[0]!)),
+        ...more.map((size) => h('option', { value: String(size), selected: size === this.selection.partySize }, UI.partyOption(size))),
+      );
+      const control = select;
+      control.addEventListener('change', () => {
+        const size = Number(control.value);
+        if (!control.value || !more.includes(size)) return;
+        for (const radio of Array.from(row.querySelectorAll<HTMLInputElement>('input[type="radio"]'))) radio.checked = false;
+        moreBox?.setAttribute('data-yb-selected', 'true');
+        this.changeSelection({ ...this.selection, partySize: size });
+      });
+      moreBox = h('div', { class: 'yb-pill-more', 'data-yb-selected': more.includes(this.selection.partySize ?? -1) ? 'true' : undefined }, control);
+      row.append(moreBox);
     }
-    this.clearChoiceError();
-    this.goTo('date');
-    void this.loadAvailability();
-  }
-
-  private clearChoiceError(): void {
-    const p = this.parts;
-    if (!p) return;
-    for (const error of Object.values(p.choiceError)) {
-      error.textContent = '';
-      error.hidden = true;
-    }
-    p.sections.party.querySelector('.yb-party-size')?.removeAttribute('aria-invalid');
-  }
-
-  /** What the visitor chose before the dates, and how long it lasts. */
-  private renderDateSummary(): void {
-    const p = this.parts;
-    if (!p) return;
-    const definition = this.definition!;
-    const what = this.selectionLabel();
-    const minutes = durationOf(definition, this.selection);
-    p.dateSummary.replaceChildren(
-      ...(what ? [h('p', { class: 'yb-selection' }, what)] : []),
-      ...(minutes !== null ? [h('p', { class: 'yb-duration' }, this.flow === 'party' ? UI.diningDuration(minutes) : UI.duration(minutes))] : []),
-    );
+    fieldset.append(row, h('p', { class: 'yb-hint', id: hint }, UI.partyRange(minSize, maxSize)));
+    return fieldset;
   }
 
   /** 「カット（ロング）」, 「4名」 or null (time slot). */
@@ -670,39 +726,24 @@ export class BookingController {
     return variant ? `${service.label}（${variant.label}）` : service.label;
   }
 
-  /** The selection's duration text for the time step: 所要時間 or ご利用時間. */
-  private durationText(): string {
-    const minutes = durationOf(this.definition!, this.selection);
-    if (minutes === null) return '';
-    return this.flow === 'party' ? UI.diningDuration(minutes) : UI.duration(minutes);
-  }
-
-  /** The display-zone switch: the venue zone, plus the visitor's when it differs. */
-  private renderTimeZone(): void {
-    const p = this.parts!;
-    const venue = this.definition!.policies.timezone;
-    const visitor = this.options.visitorTimeZone === undefined ? browserTimeZone() : this.options.visitorTimeZone;
-    if (!visitor || visitor === venue || !isTimeZone(visitor)) {
-      // One zone only: the time step and the review name it.
-      p.timeZone.replaceChildren();
-      return;
+  /** The duration chip: the selection's duration, or the range a service choice can have. */
+  private renderHeader(): void {
+    const p = this.parts;
+    if (!p) return;
+    const definition = this.definition!;
+    let value: string | null = null;
+    const minutes = durationOf(definition, this.selection);
+    if (minutes !== null) value = UI.minutes(minutes);
+    else if (this.flow === 'service') {
+      const service = serviceOf(definition, this.selection);
+      const all = (service ? [service] : definition.services!).flatMap((s) => (s.variants.length ? s.variants.map((v) => v.durationMinutes) : [s.durationMinutes]));
+      const min = Math.min(...all);
+      const max = Math.max(...all);
+      value = min === max ? UI.minutes(min) : UI.range(UI.minutes(min), UI.minutes(max));
     }
-    const id = `${this.prefix}-tz`;
-    const select = h('select', { id, class: 'yb-select yb-tz-select' }, ...[venue, visitor].map((zone) => h('option', { value: zone, selected: zone === this.displayTimeZone }, timeZoneLabel(zone))));
-    select.addEventListener('change', () => {
-      this.displayTimeZone = select.value;
-      this.rerenderTimes();
-    });
-    p.timeZone.replaceChildren(
-      h('div', { class: 'yb-field yb-tz-field' }, h('label', { for: id, class: 'yb-label' }, UI.timeZoneLabel), select),
-      h('p', { class: 'yb-tz-note' }, UI.timeZoneNote(timeZoneLabel(venue))),
-    );
-  }
-
-  private rerenderTimes(): void {
-    if (this.step === 'time') this.renderTimes();
-    if (this.step === 'review') this.renderReview(false);
-    this.updateHoldBar();
+    p.chipLabel.textContent = this.flow === 'party' ? UI.diningChip : UI.durationChip;
+    p.chipValue.textContent = value ?? '';
+    p.chip.hidden = value === null;
   }
 
   private showStep(step: BookingStep, focus = true): void {
@@ -711,13 +752,20 @@ export class BookingController {
     for (const s of ALL_STEPS) p.sections[s].hidden = s !== step;
     const index = this.steps.indexOf(step);
     p.steps.forEach((li, i) => {
+      const done = i < index;
       if (i === index) li.setAttribute('aria-current', 'step');
       else li.removeAttribute('aria-current');
-      li.classList.toggle('yb-step-done', i < index);
+      li.classList.toggle('yb-step-done', done);
+      const badge = li.querySelector('.yb-step-badge')!;
+      badge.replaceChildren(done ? icon('check') : String(i + 1));
+      li.querySelector('.yb-step-state')!.textContent = done ? UI.stepDone : '';
     });
-    p.timeZone.hidden = !p.timeZone.hasChildNodes() || !['date', 'time', 'review'].includes(step);
     this.setState(step === 'outcome' ? 'done' : 'ready');
     this.root.setAttribute('data-yb-step', step);
+    if (step === 'details') {
+      this.renderDetails();
+      if (p.submitChallenge) void this.submitChallenge!.mount(p.submitChallenge);
+    }
     this.updateHoldBar();
     if (focus) p.headings[step]?.focus();
     this.postHeight();
@@ -726,8 +774,8 @@ export class BookingController {
   private goTo(step: BookingStep): void {
     if (this.pending) return;
     this.notice(null);
-    if (step === 'time') this.renderTimes();
     this.showStep(step);
+    if (step === 'select') void this.loadAvailability();
   }
 
   private notice(message: string | null, focus = false): void {
@@ -739,128 +787,255 @@ export class BookingController {
     this.postHeight();
   }
 
-  // Availability -----------------------------------------------------------
+  // Layout -------------------------------------------------------------------
 
-  private windowEnd(): string {
-    const policies = this.definition!.policies;
-    const last = addDays(localDate(this.now(), policies.timezone), policies.bookingHorizonDays);
-    const end = addDays(this.windowStart, WINDOW_DAYS - 1);
-    return daysBetween(end, last) < 0 ? last : end;
+  private measureCompact(): boolean {
+    const width = this.options.measureWidth ? this.options.measureWidth() : this.root.getBoundingClientRect().width;
+    return Number.isFinite(width) && width > 0 && width < COMPACT_WIDTH;
   }
 
-  /** Fetches availability for the current window and selection and redraws the dates (and times). */
+  /** Follows the mount's size: the parent's iframe height, and the grid / list switch. */
+  private observeSize(): void {
+    if (typeof ResizeObserver !== 'function') return;
+    new ResizeObserver(() => {
+      this.postHeight();
+      const compact = this.measureCompact();
+      if (compact === this.compact || !this.parts) return;
+      this.compact = compact;
+      this.root.setAttribute('data-yb-layout', compact ? 'list' : 'grid');
+      if (this.step === 'select' && this.flow !== 'party') this.renderPicker();
+    }).observe(this.root);
+  }
+
+  // Availability -----------------------------------------------------------
+
+  private today(): string {
+    return localDate(this.now(), this.definition!.policies.timezone);
+  }
+
+  /** The last bookable venue date. */
+  private lastDate(): string {
+    return addDays(this.today(), this.definition!.policies.bookingHorizonDays);
+  }
+
+  private pageDays(): number {
+    return this.flow === 'party' ? MATRIX_DAYS : GRID_DAYS;
+  }
+
+  private pageDates(): string[] {
+    return Array.from({ length: this.pageDays() }, (_, i) => addDays(this.pageStart, i));
+  }
+
+  /** Moves to the page containing `date` (pages start at today, every pageDays days). */
+  private showPageOf(date: string): void {
+    const today = this.today();
+    const n = this.pageDays();
+    const offset = Math.max(0, Math.min(daysBetween(today, date), daysBetween(today, this.lastDate())));
+    this.pageStart = addDays(today, Math.floor(offset / n) * n);
+    this.announcePage = true;
+    void this.loadAvailability();
+  }
+
+  /** What blocks asking the server, as the picker's hint, or null. */
+  private pickerHint(): string | null {
+    const definition = this.definition!;
+    const own = selectionProblem(definition, this.selection);
+    if (own === 'service') return serviceOf(definition, this.selection) ? UI.chooseVariantFirst : UI.chooseServiceFirst;
+    if (own === 'party') return UI.choosePartyFirst;
+    if (definition.locations.length && !this.selection.locationKey) return UI.chooseLocationFirst;
+    return null;
+  }
+
+  /** Fetches the availability the visible page still lacks (14 days at a time), then draws the picker. */
   async loadAvailability(): Promise<void> {
     const p = this.parts!;
     const definition = this.definition!;
     const seq = ++this.availabilitySeq;
-    p.datesBox.removeAttribute('aria-busy');
+    p.picker.removeAttribute('aria-busy');
     if (p.status.textContent === UI.loadingAvailability) p.status.textContent = '';
-    const own = selectionProblem(definition, this.selection);
-    if (own === 'service' || own === 'party') {
-      // Nothing to ask the server yet: the mode's own choices come first.
-      p.datesBox.replaceChildren(h('p', { class: 'yb-hint' }, own === 'service' ? UI.chooseServiceFirst : UI.choosePartyFirst));
+    const hint = this.pickerHint();
+    if (hint) {
+      p.picker.replaceChildren(h('div', { class: 'yb-picker-hint' }, icon('info'), h('p', { class: 'yb-hint' }, hint)));
       this.postHeight();
       return;
     }
-    if (definition.locations.length && !this.selection.locationKey) {
-      p.datesBox.replaceChildren(h('p', { class: 'yb-hint' }, UI.chooseLocationFirst));
-      this.postHeight();
-      return;
-    }
-    p.datesBox.setAttribute('aria-busy', 'true');
+    const today = this.today();
+    const last = this.lastDate();
+    const dates = this.pageDates();
+    // Another display zone can move a slot across midnight: keep the neighbouring venue days too.
+    const around = this.displayTimeZone === definition.policies.timezone ? dates : [addDays(dates[0]!, -1), ...dates, addDays(dates.at(-1)!, 1)];
+    const missing = around.filter((d) => daysBetween(today, d) >= 0 && daysBetween(d, last) >= 0 && !this.days.has(d));
+    if (!missing.length) return this.renderPicker();
+
+    p.picker.replaceChildren(this.toolbar(), pickerSkeleton(this.flow === 'party' ? 'matrix' : this.compact ? 'list' : 'grid', this.pageDays()));
+    p.picker.setAttribute('aria-busy', 'true');
     p.status.textContent = UI.loadingAvailability;
-    const from = this.windowStart;
-    const to = this.windowEnd();
+    this.postHeight();
+    const from = missing[0]!;
+    let to = addDays(from, FETCH_DAYS - 1);
+    if (daysBetween(to, missing.at(-1)!) > 0) to = missing.at(-1)!;
+    if (daysBetween(to, last) < 0) to = last;
     const result = await this.api.availability({ from, to, selection: { ...this.selection } });
     if (seq !== this.availabilitySeq || this.definition !== definition) return;
-    p.datesBox.removeAttribute('aria-busy');
+    p.picker.removeAttribute('aria-busy');
     p.status.textContent = '';
     if (!result.ok) {
-      if (result.code === 'version_changed') return this.versionChanged();
+      if (result.code === 'version_changed') return void this.versionChanged();
       if (result.code === 'setup_unavailable') return this.showUnavailable(UI.unavailable, false, 'unavailable');
       if (isInvalidSelection(result)) return this.selectionRejected();
-      const retry = h('button', { type: 'button', class: 'yb-retry yb-button' }, UI.reloadAvailability);
-      retry.addEventListener('click', () => void this.loadAvailability());
-      p.datesBox.replaceChildren(h('p', { class: 'yb-error', role: 'alert' }, this.errorMessage(result)), retry);
-      this.postHeight();
+      this.pickerError(this.errorMessage(result));
       return;
     }
-    if (result.data.operationsRevision !== definition.setup.operationsRevision) return this.versionChanged();
-    this.days = new Map(result.data.days.map((day) => [day.date, Array.isArray(day.slots) ? day.slots : []]));
-    this.renderDates(from, to, result.data);
-    if (this.step === 'time') this.renderTimes();
+    if (result.data.operationsRevision !== definition.setup.operationsRevision) return void this.versionChanged();
+    for (const day of result.data.days) {
+      if (!day || typeof day.date !== 'string') continue;
+      this.days.set(day.date, { date: day.date, slots: Array.isArray(day.slots) ? day.slots : [], ...(typeof day.closed === 'boolean' ? { closed: day.closed } : {}) });
+    }
+    this.renderPicker();
+  }
+
+  /** The picker's error state with a retry. */
+  private pickerError(message: string): void {
+    const p = this.parts!;
+    const retry = h('button', { type: 'button', class: 'yb-retry yb-button-secondary' }, UI.reloadAvailability);
+    retry.addEventListener('click', () => {
+      this.days.clear();
+      void this.loadAvailability();
+    });
+    p.picker.replaceChildren(h('div', { class: 'yb-picker-hint yb-picker-error' }, h('p', { class: 'yb-error', role: 'alert' }, message), retry));
     this.postHeight();
   }
 
-  private renderDates(from: string, to: string, availability: AvailabilityResponse): void {
-    const p = this.parts!;
-    const today = localDate(this.now(), this.definition!.policies.timezone);
-    const prev = h('button', { type: 'button', class: 'yb-nav yb-button-secondary', disabled: daysBetween(today, from) <= 0 }, UI.previousWeeks);
-    const next = h('button', { type: 'button', class: 'yb-nav yb-button-secondary', disabled: daysBetween(to, addDays(today, this.definition!.policies.bookingHorizonDays)) <= 0 }, UI.nextWeeks);
-    prev.addEventListener('click', () => {
-      const start = addDays(this.windowStart, -WINDOW_DAYS);
-      this.windowStart = daysBetween(today, start) < 0 ? today : start;
-      void this.loadAvailability();
-    });
-    next.addEventListener('click', () => {
-      this.windowStart = addDays(to, 1);
-      void this.loadAvailability();
-    });
-    const list = h('ul', { class: 'yb-dates', 'aria-label': UI.datesLabel });
-    let any = false;
-    for (const day of availability.days) {
-      const count = day.slots.length;
-      any ||= count > 0;
-      const button = h(
-        'button',
-        { type: 'button', class: 'yb-date', 'data-yb-date': day.date, disabled: count === 0, 'aria-pressed': String(this.chosenDate === day.date) },
-        h('span', { class: 'yb-date-label' }, formatDateLabel(day.date)),
-        h('span', { class: 'yb-date-status' }, count ? UI.available : UI.full),
-      );
-      button.addEventListener('click', () => {
-        this.chosenDate = day.date;
-        this.goTo('time');
+  /** The pager, the period and the time-zone label or switch. */
+  private toolbar(): HTMLElement {
+    const definition = this.definition!;
+    const today = this.today();
+    const n = this.pageDays();
+    const dates = this.pageDates();
+    const party = this.flow === 'party';
+    const prev = pagerButton('prev', party ? UI.previousWeek : UI.previousPage, daysBetween(today, this.pageStart) <= 0, () => this.showPageOf(addDays(this.pageStart, -n)));
+    const next = pagerButton('next', party ? UI.nextWeek : UI.nextPage, daysBetween(addDays(this.pageStart, n), this.lastDate()) < 0, () => this.showPageOf(addDays(this.pageStart, n)));
+    prev.setAttribute('data-yb-focus', 'prev');
+    next.setAttribute('data-yb-focus', 'next');
+    const period = h('span', { class: 'yb-period' }, ...tokens(this.periodLabel(dates)));
+    const bar = h('div', { class: party ? 'yb-toolbar yb-toolbar-matrix' : 'yb-toolbar' }, h('div', { class: 'yb-pager' }, prev, period, next));
+    if (party) {
+      const id = `${this.prefix}-jump`;
+      const input = h('input', { type: 'date', id, class: 'yb-input yb-date-input', min: today, max: this.lastDate(), value: this.pageStart, 'data-yb-focus': 'jump' });
+      input.addEventListener('change', () => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(input.value)) this.showPageOf(input.value);
       });
-      list.append(h('li', {}, button));
+      bar.append(h('div', { class: 'yb-jump' }, h('label', { for: id, class: 'yb-jump-label' }, icon('calendar'), UI.jumpToDate), input));
     }
-    p.datesBox.replaceChildren(
-      h('div', { class: 'yb-dates-nav' }, prev, h('span', { class: 'yb-range' }, `${formatDateLabel(from)}〜${formatDateLabel(to)}`), next),
-      list,
-      ...(any ? [] : [h('p', { class: 'yb-hint' }, UI.noDatesInRange)]),
-    );
+    const venue = definition.policies.timezone;
+    const visitor = this.options.visitorTimeZone === undefined ? browserTimeZone() : this.options.visitorTimeZone;
+    if (visitor && visitor !== venue && isTimeZone(visitor)) {
+      const id = `${this.prefix}-tz`;
+      const select = h('select', { id, class: 'yb-select yb-tz-select', 'data-yb-focus': 'tz', 'aria-describedby': `${id}-note` }, ...[venue, visitor].map((zone) => h('option', { value: zone, selected: zone === this.displayTimeZone }, timeZoneLabel(zone))));
+      select.addEventListener('change', () => {
+        this.displayTimeZone = select.value;
+        this.rerenderTimes();
+      });
+      bar.append(h('div', { class: 'yb-tz' }, h('label', { for: id, class: 'yb-tz-label' }, icon('globe'), h('span', { class: 'yb-sr' }, UI.timeZoneLabel)), select, h('p', { class: 'yb-tz-note yb-sr', id: `${id}-note` }, UI.timeZoneNote(timeZoneLabel(venue)))));
+    } else if (!party) {
+      bar.append(h('p', { class: 'yb-tz' }, icon('globe'), timeZoneLabel(this.displayTimeZone)));
+    }
+    return bar;
   }
 
-  private renderTimes(): void {
-    const p = this.parts!;
-    const date = this.chosenDate;
-    if (!date) return;
-    const zone = this.displayTimeZone;
-    const heading = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.timeHeading(formatDateLabel(date)));
-    p.headings.time = heading;
-    const slots = this.days.get(date) ?? [];
-    const list = h('ul', { class: 'yb-times' });
-    for (const slot of slots) {
-      const start = Date.parse(slot.start);
-      const end = Date.parse(slot.end);
-      const sameDay = localDate(start, zone) === date;
-      const label = `${sameDay ? '' : `${formatDateLabel(localDate(start, zone))} `}${formatTime(start, zone)}〜${formatTime(end, zone)}`;
-      const held = this.hold !== null && Date.parse(this.hold.start) === start;
-      const button = h('button', { type: 'button', class: 'yb-time', 'data-yb-start': slot.start, 'aria-pressed': String(held) }, label);
-      button.addEventListener('click', () => void this.acquireHold(slot));
-      list.append(h('li', {}, button));
+  /** 「2026年11月」 (grid) or 「11月1日（日）〜11月7日（土）」 (空席表). */
+  private periodLabel(dates: string[]): string {
+    const first = dates[0]!;
+    const last = dates.at(-1)!;
+    if (this.flow === 'party') return `${formatDateLabel(first)}〜${formatDateLabel(last)}`;
+    const [y1, m1] = first.split('-').map(Number) as [number, number];
+    const [y2, m2] = last.split('-').map(Number) as [number, number];
+    if (y1 === y2 && m1 === m2) return UI.month(y1, m1);
+    return UI.monthRange(UI.month(y1, m1), y1 === y2 ? `${m2}月` : UI.month(y2, m2));
+  }
+
+  /** The empty state of a page, with a jump to the next day with times when one is known. */
+  private emptyPage(dates: string[], placed: Map<string, PlacedSlot[]>): HTMLElement {
+    const box = h('div', { class: 'yb-empty' }, icon('calendar', 'yb-icon yb-empty-icon'), h('p', { class: 'yb-empty-text' }, UI.noSlotsInPage));
+    const later = [...placed.keys()].filter((d) => daysBetween(dates.at(-1)!, d) > 0 && placed.get(d)!.length).sort()[0];
+    if (later) {
+      const jump = h('button', { type: 'button', class: 'yb-button-secondary yb-next-available' }, UI.nextAvailable(formatDateLabel(later)));
+      jump.addEventListener('click', () => this.showPageOf(later));
+      box.append(jump);
     }
-    const back = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, UI.backToDates);
-    back.addEventListener('click', () => this.goTo('date'));
-    const challenge = this.holdChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
-    p.timesBox.replaceChildren(
-      heading,
-      ...(this.selectionLabel() ? [h('p', { class: 'yb-selection' }, this.selectionLabel()!)] : []),
-      h('p', { class: 'yb-duration' }, `${this.durationText()}　${UI.timesShownIn(timeZoneLabel(zone))}`),
-      slots.length ? list : h('p', { class: 'yb-hint' }, UI.noSlots),
-      ...(challenge ? [challenge] : []),
-      h('div', { class: 'yb-actions' }, back),
-    );
-    if (challenge) void this.holdChallenge!.mount(challenge);
+    return box;
+  }
+
+  /** Draws the visible page: week grid, day list or 空席表. */
+  private renderPicker(): void {
+    const p = this.parts!;
+    const definition = this.definition!;
+    const focusKey = p.picker.contains(document.activeElement) ? (document.activeElement as HTMLElement).getAttribute('data-yb-focus') : null;
+    const zone = this.displayTimeZone;
+    const today = localDate(this.now(), zone);
+    const dates = this.pageDates();
+    const placed = placeSlots(this.days.values(), zone);
+    const heldStart = this.hold ? Date.parse(this.hold.start) : null;
+    const choose = (slot: Slot) => void this.acquireHold(slot);
+    const children: HTMLElement[] = [this.toolbar()];
+    if (this.flow === 'party') {
+      const first = this.now() + definition.policies.minimumLeadMinutes * 60000;
+      const firstParts = zoned(first, zone);
+      const matrix = availabilityMatrix({
+        dates,
+        today,
+        zone,
+        earliest: { date: localDate(first, zone), minute: firstParts.hour * 60 + firstParts.minute },
+        days: this.days,
+        placed,
+        heldStart,
+        party: UI.partyOption(this.selection.partySize!),
+        intervalMinutes: definition.policies.slotIntervalMinutes,
+        onChoose: choose,
+      });
+      children.push(matrix ? h('div', { class: 'yb-matrix-wrap' }, matrix) : this.emptyPage(dates, placed), matrixLegend());
+      const lead = definition.policies.minimumLeadMinutes;
+      if (lead > 0) children.push(h('p', { class: 'yb-lead-note' }, UI.leadNote(UI.minutes(lead))));
+    } else if (this.compact) {
+      const withSlots = dates.filter((d) => placed.get(d)?.length);
+      if (!this.chosenDate || !withSlots.includes(this.chosenDate)) this.chosenDate = withSlots[0] ?? null;
+      children.push(
+        dayList({
+          dates,
+          today,
+          zone,
+          placed,
+          heldStart,
+          chosen: this.chosenDate,
+          onDay: (date) => {
+            this.chosenDate = date;
+            this.renderPicker();
+            p.picker.querySelector<HTMLElement>(`[data-yb-date="${date}"]`)?.focus();
+          },
+          onChoose: choose,
+          empty: this.emptyPage(dates, placed),
+        }),
+      );
+    } else {
+      const interval = definition.policies.slotIntervalMinutes;
+      children.push(weekGrid({ dates, today, zone, placed, heldStart, rowMinutes: Math.min(60, Math.max(15, interval)), onChoose: choose, empty: this.emptyPage(dates, placed) }));
+    }
+    p.picker.replaceChildren(...children);
+    if (focusKey) {
+      const target = p.picker.querySelector<HTMLElement>(`[data-yb-focus="${focusKey}"]:not(:disabled)`) ?? p.picker.querySelector<HTMLElement>('[data-yb-focus]:not(:disabled)');
+      target?.focus();
+    }
+    if (this.announcePage) {
+      this.announcePage = false;
+      p.status.textContent = this.periodLabel(dates);
+    }
+    this.postHeight();
+  }
+
+  private rerenderTimes(): void {
+    if (this.step === 'select') void this.loadAvailability();
+    if (this.step === 'details') this.renderDetails();
+    this.updateHoldBar();
   }
 
   // Holds ------------------------------------------------------------------
@@ -910,35 +1085,39 @@ export class BookingController {
       case 'hold_expired':
       case 'validation_failed':
         if (isInvalidSelection(result)) return this.selectionRejected();
-        this.releaseHold();
-        this.notice(RESERVATION_API_ERRORS[result.code === 'validation_failed' ? 'slot_unavailable' : result.code].message, true);
-        void this.loadAvailability();
+        this.backToTimes(RESERVATION_API_ERRORS[result.code === 'validation_failed' ? 'slot_unavailable' : result.code].message);
         return;
       default:
         this.retryNotice(result);
     }
   }
 
+  /** The held time is gone: back to the picker with fresh availability and a notice. */
+  private backToTimes(message: string): void {
+    this.releaseHold();
+    this.days.clear();
+    this.showStep('select', false);
+    this.notice(message, true);
+    void this.loadAvailability();
+  }
+
   /**
    * The server answered `validation_failed` + `invalid_selection` (its
-   * operations may have changed under the visitor): drop the hold and send
-   * the visitor back to the step whose choice it rejected, with a Japanese
-   * notice. The step is the one the client's own check names, else the
-   * flow's first step.
+   * operations may have changed under the visitor): drop the hold, return to
+   * the select step with a notice naming the choice to change, and wait for
+   * the visitor (a retry or a new choice) rather than asking again.
    */
   private selectionRejected(): void {
     const definition = this.definition!;
-    const step = selectionProblem(definition, this.selection) ?? this.steps[0]!;
+    const choice: SelectionProblem = selectionProblem(definition, this.selection) ?? (this.flow === 'time_slot' ? 'date' : this.flow);
     if (this.hold) this.staleHoldToken = this.hold.holdToken;
     this.releaseHold();
     this.attempt = null;
     this.days.clear();
-    this.chosenDate = null;
-    this.parts!.datesBox.replaceChildren();
-    this.goTo(step);
-    if (this.step !== step) this.showStep(step);
-    this.notice(UI.invalidSelection[step] ?? UI.invalidSelection.date!, true);
-    if (step === 'date') void this.loadAvailability();
+    this.availabilitySeq++;
+    if (this.step !== 'select') this.showStep('select', false);
+    this.pickerError(UI.availabilityFailed);
+    this.notice(UI.invalidSelection[choice] ?? UI.invalidSelection.date!, true);
   }
 
   private startHoldTimer(): void {
@@ -959,12 +1138,11 @@ export class BookingController {
     this.updateHoldBar();
   }
 
-  /** The countdown while a hold is kept; on expiry, back to the times with fresh availability. */
+  /** The countdown while a hold is kept; on expiry, back to the picker with fresh availability. */
   private updateHoldBar(): void {
     const p = this.parts;
     if (!p) return;
     const hold = this.hold;
-    const show = hold !== null && (this.step === 'details' || this.step === 'review');
     if (!hold) {
       p.holdBar.hidden = true;
       return;
@@ -972,19 +1150,14 @@ export class BookingController {
     const left = Date.parse(hold.expiresAt) - this.now();
     if (left <= 0) {
       if (this.pending) return;
-      this.releaseHold();
-      if (this.step === 'details' || this.step === 'review') {
-        this.renderTimes();
-        this.showStep('time');
-        this.notice(UI.holdExpired, true);
-        void this.loadAvailability();
-      }
+      if (this.step === 'details') this.backToTimes(UI.holdExpired);
+      else this.releaseHold();
       return;
     }
     const seconds = Math.ceil(left / 1000);
     const text = UI.holdCountdown(`${Math.floor(seconds / 60)}分${String(seconds % 60).padStart(2, '0')}秒`);
-    if (p.holdBar.textContent !== text) p.holdBar.textContent = text;
-    p.holdBar.hidden = !show;
+    if (p.holdBar.textContent !== text) p.holdBar.replaceChildren(icon('clock'), h('span', {}, ...tokens(text)));
+    p.holdBar.hidden = this.step !== 'details';
   }
 
   // Questions --------------------------------------------------------------
@@ -1051,7 +1224,7 @@ export class BookingController {
         view?.setError(null);
       }
     }
-    if (this.shownErrors.size === 0 && this.parts) this.parts.summary.hidden = true;
+    if (this.shownErrors.size === 0 && this.parts) this.parts.errorSummary.hidden = true;
     this.result = result;
     this.postHeight();
     return result;
@@ -1090,79 +1263,68 @@ export class BookingController {
       } else items.push(h('li', {}, text));
     }
     for (const code of formErrors) items.push(h('li', {}, formMessage(code)));
-    p.summary.replaceChildren(h('p', { class: 'yf-error-summary-title' }, UI.errorSummary), h('ul', {}, ...items));
-    p.summary.hidden = items.length === 0;
+    p.errorSummary.replaceChildren(h('p', { class: 'yf-error-summary-title' }, UI.errorSummary), h('ul', {}, ...items));
+    p.errorSummary.hidden = items.length === 0;
     if (first) first.focus();
-    else if (items.length) p.summary.focus();
+    else if (items.length) p.errorSummary.focus();
     this.postHeight();
   }
 
-  private toReview(): void {
-    if (this.pending) return;
-    this.notice(null);
-    const result = this.refresh()!;
-    if (Object.keys(result.fieldErrors).length || result.formErrors.length) return this.showErrors(result.fieldErrors, result.formErrors);
-    this.parts!.summary.hidden = true;
-    this.renderReview(true);
-  }
+  // Details: the held time and the booking terms ----------------------------
 
-  // Review and submission ---------------------------------------------------
-
-  private renderReview(enter: boolean): void {
+  /** The summary box (date, time, zone and the mode's choice) and the terms above the submit button. */
+  private renderDetails(): void {
     const p = this.parts!;
     const definition = this.definition!;
     const hold = this.hold;
-    if (!hold) return this.goTo('time');
+    if (!hold) return;
     const venue = definition.policies.timezone;
     const zone = this.displayTimeZone;
     const start = Date.parse(hold.start);
     const end = Date.parse(hold.end);
     const manual = definition.policies.confirmationMode === 'manual';
     const row = (label: string, value: string, key?: string) => h('div', { class: 'yb-review-row', ...(key ? { 'data-yb-field': key } : {}) }, h('dt', {}, label), h('dd', {}, value));
-
-    const when = `${formatDateTime(start, zone)}〜${formatTime(end, zone)}　${timeZoneLabel(zone)}`;
-    const rows: HTMLElement[] = [];
-    const what = this.selectionLabel();
-    if (what) rows.push(row(this.flow === 'party' ? UI.reviewParty : UI.reviewService, what, `booking.${this.flow}`));
-    rows.push(row(UI.reviewDateTime, zone === venue ? when : `${when}${UI.reviewVenueTime(`${formatDateTime(start, venue)}〜${formatTime(end, venue)}　${timeZoneLabel(venue)}`)}`));
     const minutes = durationOf(definition, this.selection);
-    if (minutes !== null) rows.push(row(this.flow === 'party' ? UI.reviewDiningDuration : UI.reviewDuration, UI.minutes(minutes)));
+
+    const chosen: HTMLElement[] = [];
+    const what = this.selectionLabel();
+    if (what) chosen.push(row(this.flow === 'party' ? UI.reviewParty : UI.reviewService, what, `booking.${this.flow}`));
+    if (this.flow === 'party' && minutes !== null) chosen.push(row(UI.reviewDiningDuration, UI.minutes(minutes)));
+    const change = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, UI.changeDateTime);
+    change.addEventListener('click', () => this.goTo('select'));
+    p.summary.replaceChildren(
+      h(
+        'div',
+        { class: 'yb-summary-main' },
+        h('p', { class: 'yb-summary-label' }, icon('calendar'), UI.summaryWhen),
+        h('p', { class: 'yb-summary-when' }, ...tokens(`${formatDateTime(start, zone)}〜${formatTime(end, zone)}`)),
+        h('p', { class: 'yb-summary-tz' }, icon('globe'), timeZoneLabel(zone)),
+        ...(zone === venue ? [] : [h('p', { class: 'yb-summary-venue' }, ...tokens(UI.reviewVenueTime(`${formatDateTime(start, venue)}〜${formatTime(end, venue)}　${timeZoneLabel(venue)}`)))]),
+        ...(chosen.length ? [h('dl', { class: 'yb-review yb-summary-list' }, ...chosen)] : []),
+      ),
+      change,
+    );
+
+    const rows: HTMLElement[] = [];
+    if (this.flow !== 'party' && minutes !== null) rows.push(row(UI.reviewDuration, UI.minutes(minutes)));
     const location = definition.locations.find((l) => l.key === this.selection.locationKey);
     if (location) rows.push(row(UI.reviewLocation, location.label));
     if (this.flow === 'time_slot' && hold.hostLabel) rows.push(row(UI.reviewHost, hold.hostLabel));
     if (this.flow === 'service' && serviceOf(definition, this.selection)?.visitorChoosesPractitioner) {
       rows.push(row(UI.reviewPractitioner, typeof hold.practitionerLabel === 'string' ? hold.practitionerLabel : UI.reviewAnyPractitioner));
     }
-    const result = this.result ?? this.validate();
-    const active = new Set(result.active);
-    for (const view of this.inputs()) {
-      const { node } = view;
-      if (!active.has(node.key) || node.type === 'hidden' || node.type === 'quiz') continue;
-      const value = node.type === 'file' ? view.files() : result.answers[node.key];
-      rows.push(row(String(node.label ?? node.key), (value === undefined ? '' : displayValue(node, value)) || UI.empty, node.key));
-    }
-
     const policy = manual ? UI.policyManual(definition.policies.approvalWindowMinutes ? UI.minutes(definition.policies.approvalWindowMinutes) : null) : UI.policyAutomatic;
     const cutoff = cutoffNotice(start - this.now(), definition.policies.cancelCutoffMinutes, definition.policies.rescheduleCutoffMinutes);
-    const heading = h('h2', { class: 'yb-heading', tabindex: '-1' }, UI.reviewHeading);
-    p.headings.review = heading;
-    const back = h('button', { type: 'button', class: 'yb-back yb-button-secondary' }, UI.back);
-    back.addEventListener('click', () => this.goTo('details'));
-    const submit = h('button', { type: 'button', class: 'yb-submit yb-button' }, manual ? UI.submitManual : UI.submitAutomatic);
-    submit.addEventListener('click', () => void this.submit());
-    const challenge = this.submitChallenge ? h('div', { class: 'yb-turnstile', role: 'group', 'aria-label': UI.verificationLabel }) : null;
-    p.sections.review.replaceChildren(
-      heading,
-      h('dl', { class: 'yb-review' }, ...rows),
-      h('p', { class: manual ? 'yb-policy yb-policy-manual' : 'yb-policy' }, policy),
-      ...(cutoff ? [h('p', { class: 'yb-cutoff', role: 'note' }, cutoff)] : []),
-      ...(challenge ? [challenge] : []),
-      h('div', { class: 'yb-actions' }, back, submit),
+    p.terms.replaceChildren(
+      h('h3', { class: 'yb-terms-heading' }, UI.termsHeading),
+      ...(rows.length ? [h('dl', { class: 'yb-review' }, ...rows)] : []),
+      h('p', { class: manual ? 'yb-policy yb-policy-manual' : 'yb-policy' }, icon(manual ? 'clock' : 'check'), h('span', {}, policy)),
+      ...(cutoff ? [h('p', { class: 'yb-cutoff', role: 'note' }, icon('info'), h('span', {}, cutoff))] : []),
     );
-    if (challenge) void this.submitChallenge!.mount(challenge);
-    if (enter) this.showStep('review');
-    else this.postHeight();
+    this.postHeight();
   }
+
+  // Submission ---------------------------------------------------------------
 
   private blocked(): boolean {
     return this.blockedUntil > this.now();
@@ -1183,10 +1345,11 @@ export class BookingController {
     if (this.pending || this.blocked()) return;
     const definition = this.definition!;
     const hold = this.hold;
-    if (!hold) return this.goTo('time');
+    if (!hold) return this.goTo('select');
     this.notice(null);
     const result = this.refresh()!;
     if (Object.keys(result.fieldErrors).length || result.formErrors.length) return this.showErrors(result.fieldErrors, result.formErrors);
+    this.parts!.errorSummary.hidden = true;
     let turnstileToken: string | null = null;
     if (this.submitChallenge) {
       turnstileToken = this.submitChallenge.value();
@@ -1250,11 +1413,7 @@ export class BookingController {
       case 'hold_expired':
       case 'slot_unavailable':
       case 'approval_window_closed':
-        this.releaseHold();
-        this.renderTimes();
-        this.showStep('time');
-        this.notice(message, true);
-        void this.loadAvailability();
+        this.backToTimes(message);
         return;
       case 'setup_unavailable':
         return this.showUnavailable(UI.unavailable, false, 'unavailable');
@@ -1287,8 +1446,7 @@ export class BookingController {
   /**
    * The setup or operations changed under the visitor: reload the definition,
    * keep the choices and answers that still fit, drop the hold and start
-   * again from the dates (or from the service or party step when that
-   * choice no longer exists). Never resubmits by itself.
+   * again from the select step. Never resubmits by itself.
    */
   private async versionChanged(): Promise<void> {
     const before = new Map(this.inputs().map((v) => [v.node.key, { type: v.node.type, raw: v.read(), files: v.files() }]));
@@ -1298,7 +1456,6 @@ export class BookingController {
     const problem = this.checkDefinition(loaded.data);
     if (problem) return this.showUnavailable(UI.unsupported, false, 'unavailable');
     this.releaseHold();
-    // The choices that still exist are kept; render resumes at the dates when they are complete.
     this.render(loaded.data, selection);
     for (const view of this.inputs()) {
       const old = before.get(view.node.key);
@@ -1348,18 +1505,28 @@ export class BookingController {
       expired: UI.expiredHeading,
       cancelled: UI.cancelledHeading,
     };
+    const tone = state === 'confirmed' ? 'success' : state === 'pending_approval' || state === 'confirming' ? 'pending' : 'neutral';
     const heading = h('h2', { class: 'yb-heading yb-outcome-heading', tabindex: '-1', 'data-yb-outcome': state }, headings[state]);
     p.headings.outcome = heading;
-    const children: HTMLElement[] = [heading];
-    const what = hold ? this.selectionLabel() : null;
-    if (what) children.push(h('p', { class: 'yb-outcome-what' }, what));
+    const children: HTMLElement[] = [h('span', { class: 'yb-success-icon', 'aria-hidden': 'true' }, icon(tone === 'success' ? 'check' : tone === 'pending' ? 'clock' : 'info')), heading];
+    const facts: HTMLElement[] = [];
     if (hold) {
       const start = Date.parse(hold.start);
-      children.push(h('p', { class: 'yb-outcome-when' }, `${formatDateTime(start, venue)}〜${formatTime(Date.parse(hold.end), venue)}　${timeZoneLabel(venue)}`));
+      facts.push(
+        h(
+          'p',
+          { class: 'yb-outcome-when' },
+          icon('calendar'),
+          h('span', {}, ...tokens(`${formatDateTime(start, venue)}〜${formatTime(Date.parse(hold.end), venue)}`), h('span', { class: 'yb-outcome-tz' }, timeZoneLabel(venue))),
+        ),
+      );
     }
+    const what = hold ? this.selectionLabel() : null;
+    if (what) facts.push(h('p', { class: 'yb-outcome-what' }, icon(this.flow === 'party' ? 'users' : 'check'), h('span', {}, what)));
+    if (facts.length) children.push(h('div', { class: 'yb-outcome-facts' }, ...facts));
     if (state === 'pending_approval') {
       const deadline = data.approvalDeadline ? Date.parse(data.approvalDeadline) : NaN;
-      if (!Number.isNaN(deadline)) children.push(h('p', { class: 'yb-outcome-deadline' }, UI.pendingDeadline(`${formatDateTime(deadline, venue)}（${timeZoneLabel(venue)}）`)));
+      if (!Number.isNaN(deadline)) children.push(h('p', { class: 'yb-outcome-deadline' }, ...tokens(UI.pendingDeadline(`${formatDateTime(deadline, venue)}（${timeZoneLabel(venue)}）`))));
     }
     if (state === 'confirming') children.push(h('p', { class: 'yb-outcome-note' }, UI.confirmingNote));
     if (data.success?.mode === 'message' && typeof data.success.message === 'string') children.push(h('p', { class: 'yb-outcome-message' }, data.success.message));
@@ -1372,12 +1539,12 @@ export class BookingController {
         h(
           'div',
           { class: 'yb-manage' },
-          h('a', { class: 'yb-manage-link', href: manage, target: '_blank', rel: 'noopener noreferrer' }, UI.manageLink),
+          h('a', { class: 'yb-manage-link yb-button-secondary', href: manage, target: '_blank', rel: 'noopener noreferrer' }, UI.manageLink),
           h('p', { class: 'yb-manage-note' }, UI.manageNote),
         ),
       );
     }
-    p.sections.outcome.replaceChildren(...children);
+    p.sections.outcome.replaceChildren(h('div', { class: 'yb-success', 'data-yb-tone': tone }, ...children));
   }
 
   /** A management URL is shown only when it is an absolute URL on the booking origin. */
@@ -1434,12 +1601,6 @@ export class BookingController {
     this.lastHeight = height;
     this.post('height', { height });
   }
-
-  private observeHeight(): void {
-    if (!this.embed || typeof ResizeObserver !== 'function') return;
-    new ResizeObserver(() => this.postHeight()).observe(this.root);
-  }
-
 }
 
 /** The prominent preview label, with the request a live mount would have sent. */
@@ -1455,7 +1616,14 @@ function previewMarker(source: string, log: HTMLElement): HTMLElement {
 
 export const PREVIEW_MARKER_ID = 'yatris-booking-preview';
 
-/** Applies validated theme tokens as `--yb-*` custom properties and `data-yb-spacing`. */
+/**
+ * Applies validated theme tokens: colours as `--yb-*` custom properties,
+ * `--yb-radius` in px, `data-yb-spacing`, and `data-yb-font` /
+ * `data-yb-heading-font` (`sans` or `serif`, both Noto). `fontFamily` and
+ * `headingFontFamily` stay valid but are ignored: Noto always wins.
+ * `data-yb-themed` marks a mount with any token, so the restaurant default
+ * palette gives way to the site's brand.
+ */
 export function applyTheme(root: HTMLElement, theme: ReservationTheme | null | undefined): void {
   if (!theme) return;
   const result = validateTheme(theme);
@@ -1463,9 +1631,14 @@ export function applyTheme(root: HTMLElement, theme: ReservationTheme | null | u
     console.warn('[yatris booking] theme ignored:', result.errors.map((e) => `${e.path || '/'} ${e.code}`).join(', '));
     return;
   }
-  for (const [key, value] of Object.entries(result.theme!)) {
+  const entries = Object.entries(result.theme!);
+  if (entries.length) root.setAttribute('data-yb-themed', 'true');
+  for (const [key, value] of entries) {
     if (key === 'spacing') root.setAttribute('data-yb-spacing', String(value));
     else if (key === 'radius') root.style.setProperty('--yb-radius', `${value}px`);
+    else if (key === 'font') root.setAttribute('data-yb-font', String(value));
+    else if (key === 'headingFont') root.setAttribute('data-yb-heading-font', String(value));
+    else if (key === 'fontFamily' || key === 'headingFontFamily') continue;
     else root.style.setProperty(`--yb-${key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)}`, String(value));
   }
 }
@@ -1512,6 +1685,13 @@ function validEmbed(embed: { instance: string; parentOrigin: string } | null | u
   if (typeof embed.instance === 'string' && new RegExp(INSTANCE_PATTERN).test(embed.instance) && isWebOrigin(embed.parentOrigin)) return { instance: embed.instance, parentOrigin: embed.parentOrigin };
   console.warn('[yatris booking] embed settings are invalid; no messages will be posted to the parent page');
   return null;
+}
+
+/** The avatar text of a staff card: two Latin initials, or the first character of a Japanese name. */
+export function initialOf(label: string): string {
+  const name = label.replace(/[（(].*$/u, '').trim() || label.trim();
+  if (/^[A-Za-z]/.test(name)) return name.split(/\s+/).slice(0, 2).map((word) => word[0]!.toUpperCase()).join('');
+  return [...name][0] ?? '・';
 }
 
 function sameFiles(a: [string, File][], b: [string, File][]): boolean {

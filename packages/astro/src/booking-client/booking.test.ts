@@ -106,6 +106,7 @@ const q = <T extends Element = HTMLElement>(root: HTMLElement, selector: string)
   return el as unknown as T;
 };
 
+
 async function chooseLocation(root: HTMLElement, key: string) {
   const radio = q<HTMLInputElement>(root, `input[type="radio"][value="${key}"]`);
   radio.checked = true;
@@ -113,11 +114,7 @@ async function chooseLocation(root: HTMLElement, key: string) {
   await flush();
 }
 
-async function chooseDate(root: HTMLElement, date = '2026-11-03') {
-  q<HTMLButtonElement>(root, `[data-yb-date="${date}"]`).click();
-  await flush();
-}
-
+/** Clicks a slot of the week grid (or the day list): the date and the time in one step. */
 async function chooseTime(root: HTMLElement, index = 0) {
   root.querySelectorAll<HTMLButtonElement>('.yb-time')[index]!.click();
   await flush();
@@ -130,20 +127,27 @@ function type(root: HTMLElement, key: string, value: string) {
   input.dispatchEvent(new Event('change', { bubbles: true }));
 }
 
-async function fillDetails(root: HTMLElement) {
+function fillDetails(root: HTMLElement) {
   type(root, 'name', '山田 太郎');
   type(root, 'email', 'taro@example.jp');
   const topic = q<HTMLInputElement>(root, '[data-yf-field="topic"] input[value="website"]');
   topic.checked = true;
   topic.dispatchEvent(new Event('change', { bubbles: true }));
-  q<HTMLButtonElement>(root, '.yb-next').click();
-  await flush();
 }
 
 async function submit(root: HTMLElement) {
   q<HTMLButtonElement>(root, '.yb-submit').click();
   await flush();
 }
+
+async function changeDateTime(root: HTMLElement) {
+  q<HTMLButtonElement>(root, '[data-yb-section="details"] .yb-back').click();
+  await flush();
+}
+
+const step = (root: HTMLElement) => root.getAttribute('data-yb-step');
+const reviewRow = (root: HTMLElement, label: string) =>
+  [...root.querySelectorAll('.yb-review-row')].find((r) => r.querySelector('dt')!.textContent === label)?.querySelector('dd')?.textContent ?? null;
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -152,34 +156,48 @@ afterEach(() => {
 });
 
 describe('time-slot flow', () => {
-  it('goes date → time → details → review → outcome, holding the slot and submitting once', async () => {
+  it('goes select → details → outcome, holding the slot and submitting once', async () => {
     const api = fakeBooking(await definitionOf());
     const { root, controller } = await mount(liveConfig(), { fetch: api.fetch });
-    const steps: string[] = [root.getAttribute('data-yb-step')!];
+    const steps: string[] = [step(root)!];
 
-    expect(q(root, '.yb-hint').textContent).toBe(BOOKING_UI.chooseLocationFirst);
+    // Three steps, the first current.
+    expect([...root.querySelectorAll('.yb-step-label')].map((li) => li.textContent)).toEqual(['日時を選択', '情報を入力', '完了']);
+    expect(q(root, '.yb-step[aria-current="step"]').getAttribute('data-yb-step-item')).toBe('select');
+    expect(q(root, '.yb-chip').textContent).toBe('所要時間1時間');
+    expect(q(root, '.yb-picker-hint').textContent).toBe(BOOKING_UI.chooseLocationFirst);
     await chooseLocation(root, 'online');
-    expect(q(root, '[data-yb-date="2026-11-02"]').hasAttribute('disabled')).toBe(true);
-    await chooseDate(root);
-    steps.push(root.getAttribute('data-yb-step')!);
-    expect(q(root, '.yb-times').textContent).toContain('10:00〜10:30');
-    expect(root.textContent).toContain('日本時間（Asia/Tokyo）');
+
+    // A five-day week grid: an empty day is marked, each slot is a button at its time.
+    expect([...root.querySelectorAll('.yb-day-col')].map((c) => c.getAttribute('data-yb-date'))).toEqual(['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05']);
+    expect(q(root, '[data-yb-date="2026-11-02"]').getAttribute('data-yb-empty')).toBe('true');
+    expect(q(root, '[data-yb-date="2026-11-02"]').getAttribute('aria-label')).toBe('11月2日（月）　空きなし');
+    expect(q(root, '[data-yb-date="2026-11-03"]').getAttribute('aria-label')).toBe('11月3日（火）　空き2件');
+    const slot = q(root, '.yb-time');
+    expect(slot.textContent).toBe('10:00-10:30');
+    expect(slot.getAttribute('aria-label')).toBe('11月3日（火）10:00〜10:30を選択');
+    expect(q(root, '.yb-period').textContent).toBe('2026年11月');
+    expect(q(root, '.yb-tz').textContent).toBe('日本時間（Asia/Tokyo）');
+    // Only the hours the slots use (padded), not the whole day.
+    expect([...root.querySelectorAll('.yb-hours-start .yb-hour')].map((h) => h.textContent)).toEqual(['10:00', '11:00']);
+
     await chooseTime(root);
-    steps.push(root.getAttribute('data-yb-step')!);
+    steps.push(step(root)!);
     expect(document.activeElement?.textContent).toBe(BOOKING_UI.detailsHeading);
     expect(q(root, '.yb-hold').textContent).toContain('残り 10分00秒');
-    await fillDetails(root);
-    steps.push(root.getAttribute('data-yb-step')!);
-    const review = q(root, '.yb-review').textContent!;
-    expect(review).toContain('2026年11月3日（火） 10:00〜10:30');
-    expect(review).toContain('オンライン（Google Meet）');
-    expect(review).toContain('山田 太郎');
+    expect(q(root, '.yb-summary-when').textContent).toBe('2026年11月3日（火） 10:00〜10:30');
+    expect(q(root, '.yb-summary-tz').textContent).toBe('日本時間（Asia/Tokyo）');
+    expect(reviewRow(root, '方法・場所')).toBe('オンライン（Google Meet）');
+    expect(reviewRow(root, '所要時間')).toBe('1時間');
     expect(q(root, '.yb-policy').textContent).toBe(BOOKING_UI.policyAutomatic);
     expect(root.querySelector('.yb-cutoff')).toBeNull();
+    expect(q(root, '.yb-submit').textContent).toBe('予約を確定する');
+    expect(root.querySelectorAll('.yb-step-done')).toHaveLength(1);
+    fillDetails(root);
     await submit(root);
-    steps.push(root.getAttribute('data-yb-step')!);
+    steps.push(step(root)!);
 
-    expect(steps).toEqual(['date', 'time', 'details', 'review', 'outcome']);
+    expect(steps).toEqual(['select', 'details', 'outcome']);
     expect(api.calls.map((c) => `${c.method} ${c.url.slice(BASE.length) || '/'}`)).toEqual(['GET /', 'POST /availability', 'POST /holds', 'POST /bookings']);
     for (const call of api.calls.filter((c) => c.method === 'POST')) expect(call.headers['x-booking-session'], call.url).toBe('session-abc');
     expect(api.calls[1]!.body).toEqual({ from: '2026-11-01', to: '2026-11-14', selection: { locationKey: 'online' } });
@@ -190,6 +208,8 @@ describe('time-slot flow', () => {
     expect(booking.idempotencyKey).toMatch(/^[A-Za-z0-9_-]{16,128}$/);
 
     expect(q(root, '.yb-outcome-heading').textContent).toBe('予約が確定しました');
+    expect(q(root, '.yb-success').getAttribute('data-yb-tone')).toBe('success');
+    expect(q(root, '.yb-outcome-when').textContent).toBe('2026年11月3日（火） 10:00〜10:30日本時間（Asia/Tokyo）');
     const manage = q<HTMLAnchorElement>(root, '.yb-manage-link');
     expect(manage.href).toBe(`${BOOK}/manage/tok-secret`);
     expect(manage.textContent).toBe('予約の確認・変更・キャンセル');
@@ -205,14 +225,11 @@ describe('time-slot flow', () => {
     const api = fakeBooking(await definitionOf());
     const { root } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
     expect(q(root, '[data-yf-field="office_note"]').hidden).toBe(true);
-    q<HTMLButtonElement>(root, '[data-yb-section="details"] .yb-back').click();
-    q<HTMLButtonElement>(root, '[data-yb-section="time"] .yb-back').click();
-    expect(root.getAttribute('data-yb-step')).toBe('date');
+    await changeDateTime(root);
+    expect(step(root)).toBe('select');
     await chooseLocation(root, 'office');
-    await chooseDate(root);
     await chooseTime(root);
     expect(q(root, '[data-yf-field="office_note"]').hidden).toBe(false);
   });
@@ -221,36 +238,89 @@ describe('time-slot flow', () => {
     const api = fakeBooking(await definitionOf());
     const { root } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root, 0);
-    q<HTMLButtonElement>(root, '[data-yb-section="details"] .yb-back').click();
-    expect(root.getAttribute('data-yb-step')).toBe('time');
+    await changeDateTime(root);
+    expect(step(root)).toBe('select');
+    expect(document.activeElement?.textContent).toBe(BOOKING_UI.selectHeading);
+    // The held time is marked; the cached week is redrawn without asking again.
+    expect(root.querySelectorAll('.yb-time')[0]!.getAttribute('aria-pressed')).toBe('true');
+    expect(api.calls.filter((c) => c.url.endsWith('/availability'))).toHaveLength(1);
     await chooseTime(root, 1);
     const holds = api.calls.filter((c) => c.url.endsWith('/holds')).map((c) => c.body);
     expect(holds).toEqual([
       { selection: { locationKey: 'online' }, start: SLOTS[0]!.start },
       { selection: { locationKey: 'online' }, start: SLOTS[1]!.start, replaceHoldToken: 'hold-1' },
     ]);
-    expect(root.getAttribute('data-yb-step')).toBe('details');
+    expect(step(root)).toBe('details');
   });
 
   it('switches the display time zone without changing the instant sent', async () => {
     const api = fakeBooking(await definitionOf());
     const { root } = await mount(liveConfig(), { fetch: api.fetch, visitorTimeZone: 'America/New_York' });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     const select = q<HTMLSelectElement>(root, '.yb-tz-select');
     expect([...select.options].map((o) => o.value)).toEqual(['Asia/Tokyo', 'America/New_York']);
     select.value = 'America/New_York';
     select.dispatchEvent(new Event('change'));
-    // 10:00 JST on 3 Nov is 20:00 EST on 2 Nov.
-    expect(root.querySelectorAll('.yb-time')[0]!.textContent).toBe('11月2日（月） 20:00〜20:30');
+    await flush();
+    // 10:00 JST on 3 Nov is 20:00 EST on 2 Nov: the slot moves to that column.
+    const slot = q(root, '.yb-time');
+    expect(slot.textContent).toBe('20:00-20:30');
+    expect(slot.getAttribute('aria-label')).toBe('11月2日（月）20:00〜20:30を選択');
+    expect(slot.closest('.yb-day-col')!.getAttribute('data-yb-date')).toBe('2026-11-02');
     await chooseTime(root, 0);
     expect(api.calls.find((c) => c.url.endsWith('/holds'))!.body).toMatchObject({ start: '2026-11-03T10:00:00+09:00' });
-    await fillDetails(root);
-    const when = root.querySelector('.yb-review-row dd')!.textContent!;
-    expect(when).toContain('2026年11月2日（月） 20:00〜20:30');
-    expect(when).toContain('2026年11月3日（火） 10:00〜10:30　日本時間（Asia/Tokyo）');
+    const summary = q(root, '.yb-summary').textContent!;
+    expect(summary).toContain('2026年11月2日（月） 20:00〜20:30');
+    expect(summary).toContain('2026年11月3日（火） 10:00〜10:30　日本時間（Asia/Tokyo）');
+  });
+
+  it('moves between slots with the arrow keys, one tab stop for the grid', async () => {
+    const api = fakeBooking(await definitionOf());
+    const { root } = await mount(liveConfig(), { fetch: api.fetch });
+    await chooseLocation(root, 'online');
+    const [first, second] = [...root.querySelectorAll<HTMLButtonElement>('.yb-time')];
+    expect([first!.tabIndex, second!.tabIndex]).toEqual([0, -1]);
+    first!.focus();
+    first!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    expect(document.activeElement).toBe(second);
+    expect([first!.tabIndex, second!.tabIndex]).toEqual([-1, 0]);
+    second!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    expect(document.activeElement).toBe(first);
+  });
+
+  it('pages through the weeks, fetching only days it does not have', async () => {
+    const api = fakeBooking(await definitionOf());
+    const { root } = await mount(liveConfig(), { fetch: api.fetch });
+    await chooseLocation(root, 'online');
+    const prev = q<HTMLButtonElement>(root, '.yb-nav-prev');
+    expect(prev.disabled).toBe(true);
+    expect(prev.textContent).toBe('前へ');
+    q<HTMLButtonElement>(root, '.yb-nav-next').click();
+    await flush();
+    expect(root.querySelector('.yb-day-col')).toBeNull(); // an empty page: no hours drawn
+    expect(q(root, '.yb-empty').textContent).toContain(BOOKING_UI.noSlotsInPage);
+    expect(q(root, '.yb-status').textContent).toBe('2026年11月');
+    q<HTMLButtonElement>(root, '.yb-nav-next').click();
+    await flush();
+    const ranges = api.calls.filter((c) => c.url.endsWith('/availability')).map((c) => [(c.body as { from: string }).from, (c.body as { to: string }).to]);
+    expect(ranges).toEqual([
+      ['2026-11-01', '2026-11-14'],
+      ['2026-11-15', '2026-11-28'],
+    ]);
+  });
+
+  it('shows a day strip and a slot list in a narrow frame', async () => {
+    const api = fakeBooking(await definitionOf());
+    const { root } = await mount(liveConfig(), { fetch: api.fetch, measureWidth: () => 390 });
+    await chooseLocation(root, 'online');
+    expect(root.getAttribute('data-yb-layout')).toBe('list');
+    const days = [...root.querySelectorAll<HTMLButtonElement>('.yb-strip-day')];
+    expect(days.map((d) => d.disabled)).toEqual([true, true, false, true, true]);
+    expect(q(root, '.yb-strip-day[aria-pressed="true"]').getAttribute('data-yb-date')).toBe('2026-11-03');
+    expect([...root.querySelectorAll('.yb-slot-list .yb-time')].map((b) => b.textContent)).toEqual(['10:00-10:30', '10:30-11:00']);
+    await chooseTime(root, 1);
+    expect(step(root)).toBe('details');
   });
 
   it('says a manual booking is a request, not a confirmation, with its deadline', async () => {
@@ -260,13 +330,14 @@ describe('time-slot flow', () => {
     });
     const { root } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
     expect(q(root, '.yb-policy').textContent).toBe(BOOKING_UI.policyManual('12時間'));
     expect(q(root, '.yb-submit').textContent).toBe('予約をリクエストする');
+    expect(root.textContent).not.toContain('予約を確定する');
+    fillDetails(root);
     await submit(root);
     expect(q(root, '.yb-outcome-heading').textContent).toBe('予約リクエストを受け付けました（まだ確定していません）');
+    expect(q(root, '.yb-success').getAttribute('data-yb-tone')).toBe('pending');
     expect(q(root, '.yb-outcome-deadline').textContent).toContain('2026年11月1日（日） 21:00');
     expect(root.textContent).not.toContain('予約が確定しました');
   });
@@ -280,42 +351,39 @@ describe('time-slot flow', () => {
     // 10:00 on 3 Nov is 22 hours away.
     const { root } = await mount(liveConfig(), { fetch: api.fetch, now: () => Date.parse('2026-11-02T12:00:00+09:00') });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
-    expect(q(root, '.yb-cutoff').textContent).toBe(BOOKING_UI.cutoffBoth);
+    // Above the submit button, inside the terms.
+    expect(q(root, '.yb-terms .yb-cutoff').textContent).toBe(BOOKING_UI.cutoffBoth);
   });
 
   it('returns to fresh availability when the slot is gone, and reuses the key on a retryable failure', async () => {
     const api = fakeBooking(await definitionOf(), { bookings: [rejected('temporarily_unavailable'), rejected('slot_unavailable')] });
     const { root } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     await submit(root);
     expect(q(root, '.yb-notice').textContent).toBe(RESERVATION_API_ERRORS.temporarily_unavailable.message);
-    expect(root.getAttribute('data-yb-step')).toBe('review');
+    expect(step(root)).toBe('details');
     await submit(root);
     const keys = api.calls.filter((c) => c.url.endsWith('/bookings')).map((c) => (c.body as Record<string, string>).idempotencyKey);
     expect(keys[0]).toBe(keys[1]);
-    expect(root.getAttribute('data-yb-step')).toBe('time');
+    expect(step(root)).toBe('select');
     expect(q(root, '.yb-notice').textContent).toBe(RESERVATION_API_ERRORS.slot_unavailable.message);
     expect(api.calls.at(-1)!.url).toBe(`${BASE}/availability`);
   });
 
-  it('sends the visitor back to the times when the hold lapses', async () => {
+  it('sends the visitor back to the picker when the hold lapses', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
     let now = NOW;
     const api = fakeBooking(await definitionOf());
     const { root } = await mount(liveConfig(), { fetch: api.fetch, now: () => now });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
     now = Date.parse('2026-11-01T09:10:01+09:00');
     vi.advanceTimersByTime(1000);
     await flush();
-    expect(root.getAttribute('data-yb-step')).toBe('time');
+    expect(step(root)).toBe('select');
     expect(q(root, '.yb-notice').textContent).toBe(BOOKING_UI.holdExpired);
   });
 
@@ -334,9 +402,8 @@ describe('time-slot flow', () => {
     const api = fakeBooking(definition);
     const { root } = await mount(liveConfig(), { fetch: api.fetch, turnstile: async () => turnstile });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     await flush();
     await submit(root);
     expect(api.calls.find((c) => c.url.endsWith('/holds'))!.body).toMatchObject({ turnstileToken: 'token-1' });
@@ -356,15 +423,32 @@ describe('time-slot flow', () => {
     expect(root.querySelector('.yb-retry')).not.toBeNull();
   });
 
+  it('shows skeletons, not only text, while loading', async () => {
+    let release: (r: Response) => void = () => {};
+    const definition = await definitionOf();
+    const fetch = vi.fn(async (input: RequestInfo | URL) => (String(input) === DEFINITION_URL ? json(200, definition) : new Promise<Response>((r) => (release = r))));
+    const root = document.createElement('div');
+    document.body.replaceChildren(root);
+    const controller = mountBooking(root, liveConfig(), { fetch, now: () => NOW, visitorTimeZone: 'Asia/Tokyo' });
+    expect(root.querySelector('.yb-skeleton')).not.toBeNull(); // the definition
+    await controller.ready;
+    await chooseLocation(root, 'online');
+    expect(q(root, '.yb-picker').getAttribute('aria-busy')).toBe('true');
+    expect(root.querySelector('.yb-picker .yb-skeleton-grid')).not.toBeNull();
+    expect(q(root, '.yb-status').textContent).toBe(BOOKING_UI.loadingAvailability);
+    release(json(200, { timezone: 'Asia/Tokyo', operationsRevision: 7, days: [] }));
+    await flush();
+    expect(root.querySelector('.yb-skeleton')).toBeNull();
+  });
+
   it('does not show a management link on another origin', async () => {
     const api = fakeBooking(await definitionOf(), {
       bookings: [json(202, { status: 'accepted', receipt: 'r', state: 'confirmed', success: { mode: 'message', message: 'ok' }, managementUrl: 'https://evil.example/manage/x' })],
     });
     const { root } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     await submit(root);
     expect(root.querySelector('.yb-manage-link')).toBeNull();
   });
@@ -373,11 +457,16 @@ describe('time-slot flow', () => {
 describe('theme', () => {
   it('applies validated tokens as custom properties', async () => {
     const api = fakeBooking(await definitionOf());
-    const { root } = await mount(liveConfig({ theme: { primary: '#4F46E5', mutedText: '#64748b', radius: 12, spacing: 'compact', fontFamily: '"Noto Sans JP", sans-serif' } }), { fetch: api.fetch });
+    const { root } = await mount(liveConfig({ theme: { primary: '#4F46E5', mutedText: '#64748b', radius: 12, spacing: 'compact', font: 'serif', headingFont: 'sans', fontFamily: '"Comic Sans MS", cursive' } }), { fetch: api.fetch });
     expect(root.style.getPropertyValue('--yb-primary')).toBe('#4f46e5');
     expect(root.style.getPropertyValue('--yb-muted-text')).toBe('#64748b');
     expect(root.style.getPropertyValue('--yb-radius')).toBe('12px');
     expect(root.getAttribute('data-yb-spacing')).toBe('compact');
+    expect(root.getAttribute('data-yb-themed')).toBe('true');
+    // Always Noto: `font` picks sans or serif, a font stack is ignored.
+    expect(root.getAttribute('data-yb-font')).toBe('serif');
+    expect(root.getAttribute('data-yb-heading-font')).toBe('sans');
+    expect(root.style.getPropertyValue('--yb-font-family')).toBe('');
   });
 
   it('ignores an invalid theme entirely', async () => {
@@ -385,6 +474,7 @@ describe('theme', () => {
     const api = fakeBooking(await definitionOf());
     const { root } = await mount(liveConfig({ theme: { primary: 'red' } as never }), { fetch: api.fetch });
     expect(root.style.getPropertyValue('--yb-primary')).toBe('');
+    expect(root.hasAttribute('data-yb-themed')).toBe(false);
   });
 });
 
@@ -398,10 +488,11 @@ describe('embedded protocol', () => {
     });
     const navigate = vi.fn();
     const { root } = await mount(liveConfig({ embed: { instance: INSTANCE, parentOrigin: PARENT } }), { fetch: api.fetch, parent, navigate, measureHeight: () => 700 + posted.length });
+    // Embedded: no page background and no card.
+    expect(root.getAttribute('data-yb-frame')).toBe('embed');
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     await submit(root);
 
     expect(posted.length).toBeGreaterThan(3);
@@ -418,14 +509,28 @@ describe('embedded protocol', () => {
     for (const secret of ['taro@example.jp', '山田', 'rcpt-secret', 'tok-secret', 'hold-1', 'session-abc', '2026-11-03']) expect(all).not.toContain(secret);
   });
 
+  it('reports the height as the content changes', async () => {
+    const heights: number[] = [];
+    const parent = { postMessage: (message: unknown) => (message as { type: string }).type === 'height' && heights.push((message as { height: number }).height) };
+    let height = 500;
+    const api = fakeBooking(await definitionOf());
+    const { root } = await mount(liveConfig({ embed: { instance: INSTANCE, parentOrigin: PARENT } }), { fetch: api.fetch, parent, measureHeight: () => height });
+    height = 900;
+    await chooseLocation(root, 'online');
+    height = 1200;
+    await chooseTime(root);
+    expect(heights).toEqual([500, 900, 1200]);
+  });
+
   it('posts nothing without valid embed settings', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const posted: unknown[] = [];
     const parent = { postMessage: (message: unknown) => posted.push(message) };
     const api = fakeBooking(await definitionOf());
     await mount(liveConfig({ embed: { instance: INSTANCE, parentOrigin: '*' } }), { fetch: api.fetch, parent });
-    await mount(liveConfig(), { fetch: api.fetch, parent });
+    const { root } = await mount(liveConfig(), { fetch: api.fetch, parent });
     expect(posted).toEqual([]);
+    expect(root.getAttribute('data-yb-frame')).toBe('page');
   });
 
   it('navigates a directly opened page itself after acceptance', async () => {
@@ -434,9 +539,8 @@ describe('embedded protocol', () => {
     const navigate = vi.fn();
     const { root } = await mount(liveConfig(), { fetch: api.fetch, navigate });
     await chooseLocation(root, 'online');
-    await chooseDate(root);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     expect(navigate).not.toHaveBeenCalled();
     await submit(root);
     expect(navigate).toHaveBeenCalledWith('/thanks/');
@@ -458,11 +562,12 @@ describe('synthetic preview', () => {
     const { root, controller } = await mount({ mode: 'preview', setupKey: 'consultation', source: preview.source, definition: preview.definition, synthetic: preview.synthetic }, { fetch: optionFetch });
     expect(q(root, '.yb-preview-title').textContent).toBe('プレビュー：サンプルの空き状況です（実際の予約はできません）');
     expect(q(root, '.yb-preview-source').textContent).toContain('src/reservations/consultation.json');
+    // The same card and steps as a live page, embedded in the site.
+    expect(root.getAttribute('data-yb-frame')).toBe('embed');
+    expect(root.querySelector('.yb-card .yb-steps')).not.toBeNull();
     await chooseLocation(root, 'online');
-    const firstOpen = root.querySelector<HTMLButtonElement>('.yb-date:not([disabled])')!;
-    await chooseDate(root, firstOpen.getAttribute('data-yb-date')!);
     await chooseTime(root);
-    await fillDetails(root);
+    fillDetails(root);
     await submit(root);
     expect(q(root, '.yb-outcome-heading').textContent).toBe('予約が確定しました');
     expect(globalFetch).not.toHaveBeenCalled();
@@ -482,6 +587,18 @@ describe('synthetic preview', () => {
     const text = JSON.stringify(preview);
     for (const secret of ['meet.google.com', 'meetingUrl', 'instructions', 'address']) expect(text).not.toContain(secret);
     for (const real of setup.operations!.resources!.filter((r) => r.kind === 'host').map((r) => r.label)) expect(text).not.toContain(real);
+
+    // Hosts are radio cards, 「指定しない（おまかせ）」 first and chosen.
+    vi.spyOn(console, 'info').mockImplementation(() => {});
+    const { root, controller } = await mount({ mode: 'preview', setupKey: 'consultation', source: preview.source, definition: preview.definition, synthetic: preview.synthetic });
+    expect(root.querySelector('select')).toBeNull();
+    const cards = [...root.querySelectorAll<HTMLInputElement>('[data-yb-host]')];
+    expect(cards.map((c) => c.value)).toEqual(['', ...preview.definition!.appointment!.hosts.map((h) => h.key)]);
+    expect(cards[0]!.checked).toBe(true);
+    expect(q(root, '.yb-staff-any').textContent).toBe('指定しない（おまかせ）');
+    cards[1]!.checked = true;
+    cards[1]!.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(controller.selection.hostKey).toBe(cards[1]!.value);
   });
 
   it('explains an invalid, missing or unsupported declaration instead of a flow', async () => {
@@ -501,6 +618,6 @@ describe('controller surface', () => {
     const { root, controller } = await mount(liveConfig(), { fetch: api.fetch });
     await chooseLocation(root, 'online');
     expect((controller as BookingController).selection).toEqual({ locationKey: 'online' });
-    expect(controller.step).toBe('date');
+    expect(controller.step).toBe('select');
   });
 });

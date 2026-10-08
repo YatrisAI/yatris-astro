@@ -65,7 +65,7 @@ function interviewRows(): Map<string, { modes: string[]; kind: string; neededFor
 }
 const generic = (id: string) => id.replace(/^questions\.[a-z0-9_]+\.required$/, 'questions.<key>.required').replace(/^locations\.[a-z0-9_]+\.details$/, 'locations.<key>.details');
 const FLOW_MODES: Record<string, string[]> = { time_slot: ['all', 'time_slot'], business_service: ['all', 'business', 'service'], business_party: ['all', 'business', 'party'] };
-const THEME_TOKENS = ['primary', 'onPrimary', 'background', 'surface', 'text', 'mutedText', 'border', 'error', 'focus', 'fontFamily', 'headingFontFamily', 'spacing', 'radius'];
+const THEME_TOKENS = ['primary', 'onPrimary', 'background', 'surface', 'text', 'mutedText', 'border', 'error', 'focus', 'font', 'headingFont', 'fontFamily', 'headingFontFamily', 'spacing', 'radius'];
 const TOPICS = ['Booking mode', 'Durations and resources', 'Hours and exceptions', 'Confirmation policy', 'Locations, Calendar and conferencing', 'Questions and recipients', 'Cutoffs and copy', 'Theme and embedding', 'Review and readiness'];
 const EMAIL = /[^\s@"]+@[^\s@"]+\.[a-z]{2,}/i;
 
