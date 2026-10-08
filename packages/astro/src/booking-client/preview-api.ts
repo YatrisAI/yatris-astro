@@ -26,11 +26,21 @@ export interface PreviewApi extends BookingApi {
   readonly sent: Record<string, unknown>[];
 }
 
-/** A small deterministic hash, so the same slots look "taken" on every load. */
-function taken(key: string): boolean {
+/** A small deterministic hash, so the same slots look "taken" (or nearly so) on every load. */
+function hash(key: string): number {
   let h = 2166136261;
   for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 16777619);
-  return (h >>> 0) % 4 === 0;
+  return h >>> 0;
+}
+const taken = (key: string) => hash(key) % 4 === 0;
+const few = (key: string) => hash(`few|${key}`) % 5 === 0;
+
+/** Whether the synthetic venue is closed on a venue-local date (no opening ranges). */
+export function syntheticClosed(config: PreviewBookingConfig, date: string): boolean {
+  const exception = config.synthetic?.exceptions?.find((e) => e.date === date);
+  if (exception) return exception.closed === true || !exception.hours?.length;
+  const weekly = config.synthetic?.weeklyHours?.length ? config.synthetic.weeklyHours : SYNTHETIC_WEEKLY_HOURS;
+  return !weekly.some((h) => h.day === weekdayOf(date));
 }
 
 /**
@@ -57,8 +67,9 @@ export function syntheticSlots(definition: ReservationPublicDefinition, config: 
     const end = minutes(range.end);
     for (let m = Math.ceil(minutes(range.start) / slotIntervalMinutes) * slotIntervalMinutes; m + duration <= end; m += slotIntervalMinutes) {
       const start = zonedToInstant(date, hhmm(m), timezone);
-      if (start === null || start < now + minimumLeadMinutes * 60000 || taken(`${date}T${hhmm(m)}${flavour ? `|${flavour}` : ''}`)) continue;
-      slots.push({ start: isoWithOffset(start, timezone), end: isoWithOffset(start + duration * 60000, timezone) });
+      const key = `${date}T${hhmm(m)}${flavour ? `|${flavour}` : ''}`;
+      if (start === null || start < now + minimumLeadMinutes * 60000 || taken(key)) continue;
+      slots.push({ start: isoWithOffset(start, timezone), end: isoWithOffset(start + duration * 60000, timezone), ...(few(key) ? { few: true } : {}) });
     }
   }
   return slots.sort((a, b) => Date.parse(a.start) - Date.parse(b.start));
@@ -118,7 +129,7 @@ export function previewApi(config: PreviewBookingConfig, now: () => number, onSe
     async availability({ from, to, selection }) {
       if (selectionProblem(definition, selection)) return invalidSelection();
       const days: AvailabilityResponse['days'] = [];
-      for (let date = from; daysBetween(date, to) >= 0; date = addDays(date, 1)) days.push({ date, slots: syntheticSlots(definition, config, date, now(), selection) });
+      for (let date = from; daysBetween(date, to) >= 0; date = addDays(date, 1)) days.push({ date, slots: syntheticSlots(definition, config, date, now(), selection), closed: syntheticClosed(config, date) });
       return ok({ timezone: definition.policies.timezone, operationsRevision: definition.setup.operationsRevision, days });
     },
     async hold({ selection, start, replaceHoldToken }) {

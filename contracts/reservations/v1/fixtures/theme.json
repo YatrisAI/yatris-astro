@@ -91,6 +91,32 @@
       "encoded": "eyJmb250RmFtaWx5Ijoic3lzdGVtLXVpLCAtYXBwbGUtc3lzdGVtLCBTZWdvZSBVSSwgTSBQTFVTIDFwIn0"
     },
     {
+      "name": "Noto serif body with a sans heading",
+      "theme": {
+        "headingFont": "sans",
+        "font": "serif"
+      },
+      "errors": [],
+      "normalized": {
+        "font": "serif",
+        "headingFont": "sans"
+      },
+      "encoded": "eyJmb250Ijoic2VyaWYiLCJoZWFkaW5nRm9udCI6InNhbnMifQ"
+    },
+    {
+      "name": "font next to the compatibility font stack",
+      "theme": {
+        "font": "sans",
+        "fontFamily": "serif"
+      },
+      "errors": [],
+      "normalized": {
+        "font": "sans",
+        "fontFamily": "serif"
+      },
+      "encoded": "eyJmb250Ijoic2FucyIsImZvbnRGYW1pbHkiOiJzZXJpZiJ9"
+    },
+    {
       "name": "a 200-character font stack",
       "theme": {
         "fontFamily": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -376,6 +402,48 @@
         {
           "path": "/spacing",
           "code": "invalid_enum"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "unknown font",
+      "theme": {
+        "font": "mincho"
+      },
+      "errors": [
+        {
+          "path": "/font",
+          "code": "invalid_enum"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font as a family name",
+      "theme": {
+        "headingFont": "Noto Serif JP"
+      },
+      "errors": [
+        {
+          "path": "/headingFont",
+          "code": "invalid_enum"
+        }
+      ],
+      "normalized": null,
+      "encoded": null
+    },
+    {
+      "name": "font as a number",
+      "theme": {
+        "font": 1
+      },
+      "errors": [
+        {
+          "path": "/font",
+          "code": "invalid_type"
         }
       ],
       "normalized": null,

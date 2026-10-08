@@ -50,16 +50,18 @@ arbitrary CSS and no script; the declaration has no theme.
 | `border` | Field and panel borders |
 | `error` | Validation and error messages |
 | `focus` | The keyboard focus ring |
-| `fontFamily` | Body font stack |
-| `headingFontFamily` | Heading font stack |
+| `font` | Body text: `sans` (Noto Sans JP, the default) or `serif` (Noto Serif JP) |
+| `headingFont` | Headings and the setup name: `sans` (default) or `serif` |
+| `fontFamily` | Accepted for older configurations; ignored by the booking UI |
+| `headingFontFamily` | Accepted for older configurations; ignored by the booking UI |
 | `spacing` | `compact`, `comfortable` or `spacious` |
 | `radius` | Corner radius, an integer from 0 to 24 |
 
 - Derive the values from `src/styles/global.css` (`@theme`) and the layout;
   record them as `theme.tokens` in the brief and show them in the review.
-- Fonts are **stacks only**, never font URLs, so the site's web font may
-  not be available inside the frame. End every stack with a generic family
-  (`sans-serif`, `serif`).
+- The booking UI always uses Noto (served by the booking host). Choose
+  `serif` for a site set in Mincho, else leave the default. Do not set
+  `fontFamily` or `headingFontFamily` in new configurations.
 - Keep text readable: `text` on `background` and `surface`, and `onPrimary`
   on `primary`, at a contrast ratio of at least 4.5:1; `focus` clearly
   visible against `background`.

@@ -12,6 +12,9 @@ export const THEME_COLOR_TOKENS = ['primary', 'onPrimary', 'background', 'surfac
 export type ThemeColorToken = (typeof THEME_COLOR_TOKENS)[number];
 export const THEME_SPACINGS = ['compact', 'comfortable', 'spacious'] as const;
 export type ThemeSpacing = (typeof THEME_SPACINGS)[number];
+/** The booking UI's typefaces: Noto Sans JP or Noto Serif JP (with system fallbacks). */
+export const THEME_FONTS = ['sans', 'serif'] as const;
+export type ThemeFont = (typeof THEME_FONTS)[number];
 
 /** `#RRGGBB`, either case; normalized to lowercase. */
 export const THEME_COLOR_PATTERN = '^#[0-9A-Fa-f]{6}$';
@@ -41,6 +44,8 @@ export const THEME: { props: Record<string, PropSpec>; required: readonly string
     ...Object.fromEntries(THEME_COLOR_TOKENS.map((token) => [token, COLOR])),
     fontFamily: FONT,
     headingFontFamily: FONT,
+    font: { kind: 'string', enum: THEME_FONTS },
+    headingFont: { kind: 'string', enum: THEME_FONTS },
     spacing: { kind: 'string', enum: THEME_SPACINGS },
     radius: { kind: 'integer', min: 0, max: THEME_RADIUS_MAX },
   },
@@ -48,8 +53,14 @@ export const THEME: { props: Record<string, PropSpec>; required: readonly string
 };
 
 export type ReservationTheme = Partial<Record<ThemeColorToken, string>> & {
+  /** Accepted for compatibility; the booking UI ignores it and uses `font`. */
   fontFamily?: string;
+  /** Accepted for compatibility; the booking UI ignores it and uses `headingFont`. */
   headingFontFamily?: string;
+  /** Body text: Noto Sans JP (`sans`, the default) or Noto Serif JP (`serif`). */
+  font?: ThemeFont;
+  /** Headings and the setup name: `sans` (default) or `serif`. */
+  headingFont?: ThemeFont;
   spacing?: ThemeSpacing;
   /** Corner radius in CSS pixels. */
   radius?: number;

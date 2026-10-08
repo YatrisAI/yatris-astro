@@ -141,6 +141,8 @@
         "border": { "type": "string", "minLength": 1, "maxLength": 100 },
         "error": { "type": "string", "minLength": 1, "maxLength": 100 },
         "focus": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "font": { "enum": ["sans", "serif"] },
+        "headingFont": { "enum": ["sans", "serif"] },
         "fontFamily": { "type": "string", "minLength": 1, "maxLength": 300 },
         "headingFontFamily": { "type": "string", "minLength": 1, "maxLength": 300 },
         "spacing": { "enum": ["compact", "comfortable", "spacious"] },
