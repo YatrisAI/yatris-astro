@@ -116,7 +116,7 @@ describe('the integration in a preview build', () => {
     });
     mkdirSync(out);
     const logger = { info: vi.fn(), warn: vi.fn() };
-    integration.hooks['astro:build:done']({ pages: [], dir: pathToFileURL(`${out}/`), logger });
+    await integration.hooks['astro:build:done']({ pages: [], dir: pathToFileURL(`${out}/`), logger });
     const headers = existsSync(join(out, '_headers')) ? readFileSync(join(out, '_headers'), 'utf8') : null;
     return { runtime, headers, logger };
   }

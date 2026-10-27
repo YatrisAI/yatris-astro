@@ -1,6 +1,8 @@
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveConfig, type YatrisOptions } from './config.js';
+import { createDeliveryClient } from './delivery.js';
 import { loadDeliveryEnv } from './env.js';
 import { assertFormsMode, declarationFiles, FORMS_DIR, formsEnv, formsRuntime, type FormsRuntime } from './forms-config.js';
 import { loadMeasurement, withMeasurement } from './measurement-config.js';
@@ -8,6 +10,7 @@ import { missingDestinations, registeredNavigation } from './navigation.js';
 import { previewBuild, writePreviewHeaders } from './preview.js';
 import { assertReservationsMode, bookingOrigin, RESERVATIONS_DIR, reservationsRuntime, type ReservationsRuntime } from './reservations-config.js';
 import { checkSchemaContract } from './schema-check.js';
+import { assertSlugRoutes, countStaticRules, MAX_STATIC_REDIRECTS, mergeRedirects, redirectLines } from './slug-redirects.js';
 
 export type { YatrisOptions } from './config.js';
 export type { YatrisPageMeta } from './head.js';
@@ -34,7 +37,7 @@ export interface YatrisIntegration {
       updateConfig: (config: Record<string, unknown>) => unknown;
       logger?: Logger;
     }) => Promise<void>;
-    'astro:build:done': (options: { pages: { pathname: string }[]; dir?: URL; logger: Logger }) => void;
+    'astro:build:done': (options: { pages: { pathname: string }[]; dir?: URL; logger: Logger }) => Promise<void>;
   };
 }
 
@@ -46,6 +49,9 @@ export interface YatrisIntegration {
  */
 export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
   const config = resolveConfig(options);
+  const slugRoutes = options.slugRoutes ?? {};
+  assertSlugRoutes(slugRoutes);
+  let building = false;
   // YatrisCMS#310: a yatris-preview build renders drafts, so nothing in it
   // may be indexed or measured (rules in ./preview.ts)
   let preview = false;
@@ -74,6 +80,7 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
         // Console and consent from Yatris
         const measurement = astroConfig ? await loadMeasurement({ root: astroConfig.root, command }) : null;
         const measured = withMeasurement(config, measurement, Boolean(options.gtmContainerId || options.searchConsoleVerification));
+        building = command === 'build';
         preview = command === 'build' && previewBuild().active;
         const runtime = preview ? { ...measured, gtmContainerId: null, searchConsoleVerification: null, preview: true } : measured;
         const forms: FormsRuntime | null = formsSource && !formsPreview ? await formsRuntime(formsSource) : null;
@@ -136,7 +143,12 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
           },
         });
       },
-      'astro:build:done': ({ pages, dir, logger }) => {
+      'astro:build:done': async ({ pages, dir, logger }) => {
+        // YatrisCMS#519: an item's old slugs keep reaching its page
+        if (building && !preview && Object.keys(slugRoutes).length > 0) {
+          if (!dir) throw new Error('@yatris/astro: slugRoutes needs the build output directory, but Astro gave none.');
+          await writeSlugRedirects(dir, slugRoutes, logger);
+        }
         if (preview) {
           if (!dir) throw new Error('@yatris/astro: a preview build must mark its output noindex, but Astro gave no output directory.');
           writePreviewHeaders(dir);
@@ -159,6 +171,22 @@ export default function yatris(options: YatrisOptions = {}): YatrisIntegration {
       },
     },
   };
+}
+
+/** Writes Yatris's slug redirects of the routed types into `dir/_redirects`. */
+async function writeSlugRedirects(dir: URL, routes: Record<string, string>, logger: Logger): Promise<void> {
+  const redirects = await createDeliveryClient().redirects();
+  const { lines, unrouted } = redirectLines(redirects, routes);
+  if (unrouted.length > 0) {
+    logger.warn(`slug redirects: Yatris has old slugs of ${unrouted.join(', ')}, which slugRoutes does not name, so they were not written`);
+  }
+  const file = fileURLToPath(new URL('_redirects', dir));
+  const content = mergeRedirects(existsSync(file) ? readFileSync(file, 'utf8') : '', lines);
+  if (countStaticRules(content) > MAX_STATIC_REDIRECTS) {
+    throw new Error(`@yatris/astro: _redirects would hold more than ${MAX_STATIC_REDIRECTS} static rules, which Cloudflare Pages does not read`);
+  }
+  if (content !== '' || existsSync(file)) writeFileSync(file, content);
+  logger.info(`slug redirects: ${lines.length} old item URL${lines.length === 1 ? '' : 's'} redirect to the current page`);
 }
 
 function countDestinations(items: { children?: unknown[] }[]): number {

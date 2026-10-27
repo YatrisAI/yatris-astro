@@ -15,5 +15,7 @@ export default defineConfig({
     plugins: [tailwindcss()]
   },
 
-  integrations: [alpinejs({ entrypoint: '/src/scripts/alpine' }), yatris()]
+  // Name each detail page routed by item slug, e.g. { works: '/works/[slug]/' },
+  // so an item's old URLs redirect to its page (see AGENTS.md, CMS content).
+  integrations: [alpinejs({ entrypoint: '/src/scripts/alpine' }), yatris({ slugRoutes: {} })]
 });

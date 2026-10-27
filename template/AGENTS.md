@@ -117,6 +117,15 @@ with a zod schema (use the generated schemas from `yatris schema sync` when
 they exist). Never call the Delivery API directly and never read content in
 browser code.
 
+Every item has its own URL slug from Yatris (`item.slug`); Content Types
+never have a slug field. Route a detail page by it: `src/pages/works/[slug].astro`
+with `getStaticPaths = () => getYatrisSlugPaths('works', { schema })`, and
+`getYatrisItemBySlug` to read one item. Name each such route in
+`yatris({ slugRoutes: { works: '/works/[slug]/' } })` in `astro.config.mjs`:
+when an editor changes a published item's slug, the build then writes a 301
+from its old URL into `_redirects` (after the site's own rules in
+`public/_redirects`). Never build item URLs from a field or the canonical ID.
+
 A local build needs `YATRIS_DELIVERY_ENDPOINT` and `YATRIS_DELIVERY_API_KEY`
 in the gitignored `.env` (see `.env.example`). If they are missing, call the
 Yatris MCP tool `issue_delivery_key` for this Website and write the two
