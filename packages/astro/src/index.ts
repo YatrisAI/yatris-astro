@@ -186,7 +186,8 @@ async function writeSlugRedirects(dir: URL, routes: Record<string, string>, logg
     throw new Error(`@yatris/astro: _redirects would hold more than ${MAX_STATIC_REDIRECTS} static rules, which Cloudflare Pages does not read`);
   }
   if (content !== '' || existsSync(file)) writeFileSync(file, content);
-  logger.info(`slug redirects: ${lines.length} old item URL${lines.length === 1 ? '' : 's'} redirect to the current page`);
+  const routed = redirects.filter((redirect) => routes[redirect.type] !== undefined).length;
+  logger.info(`slug redirects: ${routed} old item URL${routed === 1 ? '' : 's'} redirect to the current page`);
 }
 
 function countDestinations(items: { children?: unknown[] }[]): number {

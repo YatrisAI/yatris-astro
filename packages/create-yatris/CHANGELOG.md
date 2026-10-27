@@ -1,5 +1,13 @@
 # create-yatris
 
+## 0.8.1
+
+### Patch Changes
+
+- Slug redirects also cover the old URL without its trailing slash. Cloudflare Pages matches a `_redirects` source's trailing slash exactly, so a link written as `/works/old-slug` (no slash) now reaches the item's current page too. The build log counts old item URLs, not lines.
+- Updated dependencies
+  - @yatris/astro@0.8.1
+
 ## 0.8.0
 
 ### Minor Changes

@@ -36,8 +36,10 @@ export function slugPath(route: string, slug: string): string {
 }
 
 /**
- * One `_redirects` line per redirect of a routed type, and the types Yatris
- * has redirects for that no route names.
+ * The `_redirects` lines of every redirect of a routed type, and the types
+ * Yatris has redirects for that no route names. Cloudflare Pages matches a
+ * source's trailing slash exactly, so an old URL ending in `/` is also
+ * redirected without it (a link written as `/works/old` keeps working).
  */
 export function redirectLines(redirects: SlugRedirect[], routes: Record<string, string>): { lines: string[]; unrouted: string[] } {
   const lines: string[] = [];
@@ -48,7 +50,10 @@ export function redirectLines(redirects: SlugRedirect[], routes: Record<string, 
       unrouted.add(redirect.type);
       continue;
     }
-    lines.push(`${slugPath(route, redirect.from)} ${slugPath(route, redirect.to)} 301`);
+    const from = slugPath(route, redirect.from);
+    const to = slugPath(route, redirect.to);
+    lines.push(`${from} ${to} 301`);
+    if (from.length > 1 && from.endsWith('/')) lines.push(`${from.slice(0, -1)} ${to} 301`);
   }
   return { lines, unrouted: [...unrouted].sort() };
 }
