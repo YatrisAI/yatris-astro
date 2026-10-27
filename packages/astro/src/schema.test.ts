@@ -262,3 +262,33 @@ describe('yatris schema CLI', () => {
     expect((await run(['schema', 'sync'], { cwd: site })).stderr).toContain('--manifest=<file> is required');
   });
 });
+
+describe('a lock written by zod generator 2 (YatrisCMS#519)', () => {
+  it('still verifies, warning only that a sync would add reference slugs, and the next sync adds them', () => {
+    const m = manifest();
+    const zod = generateZodModule(m.canonical, m.schemaRevision, 2);
+    mkdirSync(join(site, 'src/generated'), { recursive: true });
+    writeFileSync(join(site, 'src/generated/yatris-schema.ts'), TYPES);
+    writeFileSync(join(site, ZOD_PATH), zod);
+    const lock: SchemaLock = {
+      contractVersion: 1,
+      websiteId: 7,
+      schemaRevision: m.schemaRevision,
+      schemaDigest: m.schemaDigest,
+      generatedFiles: { 'src/generated/yatris-schema.ts': sha256(TYPES), [ZOD_PATH]: sha256(zod) },
+      zodGenerator: 2,
+    };
+    writeFileSync(join(site, LOCK_PATH), `${JSON.stringify(lock, null, 2)}\n`);
+
+    const [finding, ...rest] = verifySchema(site, m);
+    expect(rest).toEqual([]);
+    expect(finding).toMatchObject({ severity: 'warning', code: ZOD_OUTDATED, file: ZOD_PATH });
+    expect(finding.message).toContain('references drop their `slug`');
+    expect(finding.message).not.toContain('variants');
+
+    syncSchema(site, m);
+    expect(readFileSync(join(site, ZOD_PATH), 'utf8')).toContain('slug: z.string().nullish()');
+    expect(readLock(site)?.zodGenerator).toBe(ZOD_GENERATOR);
+    expect(verifySchema(site)).toEqual([]);
+  });
+});

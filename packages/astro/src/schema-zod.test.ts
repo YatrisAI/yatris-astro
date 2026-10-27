@@ -101,7 +101,7 @@ describe('image variants and generator versions (YatrisCMS#329)', () => {
   it('declares the resized variants Delivery serves, so zod keeps them', () => {
     const source = generateZodModule(canonical, 'schema_01abc');
 
-    expect(ZOD_GENERATOR).toBe(2);
+    expect(ZOD_GENERATOR).toBeGreaterThanOrEqual(2);
     expect(source).toContain(
       'export const yatrisImageVariant = z.object({ width: z.number(), height: z.number(), url: z.string(), webp_url: z.string().nullable() });',
     );
@@ -117,7 +117,7 @@ describe('image variants and generator versions (YatrisCMS#329)', () => {
     // The hash of 0.3.0's output for this fixture, computed with its generator
     expect(sha256(v1)).toBe('sha256:8f0b308eaaa2b0c9e9c80c591c291c6148fc0e816c668240b9f910987fd93b0e');
     expect(v1).not.toContain('variants');
-    expect(() => generateZodModule(canonical, 'schema_01abc', 3)).toThrow('Unknown zod generator version 3');
+    expect(() => generateZodModule(canonical, 'schema_01abc', ZOD_GENERATOR + 1)).toThrow(`Unknown zod generator version ${ZOD_GENERATOR + 1}`);
   });
 
   it('parses a Delivery image with its variants intact', () => {
@@ -148,6 +148,31 @@ describe('image variants and generator versions (YatrisCMS#329)', () => {
     expect(() => yatrisImage.parse({ ...image, variants: [{ width: 480 }] })).toThrow();
     // Version 1 is what stripped them
     expect(v1Image.parse(image)).toEqual(plain);
+  });
+});
+
+describe('reference slugs (YatrisCMS#519)', () => {
+  const noTypes = '{"content_types":[],"contract":1,"website_id":7}';
+  const reference = (version?: number) =>
+    (evaluateWith(generateZodModule(noTypes, 'schema_01abc', version), stripZ, 'yatrisReference') as { yatrisReference: Parser }).yatrisReference;
+
+  it('keeps a referenced item’s slug, so a page can link to it', () => {
+    expect(ZOD_GENERATOR).toBe(3);
+    const kitchen = { id: 4, canonical_id: 'kitchen', slug: 'kitchen-reform', title: 'キッチン' };
+
+    expect(reference().parse(kitchen)).toEqual(kitchen);
+    // Unpublished, or its type keeps a slug field of its own; and a server that predates it
+    expect(reference().parse({ ...kitchen, slug: null })).toEqual({ ...kitchen, slug: null });
+    const { slug: _, ...legacy } = kitchen;
+    expect(reference().parse(legacy)).toEqual(legacy);
+    expect(() => reference().parse({ ...kitchen, slug: 7 })).toThrow();
+  });
+
+  it('leaves version 2 as it was, which strips the slug', () => {
+    const v2 = generateZodModule(canonical, 'schema_01abc', 2);
+
+    expect(v2).toContain('export const yatrisReference = z.object({ id: z.number(), canonical_id: z.string(), title: z.string() });');
+    expect(reference(2).parse({ id: 4, canonical_id: 'kitchen', slug: 'kitchen-reform', title: 'キッチン' })).toEqual({ id: 4, canonical_id: 'kitchen', title: 'キッチン' });
   });
 });
 

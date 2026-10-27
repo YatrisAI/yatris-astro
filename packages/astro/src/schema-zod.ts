@@ -20,8 +20,10 @@ export const ZOD_PATH = 'src/generated/yatris-zod.ts';
  * 1. @yatris/astro 0.3.0.
  * 2. Images declare their resized `variants` (YatrisCMS#329), which version 1
  *    let zod strip.
+ * 3. References declare the referenced item's `slug` (YatrisCMS#519), which
+ *    version 2 let zod strip.
  */
-export const ZOD_GENERATOR = 2;
+export const ZOD_GENERATOR = 3;
 
 /** The version of a lock that records none: every lock written before version 2. */
 export const ZOD_GENERATOR_UNRECORDED = 1;
@@ -61,8 +63,7 @@ export function generateZodModule(canonical: string, schemaRevision: string, ver
     '/** A file from the Yatris media library (a legacy URL string on old content). */',
     'export const yatrisFile = z.union([z.object({ url: z.string(), mime: z.string() }), z.string()]);',
     '',
-    '/** Another content item, as the Delivery API expands a reference. */',
-    'export const yatrisReference = z.object({ id: z.number(), canonical_id: z.string(), title: z.string() });',
+    ...referenceSchema(version),
   ];
 
   const names: string[] = [];
@@ -84,6 +85,25 @@ export function generateZodModule(canonical: string, schemaRevision: string, ver
 /** Whether `version` is a zod generator version this release can write. */
 export function isZodGenerator(version: unknown): version is number {
   return typeof version === 'number' && Number.isInteger(version) && version >= 1 && version <= ZOD_GENERATOR;
+}
+
+/**
+ * The reference schema. Versions 1 and 2 are frozen byte for byte. Version 3
+ * keeps the item's `slug`: its URL slug in its type, null while unpublished
+ * or when its type keeps a slug field of its own, and absent from a server
+ * that predates it.
+ */
+function referenceSchema(version: number): string[] {
+  if (version < 3) {
+    return [
+      '/** Another content item, as the Delivery API expands a reference. */',
+      'export const yatrisReference = z.object({ id: z.number(), canonical_id: z.string(), title: z.string() });',
+    ];
+  }
+  return [
+    '/** Another content item, as the Delivery API expands a reference; link to its page by `slug`. */',
+    'export const yatrisReference = z.object({ id: z.number(), canonical_id: z.string(), slug: z.string().nullish(), title: z.string() });',
+  ];
 }
 
 /**

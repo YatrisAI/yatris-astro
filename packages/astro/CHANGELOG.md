@@ -1,5 +1,11 @@
 # @yatris/astro
 
+## 0.9.0
+
+### Minor Changes
+
+- References carry the referenced item's slug (YatrisCMS#526). Delivery now expands a reference to `{ id, canonical_id, slug, title }`, where `slug` is the item's URL slug in its type. It is `null` while the item is unpublished or when its type keeps a slug field of its own. The generated zod module (zod generator 3) keeps `slug` instead of stripping it, so a page can link to a referenced item's page directly. Run `yatris schema sync --manifest <file>` to regenerate. Until then, a site synced with generator 2 still verifies, with a warning.
+
 ## 0.8.1
 
 ### Patch Changes
