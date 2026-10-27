@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 import type { PlatformManifest } from '../platform.js';
 import { AGENTS_BLOCK, artifactFile, managedBlock, PLATFORM_LOCK_PATH, platformLockText, replaceManagedBlock, type PlatformLock } from '../platform-lock.js';
 import { verifySchema } from '../schema.js';
-import { tail, type Exec } from './exec.js';
+import { tail, type Exec, type ExecOptions } from './exec.js';
 import type { UpdatePlan } from './plan.js';
 import { PLATFORM_PACKAGE } from './source.js';
 
@@ -38,6 +38,28 @@ export const UPDATE_SCRIPTS: Record<string, string> = {
 export interface Io {
   exec: Exec;
   log: (line: string) => void;
+}
+
+/** How long one install or verification step may run, in minutes; `YATRIS_UPDATE_STEP_TIMEOUT_MINUTES` overrides it. */
+export const STEP_TIMEOUT_MINUTES = 30;
+
+/**
+ * The options of a long step: a time limit, so a stuck or oversized test
+ * suite fails the update instead of running for hours, and a line every
+ * minute with the step's latest output, so a slow one is not mistaken for
+ * a hang.
+ */
+export function longStep(io: Io, label: string, cwd: string, env?: Record<string, string>): ExecOptions {
+  const minutes = Number(process.env.YATRIS_UPDATE_STEP_TIMEOUT_MINUTES);
+  return {
+    cwd,
+    env,
+    timeoutMs: (Number.isFinite(minutes) && minutes > 0 ? minutes : STEP_TIMEOUT_MINUTES) * 60_000,
+    onWait: (elapsedMs, output) => {
+      const latest = tail(output.replace(/\x1b\[[0-9;]*m/g, ''), 1).trim().slice(0, 120);
+      io.log(`  …${label} still running (${Math.round(elapsedMs / 60_000)} min)${latest ? `: ${latest}` : ''}`);
+    },
+  };
 }
 
 export interface Failure {
@@ -81,7 +103,7 @@ export async function applyUpdate(root: string, plan: UpdatePlan, manifest: Plat
       const specs = plan.packages.map((p) => (p.name === PLATFORM_PACKAGE ? installSpec : `${p.name}@${p.to}`));
       const command = ['npm', 'install', '--save-exact', '--no-audit', '--no-fund', ...specs];
       io.log(`Installing ${plan.packages.map((p) => `${p.name}@${p.to}`).join(', ')}…`);
-      const result = await io.exec(command, { cwd: root });
+      const result = await io.exec(command, longStep(io, 'npm install', root));
       if (result.code !== 0) return fail({ step: 'install', command: command.join(' '), output: result.output });
     }
 
@@ -117,7 +139,7 @@ export async function applyUpdate(root: string, plan: UpdatePlan, manifest: Plat
     }
     for (const script of verificationScripts(root)) {
       io.log(`Running npm run ${script}…`);
-      const result = await io.exec(['npm', 'run', script], { cwd: root, env: { [VERIFYING_ENV]: '1' } });
+      const result = await io.exec(['npm', 'run', script], longStep(io, `npm run ${script}`, root, { [VERIFYING_ENV]: '1' }));
       if (result.code !== 0) return fail({ step: script, command: `npm run ${script}`, output: result.output });
     }
   } catch (error) {
@@ -151,7 +173,8 @@ export async function rollback(root: string, io: Io): Promise<string[]> {
   if (transaction.installed) {
     const lockfile = transaction.files.some((f) => f.path === 'package-lock.json' && f.existed);
     io.log('Reinstalling the previous dependencies…');
-    const result = await io.exec(lockfile ? ['npm', 'ci', '--no-audit', '--no-fund'] : ['npm', 'install', '--no-audit', '--no-fund'], { cwd: root });
+    const command = lockfile ? ['npm', 'ci', '--no-audit', '--no-fund'] : ['npm', 'install', '--no-audit', '--no-fund'];
+    const result = await io.exec(command, longStep(io, command.slice(0, 2).join(' '), root));
     if (result.code !== 0) io.log(`Reinstalling failed; run npm ci yourself:\n${tail(result.output)}`);
   }
 
