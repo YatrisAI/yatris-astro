@@ -8,7 +8,7 @@ import { pairProject } from '../pairing.js';
 import { readPlatformManifest, type PlatformManifest } from '../platform.js';
 import { AGENTS_BLOCK, digest, lockFor, managedArtifacts, PLATFORM_LOCK_PATH, readPlatformLock, writePlatformLock, type ManagedSources } from '../platform-lock.js';
 import { emptyLock, LOCK_PATH } from '../schema.js';
-import { applyUpdate, TRANSACTION_DIR } from './apply.js';
+import { applyUpdate, STEP_TIMEOUT_MINUTES, TRANSACTION_DIR } from './apply.js';
 import { CONFLICTS_DIR, runUpdate, type UpdateEnvironment } from './command.js';
 import { exec as realExec, type Exec } from './exec.js';
 import { DEFAULT_PLAN_PATH } from '../forms-sync.js';
@@ -153,6 +153,24 @@ describe('planning an update', () => {
 });
 
 describe('applying an update', () => {
+  it('limits each install and verification step, and reports a slow one every minute', async () => {
+    const exec = fakeExec();
+    const options: { command: string; timeoutMs?: number }[] = [];
+    const lines: string[] = [];
+    const watched: Exec = async (command, opts) => {
+      options.push({ command: command.join(' '), timeoutMs: opts.timeoutMs });
+      if (command.join(' ') === 'npm run doctor') opts.onWait?.(120_000, 'Running 1158 tests\n\x1b[32m  ✓ 512 /works renders\x1b[39m\n');
+      return exec.fn(command, opts);
+    };
+    const plan = planUpdate(site, readPlatformLock(site)!, next, sources());
+
+    expect(await applyUpdate(site, plan, next, '@yatris/astro@0.1.0', { exec: watched, log: (line) => lines.push(line) })).toEqual({ ok: true });
+
+    const thirtyMinutes = STEP_TIMEOUT_MINUTES * 60_000;
+    expect(options.filter((o) => o.command.startsWith('npm ')).map((o) => o.timeoutMs)).toEqual([thirtyMinutes, thirtyMinutes]);
+    expect(lines).toContain('  …npm run doctor still running (2 min): ✓ 512 /works renders');
+  });
+
   it('installs the exact versions, refreshes managed files, advances the lock and verifies', async () => {
     const exec = fakeExec();
     const plan = planUpdate(site, readPlatformLock(site)!, next, sources());

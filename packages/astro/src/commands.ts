@@ -1,4 +1,3 @@
-import { spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { parseArgs } from 'node:util';
 import { doctor, formatReport } from './doctor/doctor.js';
@@ -11,6 +10,7 @@ import { apiBaseFrom, exchangeSetupCode, pairProject } from './pairing.js';
 import { readPlatformManifest } from './platform.js';
 import { LOCK_PATH, projectWebsiteId, readLock, readManifest, syncInstructions, syncSchema, verifySchema } from './schema.js';
 import { runUpdate, type UpdateEnvironment } from './update/command.js';
+import { STEP_TIMEOUT_MINUTES } from './update/apply.js';
 import { exec, type Exec } from './update/exec.js';
 
 export interface CliResult {
@@ -259,14 +259,5 @@ async function runDoctor(argv: string[], env: CliEnvironment): Promise<CliResult
 }
 
 function npmBuild(cwd: string): Promise<{ code: number; output: string }> {
-  return new Promise((resolve) => {
-    // npm is a .cmd shim on Windows, which only a shell can start.
-    const child =
-      process.platform === 'win32' ? spawn('npm run build', { cwd, shell: true }) : spawn('npm', ['run', 'build'], { cwd });
-    let output = '';
-    child.stdout.on('data', (chunk) => (output += chunk));
-    child.stderr.on('data', (chunk) => (output += chunk));
-    child.on('close', (code) => resolve({ code: code ?? 1, output }));
-    child.on('error', (error) => resolve({ code: 1, output: String(error) }));
-  });
+  return exec(['npm', 'run', 'build'], { cwd, timeoutMs: STEP_TIMEOUT_MINUTES * 60_000 });
 }

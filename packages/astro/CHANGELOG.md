@@ -1,5 +1,16 @@
 # @yatris/astro
 
+## 0.9.1
+
+### Patch Changes
+
+- `yatris update` no longer looks frozen on a slow test suite, and can no longer run for hours.
+  - Each install and verification step (`npm install`, `npm run doctor`, `npm run test`, and the rollback's `npm ci`) now prints a line every minute with its latest output.
+  - Each step is stopped after 30 minutes, together with everything it started (npm, a preview server, browsers), and the update rolls back. Set `YATRIS_UPDATE_STEP_TIMEOUT_MINUTES` to change the limit.
+  - Interrupting the updater stops the step's processes instead of leaving them running.
+  - Steps run with stdin closed.
+  - `yatris doctor --build` uses the same limit.
+
 ## 0.9.0
 
 ### Minor Changes
