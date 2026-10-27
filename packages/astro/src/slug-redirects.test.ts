@@ -70,12 +70,19 @@ describe('item slugs from Delivery', () => {
 });
 
 describe('_redirects', () => {
-  it('writes a 301 per old slug of a routed type, percent-encoding the slug', () => {
+  it('writes a 301 per old slug of a routed type, with and without the trailing slash, percent-encoding the slug', () => {
     expect(slugPath('/works/[slug]/', '浴室')).toBe(`/works/${encodeURIComponent('浴室')}/`);
+    const [old, current] = [encodeURIComponent('旧浴室'), encodeURIComponent('浴室')];
     expect(redirectLines(redirects, { works: '/works/[slug]/' })).toEqual({
-      lines: ['/works/kitchen/ /works/kitchen-reform/ 301', `/works/${encodeURIComponent('旧浴室')}/ /works/${encodeURIComponent('浴室')}/ 301`],
+      lines: [
+        '/works/kitchen/ /works/kitchen-reform/ 301',
+        '/works/kitchen /works/kitchen-reform/ 301',
+        `/works/${old}/ /works/${current}/ 301`,
+        `/works/${old} /works/${current}/ 301`,
+      ],
       unrouted: ['news'],
     });
+    expect(redirectLines(redirects.slice(1, 2), { works: '/works/[slug].html' }).lines).toEqual(['/works/kitchen.html /works/kitchen-reform.html 301']);
   });
 
   it('keeps the site’s own rules first and lets them win, and replaces an earlier generated block', () => {
@@ -117,7 +124,7 @@ describe('the integration', () => {
 
     const written = readFileSync(join(out, '_redirects'), 'utf8');
     expect(written.startsWith('/old-page /new-page 301\n')).toBe(true);
-    expect(written).toContain('/works/kitchen/ /works/kitchen-reform/ 301');
+    expect(written).toContain('/works/kitchen/ /works/kitchen-reform/ 301\n/works/kitchen /works/kitchen-reform/ 301\n');
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('old slugs of news'));
     expect(logger.info).toHaveBeenCalledWith('slug redirects: 2 old item URLs redirect to the current page');
   });
