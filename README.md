@@ -33,6 +33,14 @@ types). `getYatrisList` orders its result as follows:
 - No `sort`, every item has a position: lowest position first, ties by ID.
 - Otherwise: most recently updated first.
 
+Each item also carries `slug`, its URL slug in its type (YatrisCMS#519), and
+`number`. A detail page routed by slug takes its paths from
+`getYatrisSlugPaths(type)` and reads one item with `getYatrisItemBySlug`.
+Naming the route in `yatris({ slugRoutes: { works: '/works/[slug]/' } })`
+makes a production build write a 301 from every old slug of an item (an
+editor changed it after publishing) to its current page into `_redirects`,
+after the site's own rules in `public/_redirects`.
+
 ## Contact forms
 
 A site places a Yatris form with `<YatrisForm form="contact" />` from

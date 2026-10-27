@@ -77,6 +77,9 @@ describe('Delivery client', () => {
     expect(items[0]).toEqual({
       canonicalId: 'w-3',
       type: 'works',
+      // Servers that predate item slugs (YatrisCMS#519) send neither
+      slug: null,
+      number: null,
       version: 1,
       publishedAt: '2026-09-03T10:00:00+09:00',
       updatedAt: '2026-09-03T12:00:00+09:00',

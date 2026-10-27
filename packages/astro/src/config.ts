@@ -6,6 +6,13 @@ export interface YatrisOptions {
   gtmContainerId?: string;
   /** Search Console HTML-tag verification token, only for URL-prefix properties. */
   searchConsoleVerification?: string;
+  /**
+   * The detail page of each Content Type routed by item slug, for example
+   * `{ works: '/works/[slug]/' }` (YatrisCMS#519). A production build writes
+   * a 301 from every old slug of an item to its current page into
+   * `_redirects`, after the site's own rules in `public/_redirects`.
+   */
+  slugRoutes?: Record<string, string>;
 }
 
 const GTM_ID = /^GTM-[A-Z0-9]{4,12}$/;

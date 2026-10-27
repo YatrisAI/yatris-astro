@@ -9,11 +9,22 @@
  */
 
 import { fetchPreviewOverlay, previewBuild, type PreviewBuild } from './preview.js';
+import type { SlugRedirect } from './slug-redirects.js';
+
+export type { SlugRedirect } from './slug-redirects.js';
 
 /** One published content item. `data` is the item's field values. */
 export interface DeliveryItem<T = Record<string, unknown>> {
   canonicalId: string;
   type: string;
+  /**
+   * The item's URL slug in its type (YatrisCMS#519): route its detail page
+   * by this. Null for a type whose items still keep a slug field of their
+   * own, and from servers that predate item slugs.
+   */
+  slug: string | null;
+  /** The item's 1-based number in its type; null from servers that predate it. */
+  number: number | null;
   version: number;
   publishedAt: string;
   updatedAt: string | null;
@@ -73,6 +84,10 @@ export interface DeliveryClient {
   list<T = Record<string, unknown>>(type: string, options?: ListOptions<T>): Promise<DeliveryItem<T>[]>;
   singleton<T = Record<string, unknown>>(type: string, options?: Omit<ListOptions<T>, 'sort'>): Promise<DeliveryItem<T> | null>;
   item<T = Record<string, unknown>>(canonicalId: string, options?: { schema?: Parser<T> }): Promise<DeliveryItem<T> | null>;
+  /** One published item by its slug in a type, or null (YatrisCMS#519). */
+  bySlug<T = Record<string, unknown>>(type: string, slug: string, options?: { schema?: Parser<T> }): Promise<DeliveryItem<T> | null>;
+  /** Every old slug of a published item and the slug it moved to, optionally of one type. */
+  redirects(type?: string): Promise<SlugRedirect[]>;
 }
 
 export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClient {
@@ -204,6 +219,34 @@ export function createDeliveryClient(config: DeliveryConfig = {}): DeliveryClien
       }
       return parseItem(body.data, context, options.schema);
     },
+    async bySlug<T>(type: string, slug: string, options: { schema?: Parser<T> } = {}) {
+      const context = `Content Type "${type}", slug "${slug}"`;
+      for (const raw of (await drafts()).values()) {
+        if (isRecord(raw) && raw.type === type && raw.slug === slug) return parseItem(raw, `${context} (preview)`, options.schema);
+      }
+      const { status, body } = await get(`/items?${new URLSearchParams({ type, slug })}`, context);
+      if (status === 404) {
+        throw new YatrisDeliveryError(`${context}: the Delivery endpoint was not found; check YATRIS_DELIVERY_ENDPOINT`);
+      }
+      const envelope = parseListEnvelope(body, context);
+      const found = envelope.data[0];
+      return found === undefined ? null : parseItem(found, context, options.schema);
+    },
+    async redirects(type?: string) {
+      const context = type === undefined ? 'slug redirects' : `slug redirects of "${type}"`;
+      const { status, body } = await get(`/redirects${type === undefined ? '' : `?${new URLSearchParams({ type })}`}`, context);
+      // A server that predates item slugs has no redirects to give
+      if (status === 404) return [];
+      if (!isRecord(body) || !Array.isArray(body.data)) {
+        throw new YatrisDeliveryError(`${context}: malformed Delivery response (expected { data: [] })`);
+      }
+      return body.data.map((raw) => {
+        if (!isRecord(raw) || typeof raw.type !== 'string' || typeof raw.from !== 'string' || typeof raw.to !== 'string') {
+          throw new YatrisDeliveryError(`${context}: malformed redirect (expected { type, from, to })`);
+        }
+        return { type: raw.type, from: raw.from, to: raw.to };
+      });
+    },
   };
 }
 
@@ -223,6 +266,37 @@ export function getYatrisSingleton<T = Record<string, unknown>>(type: string, op
 /** One published item by canonical ID, or null. */
 export function getYatrisItem<T = Record<string, unknown>>(canonicalId: string, options?: { schema?: Parser<T> }) {
   return client().item<T>(canonicalId, options);
+}
+
+/** One published item by its slug in a Content Type, or null (YatrisCMS#519). */
+export function getYatrisItemBySlug<T = Record<string, unknown>>(type: string, slug: string, options?: { schema?: Parser<T> }) {
+  return client().bySlug<T>(type, slug, options);
+}
+
+/**
+ * `getStaticPaths` for a detail page routed by slug (`src/pages/works/[slug].astro`):
+ * one path per published item, with the item as a prop. Fails the build
+ * when an item has no slug, which means the type still keeps its URLs in a
+ * field of its own.
+ */
+export async function getYatrisSlugPaths<T = Record<string, unknown>>(
+  type: string,
+  options?: ListOptions<T>,
+): Promise<{ params: { slug: string }; props: { item: DeliveryItem<T> } }[]> {
+  const items = await client().list<T>(type, options);
+  return items.map((item) => {
+    if (item.slug === null) {
+      throw new YatrisDeliveryError(
+        `Content Type "${type}": item ${item.canonicalId} has no slug. The type keeps its URLs in a field of its own; route by that field until Yatris moves it to item slugs.`,
+      );
+    }
+    return { params: { slug: item.slug }, props: { item } };
+  });
+}
+
+/** Every old item slug and the slug it moved to (YatrisCMS#519); the integration writes them into `_redirects`. */
+export function getYatrisRedirects(type?: string) {
+  return client().redirects(type);
 }
 
 function parseEndpoint(endpoint: string): string {
@@ -268,6 +342,8 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
     typeof raw.published_at !== 'string' ||
     !(raw.updated_at === null || typeof raw.updated_at === 'string') ||
     !(raw.position === undefined || raw.position === null || (Number.isInteger(raw.position) && (raw.position as number) >= 1)) ||
+    !(raw.slug === undefined || raw.slug === null || (typeof raw.slug === 'string' && raw.slug !== '')) ||
+    !(raw.number === undefined || raw.number === null || (Number.isInteger(raw.number) && (raw.number as number) >= 1)) ||
     !isRecord(raw.payload)
   ) {
     throw new YatrisDeliveryError(`${where}: malformed Delivery item`);
@@ -279,7 +355,9 @@ function parseItem<T>(raw: unknown, context: string, schema?: Parser<T>): Delive
     throw new YatrisDeliveryError(`${where}: content does not match the declared schema: ${(error as Error).message}`);
   }
   const position = (raw.position ?? null) as number | null;
-  return { canonicalId: id, type: raw.type, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, position, data };
+  const slug = (raw.slug ?? null) as string | null;
+  const number = (raw.number ?? null) as number | null;
+  return { canonicalId: id, type: raw.type, slug, number, version: raw.version, publishedAt: raw.published_at, updatedAt: raw.updated_at, position, data };
 }
 
 /** Validates the overlay's items once, keyed by canonical ID. */
