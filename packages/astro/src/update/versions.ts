@@ -36,14 +36,16 @@ export function compareVersions(a: string, b: string): number {
 
 /**
  * Whether moving from `from` to `to` is a breaking (major) change: the major
- * version, or the minor while the major is still 0, as npm's caret reads it.
+ * version changes. A minor adds without breaking or removing anything, on 0.x
+ * too; a release that breaks something is a new major (0.x → 1.0.0), never a
+ * 0.x minor. npm's caret reads a 0.x minor as breaking, but sites pin exact
+ * versions, so the caret never decides what they install.
  */
 export function isMajorChange(from: string, to: string): boolean {
   const x = parseVersion(from);
   const y = parseVersion(to);
   if (!x || !y) return false;
-  if (x.major !== y.major) return true;
-  return x.major === 0 && x.minor !== y.minor;
+  return x.major !== y.major;
 }
 
 /** Whether the running Node satisfies a manifest requirement such as ">=22.12.0". */

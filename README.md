@@ -114,6 +114,13 @@ sets `yatrisPlatform.status` and the manifest `status` to `released` in its
 own workspace; the repository always says `unreleased`), and publishes both
 packages with npm provenance.
 
+Versions follow semver from 0.x on: a patch fixes, a minor adds without
+breaking or removing anything, and a release that breaks or removes
+something is a new major (the first one is 1.0.0). `yatris update` applies
+patches and minors on its own, so Yatris's daily update PRs need no
+confirmation; only a major (of the platform or of Astro) waits for
+`--major`.
+
 `yatris update` and Yatris's update PRs take the newest stable version whose
 marker says `released` **and** whose npm provenance attestation names exactly
 that workflow on `main`, for the exact tarball the registry serves, with the

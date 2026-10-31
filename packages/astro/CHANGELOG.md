@@ -1,5 +1,11 @@
 # @yatris/astro
 
+## 0.9.2
+
+### Patch Changes
+
+- `yatris update` reads versions as semver from 0.x on: a minor adds without breaking anything, so it no longer needs `--major`. Before, a 0.x minor (0.8.1 → 0.9.1) counted as a breaking change the way npm's caret reads it, and Yatris's daily update PRs stopped at 「メジャー更新のため手動実行が必要」 on every release. A release that breaks or removes something is now a new major (the first is 1.0.0), and only a major of the platform or of Astro still waits for `--major`. Sites update to this release on their own: 0.9.1 → 0.9.2 is a patch under either rule.
+
 ## 0.9.1
 
 ### Patch Changes
