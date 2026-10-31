@@ -125,7 +125,8 @@ describe('planning an update', () => {
     ]);
     expect(plan.conflicts).toEqual([]);
     expect(plan.packages).toEqual([{ name: '@yatris/astro', from: '0.0.0', to: '0.1.0' }]);
-    expect(plan.major).toEqual(['Yatris platform 0.0.0 → 0.1.0']);
+    // A 0.x minor adds; it does not break (0.0.0 → 0.1.0 needs no --major)
+    expect(plan.major).toEqual([]);
   });
 
   it('stops on a customised managed file the release changes, and keeps one it does not', () => {
@@ -148,7 +149,15 @@ describe('planning an update', () => {
     const plan = planUpdate(site, readPlatformLock(site)!, next, sources());
     expect(plan.major.some((m) => m.startsWith('Astro 7.3.5 → 8.0.0'))).toBe(true);
     expect(isMajorChange('1.2.0', '1.3.0')).toBe(false);
-    expect(isMajorChange('0.1.0', '0.2.0')).toBe(true);
+    expect(isMajorChange('0.9.1', '1.0.0')).toBe(true);
+  });
+
+  it('applies a 0.x minor without confirmation: it adds, it does not break', () => {
+    expect(isMajorChange('0.8.1', '0.9.1')).toBe(false);
+    expect(isMajorChange('0.3.0', '0.9.1')).toBe(false);
+    release = nextRelease();
+    const plan = planUpdate(site, readPlatformLock(site)!, next, sources());
+    expect(plan.major).toEqual([]);
   });
 });
 
@@ -280,12 +289,19 @@ describe('yatris update', () => {
   const args = (...more: string[]) => [...more, ...resolved.map((a) => (a === '' ? release : a))];
 
   it('needs --yes, --to and, for a major change, --major without a terminal', async () => {
+    release = nextRelease({ astro: '8.0.0' });
     const exec = fakeExec();
     expect((await runUpdate(args(), env(exec.fn))).stderr).toContain('--yes and --to');
     expect((await runUpdate(args('--yes', '--to', '0.1.0'), env(exec.fn))).stderr).toContain('--major');
     expect(readPlatformLock(site)!.platformVersion).toBe('0.0.0');
 
     const done = await runUpdate(args('--yes', '--to', '0.1.0', '--major'), env(exec.fn));
+    expect(done.code).toBe(0);
+    expect(readPlatformLock(site)!.platformVersion).toBe('0.1.0');
+  });
+
+  it('applies a minor with --yes and --to alone, as the daily update PRs run it', async () => {
+    const done = await runUpdate(args('--yes', '--to', '0.1.0'), env(fakeExec().fn));
     expect(done.code).toBe(0);
     expect(readPlatformLock(site)!.platformVersion).toBe('0.1.0');
   });
