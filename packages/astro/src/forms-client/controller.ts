@@ -146,7 +146,8 @@ export class FormController {
         signal: controller?.signal,
       });
     } catch {
-      return { ok: false, message: UI.loadFailed, retry: true };
+      const refused = !controller?.signal.aborted && (await this.refusedOrigin());
+      return { ok: false, message: refused ? UI.originRefused : UI.loadFailed, retry: true };
     } finally {
       if (timer) clearTimeout(timer);
     }
@@ -164,6 +165,32 @@ export class FormController {
       return { ok: false, message: UI.unsupported, retry: false };
     }
     return { ok: true, definition };
+  }
+
+  /**
+   * After a failed cross-origin load, whether Yatris answered but the browser
+   * withheld the answer: an opaque (no-cors) request to the same URL succeeds
+   * when the server is reachable, so the failure was CORS — almost always
+   * this page's origin not being allowed for the Website — not the network.
+   */
+  private async refusedOrigin(): Promise<boolean> {
+    if (this.config.mode !== 'live' || typeof location === 'undefined') return false;
+    const url = new URL(this.config.definitionUrl, location.href);
+    if (url.origin === location.origin) return false;
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), LOAD_TIMEOUT_MS) : null;
+    try {
+      await this.doFetch(url.href, { mode: 'no-cors', credentials: 'omit', cache: 'no-store', signal: controller?.signal });
+    } catch {
+      return false;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
+    console.error(
+      `[yatris forms] "${this.config.form}": Yatris (${url.origin}) answered, but did not allow this page's origin ${location.origin} to read the form. ` +
+        `Add ${location.origin} to the Website's allowed origins in Yatris (フォーム → サイト全体の設定 → 許可するオリジン). The site's own URL and its Cloudflare Pages origins are allowed automatically.`,
+    );
+    return true;
   }
 
   /** Why this renderer must not draw a definition, or null when it can draw all of it. */

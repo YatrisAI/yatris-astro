@@ -717,6 +717,26 @@ describe('loading and unavailable states', () => {
     expect(flaky.root.querySelector('form')).not.toBeNull();
   });
 
+  it('tells a refused origin apart from a network failure and names the origin in the console', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const root = document.createElement('div');
+    // The browser blocks the CORS read, but an opaque request reaches Yatris
+    const fetch = vi.fn(async (_url: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.mode !== 'no-cors') throw new TypeError('Failed to fetch');
+      return new Response(null, { status: 200 });
+    });
+    const controller = mountForm(root, liveConfig('contact'), { fetch: fetch as unknown as typeof globalThis.fetch });
+    await controller.ready;
+
+    expect(root.querySelector('.yf-unavailable-message')!.textContent).toBe('このページではフォームを表示できませんでした。時間をおいても表示されない場合は、お手数ですがサイトの管理者にお知らせください。');
+    expect(root.textContent).not.toContain('通信状況');
+    expect(root.querySelector('.yf-retry')).not.toBeNull();
+    expect(fetch).toHaveBeenLastCalledWith(`${ORIGIN}/api/v1/forms/42.contact`, expect.objectContaining({ mode: 'no-cors', credentials: 'omit' }));
+    expect(error).toHaveBeenCalledOnce();
+    expect(error.mock.calls[0]![0]).toContain(`did not allow this page's origin ${location.origin}`);
+    expect(error.mock.calls[0]![0]).toContain('許可するオリジン');
+  });
+
   it('shows the unavailable state for an unconfigured mount without any request', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     const root = document.createElement('div');

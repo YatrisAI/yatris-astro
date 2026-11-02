@@ -1,5 +1,11 @@
 # @yatris/astro
 
+## 0.9.3
+
+### Patch Changes
+
+- Contact forms tell a refused origin apart from a network failure. When the browser blocks the definition because Yatris did not allow the page's origin (a site tested on its pages.dev address before the domain moves, a www. variant), visitors no longer see 「通信状況をご確認」: they see 「このページではフォームを表示できませんでした…サイトの管理者にお知らせください」, and the console names the refused origin and where to allow it in Yatris (フォーム → サイト全体の設定 → 許可するオリジン). The renderer finds out with one opaque request to the same URL, only after a load has failed.
+
 ## 0.9.2
 
 ### Patch Changes
